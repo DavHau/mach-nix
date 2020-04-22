@@ -12,10 +12,9 @@ from mach_nix.versions import PyVer
 
 
 def ensure_nix():
-    cmd = ['nix', '--version']
     nix_installed = True
     try:
-        sp.run(cmd, check=True)
+        sp.run(['nix', '--version'], check=True, capture_output=True)
     except FileNotFoundError:
         nix_installed = False
     if nix_installed:
