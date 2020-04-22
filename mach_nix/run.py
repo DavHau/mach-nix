@@ -3,36 +3,11 @@ import os
 import subprocess as sp
 import sys
 import tempfile
-import urllib
 from argparse import ArgumentParser
 from os.path import realpath, dirname
-from urllib.request import urlretrieve
 
+from mach_nix.ensure_nix import ensure_nix
 from mach_nix.versions import PyVer
-
-
-def ensure_nix():
-    nix_installed = True
-    try:
-        sp.run(['nix', '--version'], check=True, capture_output=True)
-    except FileNotFoundError:
-        nix_installed = False
-    if nix_installed:
-        return
-    print("The nix package manager is required! Install it now? [Y/n]: ", end='')
-    answer = input()
-    if not answer or answer[0].lower() != 'y':
-        exit(1)
-    with urllib.request.urlopen('https://nixos.org/nix/install') as f:
-        install_script = f.read()
-    read, write = os.pipe()
-    os.write(write, install_script)
-    os.close(write)
-    proc = sp.run('sh', stdin=read)
-    if proc.returncode:
-        print("Error while installing nix. Please check https://nixos.org/download.html and install manually.",
-              file=sys.stderr)
-        exit(1)
 
 
 def gen(args, quiet: bool, return_expr=False):
@@ -79,7 +54,13 @@ def env(args):
                 python.write(expr)
                 shell.write("(import ./python.nix).env\n")
                 default.write("import ./shell.nix\n")
-    print(f"created files: {python_nix_file}, {shell_nix_file}")
+    print(f"\nInitialized python environment in {target_dir}\n"
+          f"To activate it, execute: 'nix-shell {target_dir}'")
+
+
+def be_patient():
+    print("Generating python environment... If you run this the first time, the python package index "
+          "and dependency graph (~200MB) need to be downloaded. Please stay patient!")
 
 
 def main():
@@ -101,6 +82,7 @@ def main():
     args = parser.parse_args()
 
     ensure_nix()
+    be_patient()
 
     if args.command == 'gen':
         gen(args, quiet=not args.o)

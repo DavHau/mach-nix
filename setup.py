@@ -3,7 +3,7 @@ from os.path import abspath, dirname
 from setuptools import setup, find_packages
 
 pwd = dirname(abspath(__file__))
-with open(pwd + '/' + 'VERSION') as f:
+with open(pwd + '/VERSION') as f:
     version = f.read().strip()
 
 setup(
@@ -19,6 +19,8 @@ setup(
             "mach-nix = mach_nix:main"
         ],
     },
+    package_data={'': ['nix/*']},
+    include_package_data=True,
     install_requires=[
         'distlib ~= 0.3.0',
         'packaging >= 19.0',

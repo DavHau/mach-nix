@@ -145,15 +145,15 @@ class NixpkgsDirectory(UserDict):
             return False
         return ver1.release[ver_idx] == ver2.release[ver_idx]
 
-    def choose_nix_pkg_for_py_pkg(self, name, ver):
+    def find_best_nixpkgs_candidate(self, name, ver):
         """
-        In case a python package has more than one definition in nixpkgs
+        In case a python package has more than one candidate in nixpkgs
         like `django` and `django_2_2`, this algo will select the right one.
         """
         pkgs: List[NixpkgsPyPkg] = sorted(self.get_all_candidates(name), key=lambda pkg: pkg.ver)
         if len(pkgs) == 1:
             return self[name].nix_key
-        # try to find nixpkgs pkg with best matching version
+        # try to find nixpkgs candidate with closest version
         remaining_pkgs = pkgs
         for i in range(7):  # usually there are not more than 4 parts in a version
             same_ver = list(filter(lambda p: self.is_same_ver(ver, p.ver, i), remaining_pkgs))

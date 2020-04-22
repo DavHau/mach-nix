@@ -135,7 +135,7 @@ class OverlaysGenerator(ExpressionGenerator):
             # generate package overlays either via `overrideAttrs` if package already exists in nixpkgs,
             # or by creating it from scratch using `buildPythonPackage`
             if self.nixpkgs.exists(pkg.name):
-                nix_name = self.nixpkgs.choose_nix_pkg_for_py_pkg(pkg.name, pkg.ver)
+                nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
                 out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
                 master_key = self._get_ref_name(pkg.name, pkg.ver)
                 other_names = (p.nix_key for p in self.nixpkgs.get_all_candidates(pkg.name) if p.nix_key != master_key)
@@ -151,7 +151,7 @@ class OverlaysGenerator(ExpressionGenerator):
 
     def _get_ref_name(self, name, ver) -> str:
         if self.nixpkgs.exists(name):
-            return self.nixpkgs.choose_nix_pkg_for_py_pkg(name, ver)
+            return self.nixpkgs.find_best_nixpkgs_candidate(name, ver)
         return name
 
     def _needs_overlay(self, name, ver):
