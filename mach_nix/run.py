@@ -10,20 +10,21 @@ from mach_nix.ensure_nix import ensure_nix
 from mach_nix.versions import PyVer
 
 
-def gen(args, quiet: bool, return_expr=False):
+pwd = dirname(realpath(__file__))
+
+
+def gen(args, return_expr=False):
     with open(args.r) as f:
         requirements = f.read().strip()
-    pwd = dirname(realpath(__file__))
     o_file = tempfile.mktemp()
     py_ver = PyVer(args.python)
     cmd = f'nix-build {pwd}/nix/expression.nix -o {o_file}' \
           f' --argstr requirements "{requirements}"' \
           f' --argstr python_attr python{py_ver.digits()}' \
           f' --arg prefer_nixpkgs {json.dumps((not args.prefer_new))}'
-    proc = sp.run(cmd, shell=True, capture_output=quiet)
+    proc = sp.run(cmd, shell=True, stdout=sys.stderr)
     if proc.returncode:
-        if quiet:
-            print(proc.stderr.decode(), file=sys.stderr)
+        print(proc.stderr.decode(), file=sys.stderr)
         exit(1)
     with open(f"{o_file}/share/expr.nix") as src:
         expr = src.read()
@@ -39,7 +40,7 @@ def gen(args, quiet: bool, return_expr=False):
 
 def env(args):
     target_dir = args.directory
-    expr = gen(args, quiet=False, return_expr=True)
+    expr = gen(args, return_expr=True)
     python_nix_file = f"{target_dir}/python.nix"
     shell_nix_file = f"{target_dir}/shell.nix"
     default_nix_file = f"{target_dir}/default.nix"
@@ -58,9 +59,9 @@ def env(args):
           f"To activate it, execute: 'nix-shell {target_dir}'")
 
 
-def be_patient():
+def print_be_patient():
     print("Generating python environment... If you run this the first time, the python package index "
-          "and dependency graph (~200MB) need to be downloaded. Please stay patient!")
+          "and dependency graph (~200MB) need to be downloaded. Please stay patient!", file=sys.stderr)
 
 
 def main():
@@ -81,7 +82,8 @@ def main():
                  'This might increase build times significantly since no cache can be used'))
     )
     parser = ArgumentParser()
-    subparsers = parser.add_subparsers(dest='command', required=True)
+    parser.add_argument('--version', '-V', help='show program version', action='store_true')
+    subparsers = parser.add_subparsers(dest='command')
 
     gen_parser = subparsers.add_parser('gen', help='generate a nix expression')
     gen_parser.add_argument('-o', help='output file. defaults to stdout', metavar='python.nix')
@@ -95,11 +97,20 @@ def main():
 
     args = parser.parse_args()
 
+    if args.version:
+        with open(f"{pwd}/VERSION") as f:
+            print(f"mach-nix: {f.read()}")
+            exit(0)
+
+    if args.command not in ('gen', 'env'):
+        parser.print_usage()
+        exit(1)
+
     ensure_nix()
-    be_patient()
+    print_be_patient()
 
     if args.command == 'gen':
-        gen(args, quiet=not args.o)
+        gen(args)
     elif args.command == 'env':
         env(args)
 

@@ -5,7 +5,7 @@ let
 in
 python.pkgs.buildPythonPackage rec {
   pname = "mach-nix";
-  version = builtins.readFile ./VERSION;
+  version = builtins.readFile ./mach_nix/VERSION;
   name = "${pname}-${version}";
   src = ./.;
   propagatedBuildInputs = python_deps;
