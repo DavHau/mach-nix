@@ -3,36 +3,11 @@ import os
 import subprocess as sp
 import sys
 import tempfile
-import urllib
 from argparse import ArgumentParser
 from os.path import realpath, dirname
-from urllib.request import urlretrieve
 
+from mach_nix.ensure_nix import ensure_nix
 from mach_nix.versions import PyVer
-
-
-def ensure_nix():
-    nix_installed = True
-    try:
-        sp.run(['nix', '--version'], check=True, capture_output=True)
-    except FileNotFoundError:
-        nix_installed = False
-    if nix_installed:
-        return
-    print("The nix package manager is required! Install it now? [Y/n]: ", end='')
-    answer = input()
-    if not answer or answer[0].lower() != 'y':
-        exit(1)
-    with urllib.request.urlopen('https://nixos.org/nix/install') as f:
-        install_script = f.read()
-    read, write = os.pipe()
-    os.write(write, install_script)
-    os.close(write)
-    proc = sp.run('sh', stdin=read)
-    if proc.returncode:
-        print("Error while installing nix. Please check https://nixos.org/download.html and install manually.",
-              file=sys.stderr)
-        exit(1)
 
 
 def gen(args, quiet: bool, return_expr=False):
@@ -79,28 +54,49 @@ def env(args):
                 python.write(expr)
                 shell.write("(import ./python.nix).env\n")
                 default.write("import ./shell.nix\n")
-    print(f"created files: {python_nix_file}, {shell_nix_file}")
+    print(f"\nInitialized python environment in {target_dir}\n"
+          f"To activate it, execute: 'nix-shell {target_dir}'")
+
+
+def be_patient():
+    print("Generating python environment... If you run this the first time, the python package index "
+          "and dependency graph (~200MB) need to be downloaded. Please stay patient!")
 
 
 def main():
+    common_arguments = (
+        (('-p', '--python'), dict(
+            help='select python version (default: 3.7)',
+            choices=('2.7', '3.5', '3.6', '3.7', '3.8'),
+            default='3.7')),
+
+        (('-r',), dict(
+            help='path to requirements.txt file',
+            metavar='requirements.txt',
+            required=True)),
+
+        (('--prefer-new',), dict(
+            action='store_true',
+            help='Prefer newer python package versions instead of the ones from nixpkgs. '
+                 'This might increase build times significantly since no cache can be used'))
+    )
     parser = ArgumentParser()
-    parser.add_argument('-p', '--python', help='select python version (default: 3.7)',
-                        choices=('2.7', '3.5', '3.6', '3.7', '3.8'), default='3.7')
-    parser.add_argument('-r', help='path to requirements.txt file', metavar='requirements.txt', required=True)
     subparsers = parser.add_subparsers(dest='command', required=True)
-    parser.add_argument('--prefer-new', action='store_true',
-                        help='Prefer newer python package versions instead of the ones from nixpkgs. '
-                             'This might increase build times significantly since no cache can be used',)
 
     gen_parser = subparsers.add_parser('gen', help='generate a nix expression')
-    gen_parser.add_argument('-o', help='output file. defaults to stdout')
+    gen_parser.add_argument('-o', help='output file. defaults to stdout', metavar='python.nix')
 
     env_parser = subparsers.add_parser('env', help='set up a venv-style environment')
     env_parser.add_argument('directory', help='target directory to create the environment')
 
+    for p in (gen_parser, env_parser):
+        for args, kwargs in common_arguments:
+            p.add_argument(*args, **kwargs)
+
     args = parser.parse_args()
 
     ensure_nix()
+    be_patient()
 
     if args.command == 'gen':
         gen(args, quiet=not args.o)
