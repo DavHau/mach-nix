@@ -64,20 +64,34 @@ def be_patient():
 
 
 def main():
+    common_arguments = (
+        (('-p', '--python'), dict(
+            help='select python version (default: 3.7)',
+            choices=('2.7', '3.5', '3.6', '3.7', '3.8'),
+            default='3.7')),
+
+        (('-r',), dict(
+            help='path to requirements.txt file',
+            metavar='requirements.txt',
+            required=True)),
+
+        (('--prefer-new',), dict(
+            action='store_true',
+            help='Prefer newer python package versions instead of the ones from nixpkgs. '
+                 'This might increase build times significantly since no cache can be used'))
+    )
     parser = ArgumentParser()
-    parser.add_argument('-p', '--python', help='select python version (default: 3.7)',
-                        choices=('2.7', '3.5', '3.6', '3.7', '3.8'), default='3.7')
-    parser.add_argument('-r', help='path to requirements.txt file', metavar='requirements.txt', required=True)
     subparsers = parser.add_subparsers(dest='command', required=True)
-    parser.add_argument('--prefer-new', action='store_true',
-                        help='Prefer newer python package versions instead of the ones from nixpkgs. '
-                             'This might increase build times significantly since no cache can be used',)
 
     gen_parser = subparsers.add_parser('gen', help='generate a nix expression')
-    gen_parser.add_argument('-o', help='output file. defaults to stdout')
+    gen_parser.add_argument('-o', help='output file. defaults to stdout', metavar='python.nix')
 
     env_parser = subparsers.add_parser('env', help='set up a venv-style environment')
     env_parser.add_argument('directory', help='target directory to create the environment')
+
+    for p in (gen_parser, env_parser):
+        for args, kwargs in common_arguments:
+            p.add_argument(*args, **kwargs)
 
     args = parser.parse_args()
 
