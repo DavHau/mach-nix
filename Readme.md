@@ -9,11 +9,11 @@ Mach-nix makes it easy to create and share reproducible python environments. Whi
 You can either install mach-nix via pip or by using nix in case you already have the nix package manager installed.
 ### Installing via pip
 ```shell
-pip install git+git://github.com/DavHau/mach-nix@master
+pip install git+git://github.com/DavHau/mach-nix@1.0.0
 ```
 ### Installing via nix
 ```shell
-nix-env -if https://github.com/DavHau/mach-nix/tarball/master -A mach-nix
+nix-env -if https://github.com/DavHau/mach-nix/tarball/1.0.0 -A mach-nix
 ```
 
 ## Basic usage
@@ -45,7 +45,7 @@ let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
     ref = "master";
-    rev = "e2893a5c64e42298c889d05adba7965b5d1ea1b7";
+    rev = "fa2bb2d33fb9b9dc3113046e4fcc16088f56981a";
   });
 in
 mach-nix.mkPython {
