@@ -38,7 +38,7 @@ mach-nix gen -r requirements.txt
 ...to print out the nix expression which defines a python derivation (optionally use `-o` to define an `output file`)
 
 ---
-### **Use Case 3**: Defina a python derivation via nix expression language
+### **Use Case 3**: Define a python derivation via nix expression language
 If you are comfortable with writing nix expressions, you don't need to install this program. You can call it directly from a nix expression
 ```nix
 let
