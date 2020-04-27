@@ -6,7 +6,7 @@
   nixpkgs_commit ? builtins.readFile ./NIXPKGS_COMMIT,  # nixpkgs version to use python packages from
   nixpkgs_tarball_sha256 ? builtins.readFile ./NIXPKGS_TARBALL_SHA256,  # nixpkgs version to use python packages from
   pypi_deps_db_commit ? builtins.readFile ./PYPI_DEPS_DB_COMMIT,  # python dependency DB version to use
-  # Hash obtained using `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>.tar.gz`
+  # Hash obtained using `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
   pypi_deps_db_sha256 ? builtins.readFile ./PYPI_DEPS_DB_TARBALL_SHA256  # python dependency DB version to use
 }:
 let
