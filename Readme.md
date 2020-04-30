@@ -119,3 +119,6 @@ All 3 methods take the following set of inputs which are processed in [./mach_ni
  - **pypi_deps_db_commit** (string): commit hash of a specific version of the dependency graph ([pypi-deps-db](https://github.com/DavHau/pypi-deps-db)).
  - **pypi_deps_db_sha256** (string): sha256 hash obtained via `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
 
+## Contributing
+Contributions to this project are welcome in the form of GitHub PRs. If you are planning to make any considerable changes, you should first present your plans in a GitHub issue so it can be discussed.
+
