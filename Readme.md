@@ -122,3 +122,12 @@ All 3 methods take the following set of inputs which are processed in [./mach_ni
 ## Contributing
 Contributions to this project are welcome in the form of GitHub PRs. If you are planning to make any considerable changes, you should first present your plans in a GitHub issue so it can be discussed.
 
+## Limitations
+ - Currently mach-nix does not provide any functionality which supports you in publishing python projects, like [Poetry](https://python-poetry.org/) does for example.  
+ - Mach-nix does not yet support python packages in form of bdist_wheels, therefore some packages from pypi are not available.
+
+## Alternative / Similar Software:
+ - [Poetry](https://python-poetry.org/)
+ - [Pipenv](https://github.com/pypa/pipenv)
+ - [peotry2nix](https://github.com/nix-community/poetry2nix)
+ - [pypi2nix](https://github.com/nix-community/pypi2nix)
