@@ -49,7 +49,7 @@ class OverlaysGenerator(ExpressionGenerator):
                 url = "https://github.com/nixos/nixpkgs/tarball/{self.nixpkgs_commit}";
                 sha256 = "{self.nixpkgs_tarball_sha256}";
               }};
-              pkgs = import nixpkgs_src {{ config = {{}}; }};
+              pkgs = import nixpkgs_src {{ config = {{}}; overlays = []; }};
               python = pkgs.{self.py_ver_nix};
             """
         return unindent(out, 12)
@@ -171,7 +171,7 @@ class OverlaysGenerator(ExpressionGenerator):
         python_with_packages = f"""
             in
             
-            with import nixpkgs_src {{ overlays = [ overlay ]; }};
+            with import nixpkgs_src {{ config = {{}}; overlays = [ overlay ]; }};
             
             {self.py_ver_nix}.withPackages (ps: with ps; [
               {pkg_names.rstrip()}
