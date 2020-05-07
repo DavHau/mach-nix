@@ -25,8 +25,12 @@ class DependencyDB(UserDict):
                 del self.data[name]
 
     def __getitem__(self, item) -> dict:
+        key = self._unify_key(item)
         result = {}
-        for ver, pyvers in self.data[self._unify_key(item)].items():
+        for ver, pyvers in self.data[key].items():
+            # in case pyvers is a string, it is a reference to another pyvers which we need to resolve
+            if isinstance(pyvers, str):
+                pyvers = self.data[key][pyvers]
             if self.py_ver_digits in pyvers:
                 if isinstance(pyvers[self.py_ver_digits], str):
                     result[ver] = pyvers[pyvers[self.py_ver_digits]]
@@ -162,7 +166,7 @@ class NixpkgsDirectory(UserDict):
             elif len(same_ver) == 0:
                 highest = self.get_highest_ver(remaining_pkgs).nix_key
                 print(f'WARNING: Unable to decide which of nixpkgs\'s definitions {[p.nix_key for p in remaining_pkgs]}'
-                      f' is best as base for {name}:{ver}. Picking {highest}')
+                      f' suits best as base for {name}:{ver}. Picking {highest}')
                 return highest
             remaining_pkgs = same_ver
         # In every case we should have returned by now
