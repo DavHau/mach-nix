@@ -70,7 +70,7 @@ mach-nix.mkPython {
 The general mechanism can be broken down into the following:
 
 ###  Dependency resolution
-Mach-nix contains a  dependency graph of nearly all python packages available on pypi.org. With this, mach-nix is able to do dependency resolution offline within seconds.
+Mach-nix contains a  dependency graph of nearly all python packages available on pypi.org. This allows mach-nix to resolve dependencies offline within seconds.
 
 The dependency graph data can be found here: https://github.com/DavHau/pypi-deps-db  
 The dependency graph is updated on a daily basis by this set of tools: https://github.com/DavHau/pypi-crawlers  
