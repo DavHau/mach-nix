@@ -11,13 +11,13 @@
 }:
 let
   nixpkgs_src = (import ./nixpkgs-src.nix).stable;
-  pkgs = import nixpkgs_src { config = {}; };
+  pkgs = import nixpkgs_src { config = {}; overlays = []; };
   target_nixpkgs_src = builtins.fetchTarball {
     name = "nixpkgs";
     url = "https://github.com/nixos/nixpkgs/tarball/${nixpkgs_commit}";
     sha256 = "${nixpkgs_tarball_sha256}";
   };
-  target_pkgs = import target_nixpkgs_src { config = {}; };
+  target_pkgs = import target_nixpkgs_src { config = {}; overlays = []; };
   target_python = target_pkgs."${python_attr}";
   nixpkgs_json = import ./nixpkgs-json.nix { pkgs = target_pkgs; python = target_python; };
   builder_python = pkgs.python37.withPackages(ps:
