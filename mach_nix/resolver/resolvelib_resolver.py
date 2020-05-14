@@ -4,10 +4,11 @@ from typing import Iterable, List
 import resolvelib
 from packaging.version import Version
 
-from mach_nix.data.data_interface import NixpkgsDirectory, DependencyDB
+from mach_nix.data.providers import DependencyProviderBase
+from mach_nix.data.nixpkgs import NixpkgsDirectory
 from mach_nix.requirements import Requirement
 from mach_nix.resolver import Resolver, ResolvedPkg
-from mach_nix.versions import filter_versions, ver_sort_key
+from mach_nix.versions import filter_versions
 
 
 @dataclass
@@ -19,8 +20,7 @@ class Candidate:
 
 # Implement logic so the resolver understands the requirement format.
 class Provider:
-    def __init__(self, nixpkgs: NixpkgsDirectory, deps_db: DependencyDB, prefer_nixpkgs: bool):
-        self.prefer_nixpkgs = prefer_nixpkgs
+    def __init__(self, nixpkgs: NixpkgsDirectory, deps_db: DependencyProviderBase):
         self.nixpkgs = nixpkgs
         self.deps_db = deps_db
 
@@ -36,19 +36,10 @@ class Provider:
     def get_preference(self, resolution, candidates, information):
         return len(candidates)
 
-    def sort_key(self, name, ver):
-        key = ver_sort_key(ver)
-        if self.prefer_nixpkgs and self.nixpkgs.exists(name, ver):
-            return (1, *key)
-        return (0, *key)
-
     def find_matches(self, req):
         all = self.deps_db.available_versions(req.key)
-
-        def sort_key(ver):
-            return self.sort_key(req.key, ver)
-        version_matches = sorted(filter_versions(all, req.specs), key=lambda x: sort_key(x))
-        return [Candidate(name=req.name, ver=ver, extras=req.extras) for ver in version_matches]
+        matching_versions = filter_versions(all, req.specs)
+        return [Candidate(name=req.name, ver=ver, extras=req.extras) for ver in matching_versions]
 
     def is_satisfied_by(self, requirement, candidate):
         if not set(requirement.extras).issubset(set(candidate.extras)):
@@ -62,22 +53,22 @@ class Provider:
 
 
 class ResolvelibResolver(Resolver):
-    def __init__(self, nixpkgs: NixpkgsDirectory, deps_db: DependencyDB):
+    def __init__(self, nixpkgs: NixpkgsDirectory, deps_provider: DependencyProviderBase):
         self.nixpkgs = nixpkgs
-        self.deps_db = deps_db
+        self.deps_provider = deps_provider
 
     def resolve(self,
                 reqs: Iterable[Requirement],
                 prefer_nixpkgs=True) -> List[ResolvedPkg]:
         reporter = resolvelib.BaseReporter()
-        result = resolvelib.Resolver(Provider(self.nixpkgs, self.deps_db, prefer_nixpkgs=prefer_nixpkgs),
-                                     reporter).resolve(reqs)
+        result = resolvelib.Resolver(Provider(self.nixpkgs, self.deps_provider), reporter).resolve(reqs)
         nix_py_pkgs = []
         for name in result.graph._forwards.keys():
             if name is None:
                 continue
             ver = result.mapping[name].ver
-            install_requires, setup_requires = self.deps_db.get_pkg_reqs(name, ver)
+            install_requires, setup_requires = self.deps_provider.get_pkg_reqs(name, ver)
+            provider_info = self.deps_provider.get_provider_info(name, ver)
             prop_build_inputs = list({req.key for req in install_requires}) + list(result.mapping[name].extras)
             build_inputs = list({req.key for req in setup_requires})
             is_root = name in result.graph._forwards[None]
@@ -86,6 +77,7 @@ class ResolvelibResolver(Resolver):
                 ver=ver,
                 build_inputs=build_inputs,
                 prop_build_inputs=prop_build_inputs,
-                is_root=is_root
+                is_root=is_root,
+                provider_info=provider_info
             ))
         return nix_py_pkgs

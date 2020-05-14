@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Iterable
+from typing import List, Iterable, Optional
 
 from packaging.version import Version
 
+from mach_nix.data.providers import ProviderInfo
 from mach_nix.requirements import Requirement
 
 
@@ -14,6 +15,7 @@ class ResolvedPkg:
     build_inputs: List[str]
     prop_build_inputs: List[str]
     is_root: bool
+    provider_info: ProviderInfo
 
 
 class Resolver(ABC):

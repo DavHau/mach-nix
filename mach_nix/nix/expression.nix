@@ -1,13 +1,13 @@
 {
   requirements,  # content from a requirements.txt file
   python_attr ? "python3",  # python attr name inside given nixpkgs. Used as base for resulting python environment
-  prefer_nixpkgs ? true,  # Prefer python package versions from nixpkgs instead of newer ones. Decreases build time.
+  providers ? "wheel,nixpkgs,sdist",
   disable_checks ? true,  # Disable tests wherever possible to decrease build time.
   nixpkgs_commit ? builtins.readFile ./NIXPKGS_COMMIT,  # nixpkgs version to use python packages from
-  nixpkgs_tarball_sha256 ? builtins.readFile ./NIXPKGS_TARBALL_SHA256,  # nixpkgs version to use python packages from
+  nixpkgs_tarball_sha256 ? builtins.readFile ./NIXPKGS_SHA256,  # nixpkgs v ersion to use python packages from
   pypi_deps_db_commit ? builtins.readFile ./PYPI_DEPS_DB_COMMIT,  # python dependency DB version to use
   # Hash obtained using `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
-  pypi_deps_db_sha256 ? builtins.readFile ./PYPI_DEPS_DB_TARBALL_SHA256  # python dependency DB version to use
+  pypi_deps_db_sha256 ? builtins.readFile ./PYPI_DEPS_DB_SHA256  # python dependency DB version to use
 }:
 let
   nixpkgs_src = (import ./nixpkgs-src.nix).stable;
@@ -39,9 +39,8 @@ let
   expression = pkgs.runCommand "python-expression"
     { buildInputs = [ src builder_python pypi_deps_db_src];
       inherit disable_checks nixpkgs_commit nixpkgs_tarball_sha256 nixpkgs_json
-              prefer_nixpkgs requirements pypi_fetcher_commit pypi_fetcher_tarball_sha256;
+              requirements pypi_deps_db_src pypi_fetcher_commit pypi_fetcher_tarball_sha256;
       py_ver_str = target_python.version;
-      pypi_deps_db_data_dir = "${pypi_deps_db_src}/data";
     }
     ''
       mkdir -p $out/share
