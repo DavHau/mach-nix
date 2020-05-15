@@ -28,8 +28,6 @@ def load_providers(providers_str: str):
 
 def main():
     disable_checks = load_env('disable_checks')
-    nixpkgs_commit = load_env('nixpkgs_commit')
-    nixpkgs_sha256 = load_env('nixpkgs_sha256')
     nixpkgs_json = load_env('nixpkgs_json')
     out_file = load_env('out_file')
     py_ver_str = load_env('py_ver_str')
@@ -49,8 +47,6 @@ def main():
     )
     generator = OverlaysGenerator(
         py_ver,
-        nixpkgs_commit,
-        nixpkgs_sha256,
         nixpkgs,
         pypi_fetcher_commit,
         pypi_fetcher_sha256,

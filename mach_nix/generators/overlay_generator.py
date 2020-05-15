@@ -13,14 +13,12 @@ def unindent(text: str, remove: int):
 
 class OverlaysGenerator(ExpressionGenerator):
 
-    def __init__(self, py_ver, nixpkgs_commit, nixpkgs_sha256, nixpkgs: NixpkgsDirectory, pypi_fetcher_commit,
+    def __init__(self, py_ver, nixpkgs: NixpkgsDirectory, pypi_fetcher_commit,
                  pypi_fetcher_sha256, disable_checks, providers,
                  *args,
                  **kwargs):
         self.nixpkgs = nixpkgs
         self.disable_checks = disable_checks
-        self.nixpkgs_commit = nixpkgs_commit
-        self.nixpkgs_sha256 = nixpkgs_sha256
         self.pypi_fetcher_commit = pypi_fetcher_commit
         self.pypi_fetcher_sha256 = pypi_fetcher_sha256
         self.providers = providers
@@ -50,14 +48,6 @@ class OverlaysGenerator(ExpressionGenerator):
               }};
               fetchPypi = (import pypi_fetcher_src).fetchPypi;
               fetchPypiWheel = (import pypi_fetcher_src).fetchPypiWheel;
-              nixpkgs_src = builtins.fetchTarball {{
-                name = "nixpkgs";
-                url = "https://github.com/nixos/nixpkgs/tarball/{self.nixpkgs_commit}";
-                sha256 = "{self.nixpkgs_sha256}";
-              }};
-              pkgs = import nixpkgs_src {{ config = {{}}; overlays = [];}};
-              python = pkgs.{self.py_ver_nix};
-              manylinux1 = [ pkgs.pythonManylinuxPackages.manylinux1 ];
             """
         return unindent(out, 12)
 
@@ -92,7 +82,7 @@ class OverlaysGenerator(ExpressionGenerator):
 
     def _gen_builPythonPackage(self, name, ver, build_inputs_str, prop_build_inputs_str):
         out = f"""
-            {self._get_ref_name(name, ver)} = python.pkgs.buildPythonPackage {{
+            {self._get_ref_name(name, ver)} = python-self.buildPythonPackage {{
               name = "{name}-{ver}";
               src = fetchPypi "{name}" "{ver}";"""
         if build_inputs_str.strip():
@@ -112,11 +102,11 @@ class OverlaysGenerator(ExpressionGenerator):
     def _gen_wheel_buildPythonPackage(self, name, ver, prop_build_inputs_str, wheel_pyver, fname):
         manylinux = "manylinux1 ++ " if 'manylinux' in fname else ''
         out = f"""
-            {self._get_ref_name(name, ver)} = python.pkgs.buildPythonPackage {{
+            {self._get_ref_name(name, ver)} = python-self.buildPythonPackage {{
               name = "{name}-{ver}";
               src = fetchPypiWheel "{name}" "{ver}" "{fname}";
               format = "wheel";
-              nativeBuildInputs = [ pkgs.autoPatchelfHook ];
+              nativeBuildInputs = [ self.autoPatchelfHook ];
               doCheck = false;
               doInstallCheck = false;
               checkPhase = "";
@@ -141,16 +131,15 @@ class OverlaysGenerator(ExpressionGenerator):
 
     def _gen_overlays(self, pkgs: Dict[str, ResolvedPkg], overlay_keys, pkgs_names: str):
         out = f"""
-            overlay = self: super: {{
-              machnix_selected_pkgs = ps: with ps; [ {pkgs_names.strip()} ];
+            overlay = self: super: rec {{
+              machnix_python_pkgs = ps: with ps; [ {pkgs_names.strip()} ];
               machnix_python = self.{self.py_ver_nix};
+              manylinux1 = [ self.pythonManylinuxPackages.manylinux1 ];
               {self.py_ver_nix} = super.{self.py_ver_nix}.override {{
                 packageOverrides = python-self: python-super: rec {{
           """
         out = unindent(out, 10)
         for pkg in pkgs.values():
-            if pkg.name == 'gast':
-                x=1
             if pkg.name not in overlay_keys:
                 continue
             overlays_required = True
