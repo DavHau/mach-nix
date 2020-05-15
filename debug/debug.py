@@ -7,11 +7,10 @@ from mach_nix.generate import main
 
 pwd = dirname(realpath(__file__))
 
-os.environ['py_ver_str'] = '3.7.5'
-os.environ['out_file'] = f'{pwd}/expr.nix'
+os.environ['py_ver_str'] = '3.6.5'
+os.environ['out_file'] = f'{pwd}/overlay.nix'
 os.environ['disable_checks'] = 'true'
-os.environ['providers'] = 'wheel,nixpkgs,sdist'
-os.environ['providers'] = 'nixpkgs,wheel,sdist'
+os.environ['providers'] = 'nixpkgs,sdist,wheel'
 
 nixpkgs_json = tempfile.mktemp()
 cmd = f'nix-build {pwd}/nixpkgs-json.nix -o {nixpkgs_json}'
@@ -31,7 +30,8 @@ for key in ('PYPI_FETCHER_COMMIT', 'PYPI_FETCHER_SHA256'):
     with open(f"{pypi_deps_db}/{key}") as f:
         os.environ[key.lower()] = f.read()
 
-os.environ['requirements'] = 'tensorflow'
+with open(f"{pwd}/reqs.txt") as f:
+    os.environ['requirements'] = f.read()
 
 
 # generates and writes nix expression into ./debug/expr.nix

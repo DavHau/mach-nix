@@ -1,7 +1,7 @@
 {
   requirements,  # content from a requirements.txt file
   python_attr ? "python3",  # python attr name inside given nixpkgs. Used as base for resulting python environment
-  providers ? "wheel,nixpkgs,sdist",
+  providers ? "nixpkgs,sdist,wheel",
   disable_checks ? true,  # Disable tests wherever possible to decrease build time.
   nixpkgs_commit ? builtins.readFile ./NIXPKGS_COMMIT,  # nixpkgs version to use python packages from
   nixpkgs_tarball_sha256 ? builtins.readFile ./NIXPKGS_SHA256,  # nixpkgs v ersion to use python packages from

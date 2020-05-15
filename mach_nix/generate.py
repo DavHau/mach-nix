@@ -4,7 +4,7 @@ import sys
 from mach_nix.data.providers import CombinedDependencyProvider
 from mach_nix.data.nixpkgs import NixpkgsDirectory
 from mach_nix.generators.overlay_generator import OverlaysGenerator
-from mach_nix.requirements import parse_reqs
+from mach_nix.requirements import parse_reqs, strip_reqs_by_marker, context
 from mach_nix.resolver.resolvelib_resolver import ResolvelibResolver
 from mach_nix.versions import PyVer
 
@@ -33,7 +33,6 @@ def main():
     nixpkgs_json = load_env('nixpkgs_json')
     out_file = load_env('out_file')
     py_ver_str = load_env('py_ver_str')
-    #prefer_nixpkgs = load_env('prefer_nixpkgs')
     pypi_deps_db_src = load_env('pypi_deps_db_src')
     pypi_fetcher_commit = load_env('pypi_fetcher_commit')
     pypi_fetcher_sha256 = load_env('pypi_fetcher_sha256')
@@ -59,7 +58,7 @@ def main():
         providers,
         ResolvelibResolver(nixpkgs, deps_provider),
     )
-    reqs = parse_reqs(requirements)
+    reqs = strip_reqs_by_marker(parse_reqs(requirements), context(py_ver))
     expr = generator.generate(reqs)
     with open(out_file, 'w') as f:
         f.write(expr)

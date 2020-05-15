@@ -13,6 +13,10 @@ class NixpkgsPyPkg:
 
 
 class NixpkgsDirectory(UserDict):
+    _aliases = dict(
+        torch='pytorch'
+    )
+
     def __init__(self, nixpkgs_json_file, **kwargs):
         with open(nixpkgs_json_file) as f:
             data = json.load(f)
@@ -80,13 +84,16 @@ class NixpkgsDirectory(UserDict):
         return self.data[nix_key]
 
     def _unify_key(self, key) -> str:
-        return key.replace('-', '').replace('_', '').lower().rstrip('0123456789')
+        key = key.replace('-', '').replace('_', '').lower().rstrip('0123456789')
+        if key in self._aliases:
+            return self._aliases[key]
+        return key
 
     def exists(self, name, ver=None):
         try:
-            pkg = self[self._unify_key(name)]
+            candidates = [c for c in self.get_all_candidates(name)]
         except KeyError:
             return False
         if ver:
-            return pkg.ver == ver
+            return any(ver == c.ver for c in candidates)
         return True

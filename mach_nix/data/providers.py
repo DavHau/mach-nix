@@ -2,7 +2,7 @@ import re
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Tuple, Iterable
+from typing import List, Tuple, Iterable, Set
 
 import distlib.markers
 from packaging.version import Version, parse
@@ -32,7 +32,16 @@ class DependencyProviderBase(ABC):
         """
         returns available versions for given package name in reversed preference
         """
+        if self._unify_key(pkg_name) in self.blacklist:
+            return []
         return sorted(self._available_versions(pkg_name), key=ver_sort_key)
+
+    @property
+    def blacklist(self) -> Set[str]:
+        return self._blacklist()
+
+    def _blacklist(self) -> Set[str]:
+        return set()
 
     def _unify_key(self, key: str) -> str:
         return key.replace('_', '-').lower()
@@ -73,13 +82,40 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
     def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
         for type, provider in self.providers.items():
-            if pkg_version in provider._available_versions(pkg_name):
+            if pkg_version in provider.available_versions(pkg_name):
                 return provider.get_provider_info(pkg_name, pkg_version)
 
     def get_pkg_reqs(self, pkg_name, pkg_version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
         for provider in self.providers.values():
-            if pkg_version in provider._available_versions(pkg_name):
+            if pkg_version in provider.available_versions(pkg_name):
                 return provider.get_pkg_reqs(pkg_name, pkg_version, extras=extras)
+
+    def list_providers_for_pkg(self, pkg_name):
+        result = []
+        for p_name, provider in self._all_providers.items():
+            if provider.available_versions(pkg_name):
+                result.append(p_name)
+        return result
+
+    def print_error_no_versions_available(self, pkg_name):
+        provider_names = set(self.providers.keys())
+        error_text = f"\nThe Package '{pkg_name}' is not available from any of the " \
+                     f"selected providers {provider_names}\n for the selected python version"
+        if provider_names != set(self._all_providers.keys()):
+            alternative_providers = self.list_providers_for_pkg(pkg_name)
+            if alternative_providers:
+                error_text += f'... but the package is is available from providers {alternative_providers}\n' \
+                              f"Consider adding them via 'providers='"
+        else:
+            error_text += \
+                f"\nIf the package's initial release date predates the release date of mach-nix, " \
+                f"either upgrade mach-nix itself or manually specify 'pypi_deps_db_commit' and\n" \
+                f"'pypi_deps_db_sha256 for a newer commit of https://github.com/DavHau/pypi-deps-db/commits/master\n" \
+                f"If none of that works, there was probably a problem while extracting dependency information by the crawler " \
+                f"maintaining the database.\n" \
+                f"Please open an issue here: https://github.com/DavHau/pypi-crawlers/issues/new\n"
+        print(error_text, file=sys.stderr)
+        exit(1)
 
     def available_versions(self, pkg_name: str) -> Iterable[Version]:
         # use dict as ordered set
@@ -90,24 +126,16 @@ class CombinedDependencyProvider(DependencyProviderBase):
                 available_versions.append(ver)
         if available_versions:
             return tuple(available_versions)
-        error_text = \
-            f"\nThe Package '{pkg_name}' cannot be found in the dependency DB used by mach-nix. \n" \
-            f"Please check the following:\n" \
-            f"  1. Does the package actually exist on pypi? Please check https://pypi.org/project/{pkg_name}/\n" \
-            f"  2. Does the package's initial release date predate the mach-nix release date? \n" \
-            f"     If so, either upgrade mach-nix itself or manually specify 'pypi_deps_db_commit' and\n" \
-            f"     'pypi_deps_db_sha256 for a newer commit of https://github.com/DavHau/pypi-deps-db/commits/master\n" \
-            f"If none of that works, there was probably a problem while extracting dependency information by the crawler " \
-            f"maintaining the database.\n" \
-            f"Please open an issue here: https://github.com/DavHau/pypi-crawlers/issues/new\n"
-        print(error_text, file=sys.stderr)
-        exit(1)
+        self.print_error_no_versions_available(pkg_name)
 
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
         return self.available_versions(pkg_name)
 
 
 class NixpkgsDependencyProvider(DependencyProviderBase):
+    _aliases = dict(
+        torch='pytorch'
+    )
     # TODO: implement extras by looking them up via the equivalent wheel
     def __init__(self, nixpkgs: NixpkgsDirectory, *args, **kwargs):
         super(NixpkgsDependencyProvider, self).__init__(*args, **kwargs)
@@ -117,21 +145,19 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
         return ProviderInfo('nixpkgs')
 
     def get_pkg_reqs(self, pkg_name, pkg_version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
-        if not self.nixpkgs.exists(pkg_name, pkg_version):
-            raise Exception(f"Cannot find {pkg_name}:{pkg_version} in nixpkgs")
+        name = self._unify_key(pkg_name)
+        if not self.nixpkgs.exists(name, pkg_version):
+            raise Exception(f"Cannot find {name}:{pkg_version} in nixpkgs")
         return [], []
 
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
-        if self.nixpkgs.exists(pkg_name):
-            return [p.ver for p in self.nixpkgs.get_all_candidates(pkg_name)]
+        name = self._unify_key(pkg_name)
+        if self.nixpkgs.exists(name):
+            return [p.ver for p in self.nixpkgs.get_all_candidates(name)]
         return []
 
 
 class WheelDependencyProvider(DependencyProviderBase):
-    blacklist = (
-        'setuptools',
-        'wheel'
-    )
     def __init__(self, data_dir: str, *args, **kwargs):
         super(WheelDependencyProvider, self).__init__(*args, **kwargs)
         self.data = LazyBucketDict(data_dir)
@@ -146,8 +172,6 @@ class WheelDependencyProvider(DependencyProviderBase):
 
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
         name = self._unify_key(pkg_name)
-        if name in self.blacklist:
-            return []
         result = []
         for pyver in self._get_pyvers_for_pkg(name):
             vers = self.data[name][pyver]
@@ -157,6 +181,12 @@ class WheelDependencyProvider(DependencyProviderBase):
                         result.append(parse(ver))
                         break
         return result
+
+    def _blacklist(self) -> Set[str]:
+        return {
+            'setuptools',
+            'wheel',
+        }
 
     def choose_wheel(self, pkg_name, pkg_version: Version) -> Tuple[str, str]:
         name = self._unify_key(pkg_name)
@@ -235,6 +265,12 @@ class SdistDependencyProvider(DependencyProviderBase):
     def __init__(self, data_dir: str, *args, **kwargs):
         self.data = LazyBucketDict(data_dir)
         super(SdistDependencyProvider, self).__init__(*args, **kwargs)
+
+    def _blacklist(self) -> Set[str]:
+        return {
+            'setuptools',
+        }
+
     def _get_versions(self, name) -> dict:
         """
         returns all candidates for the give name which are available for the current python version
