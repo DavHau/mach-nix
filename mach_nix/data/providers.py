@@ -8,7 +8,7 @@ import distlib.markers
 from packaging.version import Version, parse
 
 from .nixpkgs import NixpkgsDirectory
-from mach_nix.requirements import strip_reqs_by_marker, Requirement, parse_reqs, context
+from mach_nix.requirements import filter_reqs_by_eval_marker, Requirement, parse_reqs, context
 from mach_nix.versions import PyVer, ver_sort_key
 from .bucket_dict import LazyBucketDict
 
@@ -19,6 +19,11 @@ class ProviderInfo:
     # following args are only required in case of wheel
     wheel_pyver: str = None
     wheel_fname: str = None
+
+
+class PackageNotFound(Exception):
+    def __init__(self, pkg_name, pkg_ver, provider_name, *args, **kwargs):
+        super(PackageNotFound, self).__init__(f"Provider '{provider_name}' cannot provide {pkg_name}:{pkg_ver}")
 
 
 class DependencyProviderBase(ABC):
@@ -38,10 +43,18 @@ class DependencyProviderBase(ABC):
 
     @property
     def blacklist(self) -> Set[str]:
-        return self._blacklist()
-
-    def _blacklist(self) -> Set[str]:
         return set()
+
+    @property
+    @abstractmethod
+    def name(self):
+        pass
+
+    def get_reqs_for_extras(self, pkg_name, pkg_ver, extras):
+        install_reqs_wo_extras, setup_reqs_wo_extras = self.get_pkg_reqs(pkg_name, pkg_ver)
+        install_reqs_w_extras, setup_reqs_w_extras = self.get_pkg_reqs(pkg_name, pkg_ver, extras=extras)
+        install_reqs = set(install_reqs_w_extras) - set(install_reqs_wo_extras)
+        return list(install_reqs)
 
     def _unify_key(self, key: str) -> str:
         return key.replace('_', '-').lower()
@@ -67,13 +80,25 @@ class DependencyProviderBase(ABC):
 
 
 class CombinedDependencyProvider(DependencyProviderBase):
-    def __init__(self, nixpkgs: NixpkgsDirectory, providers: Tuple[str], pypi_deps_db_src: str, *args, **kwargs):
+    name = 'combined'
+
+    def __init__(self,
+                 nixpkgs: NixpkgsDirectory,
+                 prefer_new: bool,
+                 providers: Tuple[str],
+                 pypi_deps_db_src: str,
+                 *args,
+                 **kwargs):
         super(CombinedDependencyProvider, self).__init__(*args, **kwargs)
-        self._all_providers = dict(
-            wheel=WheelDependencyProvider(f"{pypi_deps_db_src}/wheel", *args, **kwargs),
-            sdist=SdistDependencyProvider(f"{pypi_deps_db_src}/sdist", *args, **kwargs),
-            nixpkgs=NixpkgsDependencyProvider(nixpkgs, *args, **kwargs),
-        )
+        self.prefer_new = prefer_new
+        wheel = WheelDependencyProvider(f"{pypi_deps_db_src}/wheel", *args, **kwargs)
+        sdist = SdistDependencyProvider(f"{pypi_deps_db_src}/sdist", *args, **kwargs)
+        nixpkgs = NixpkgsDependencyProvider(nixpkgs, wheel, sdist, *args, **kwargs)
+        self._all_providers = {
+            f"{wheel.name}": wheel,
+            f"{sdist.name}": sdist,
+            f"{nixpkgs.name}": nixpkgs,
+        }
         unknown_providers = set(providers) - set(self._all_providers.keys())
         if unknown_providers:
             raise Exception(f"Error: Unknown provider '{tuple(unknown_providers)}'. Please remove from 'providers=...'")
@@ -111,8 +136,8 @@ class CombinedDependencyProvider(DependencyProviderBase):
                 f"\nIf the package's initial release date predates the release date of mach-nix, " \
                 f"either upgrade mach-nix itself or manually specify 'pypi_deps_db_commit' and\n" \
                 f"'pypi_deps_db_sha256 for a newer commit of https://github.com/DavHau/pypi-deps-db/commits/master\n" \
-                f"If none of that works, there was probably a problem while extracting dependency information by the crawler " \
-                f"maintaining the database.\n" \
+                f"If it still doesn't work, there was probably a problem while extracting dependency information " \
+                f"by the crawler maintaining the database.\n" \
                 f"Please open an issue here: https://github.com/DavHau/pypi-crawlers/issues/new\n"
         print(error_text, file=sys.stderr)
         exit(1)
@@ -125,6 +150,8 @@ class CombinedDependencyProvider(DependencyProviderBase):
             for ver in provider.available_versions(pkg_name):
                 available_versions.append(ver)
         if available_versions:
+            if self.prefer_new:
+                return tuple(sorted(available_versions, key=ver_sort_key))
             return tuple(available_versions)
         self.print_error_no_versions_available(pkg_name)
 
@@ -133,22 +160,36 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
 
 class NixpkgsDependencyProvider(DependencyProviderBase):
+    name = 'nixpkgs'
     _aliases = dict(
         torch='pytorch'
     )
     # TODO: implement extras by looking them up via the equivalent wheel
-    def __init__(self, nixpkgs: NixpkgsDirectory, *args, **kwargs):
+    def __init__(self,
+                 nixpkgs: NixpkgsDirectory,
+                 wheel_provider: 'WheelDependencyProvider',
+                 sdist_provider: 'SdistDependencyProvider',
+                 *args, **kwargs):
         super(NixpkgsDependencyProvider, self).__init__(*args, **kwargs)
         self.nixpkgs = nixpkgs
+        self.wheel_provider = wheel_provider
+        self.sdist_provider = sdist_provider
 
     def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
-        return ProviderInfo('nixpkgs')
+        return ProviderInfo(self.name)
 
     def get_pkg_reqs(self, pkg_name, pkg_version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
         name = self._unify_key(pkg_name)
         if not self.nixpkgs.exists(name, pkg_version):
             raise Exception(f"Cannot find {name}:{pkg_version} in nixpkgs")
-        return [], []
+        if not extras:
+            return [], []
+        for provider in (self.wheel_provider, self.sdist_provider):
+            try:
+                extra_reqs = provider.get_reqs_for_extras(pkg_name, pkg_version, extras)
+                return extra_reqs, []
+            except PackageNotFound:
+                pass
 
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
         name = self._unify_key(pkg_name)
@@ -158,6 +199,11 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
 
 
 class WheelDependencyProvider(DependencyProviderBase):
+    name = 'wheel'
+    blacklist = {
+        'setuptools',
+        'wheel',
+    }
     def __init__(self, data_dir: str, *args, **kwargs):
         super(WheelDependencyProvider, self).__init__(*args, **kwargs)
         self.data = LazyBucketDict(data_dir)
@@ -183,10 +229,7 @@ class WheelDependencyProvider(DependencyProviderBase):
         return result
 
     def _blacklist(self) -> Set[str]:
-        return {
-            'setuptools',
-            'wheel',
-        }
+        return self._black_list
 
     def choose_wheel(self, pkg_name, pkg_version: Version) -> Tuple[str, str]:
         name = self._unify_key(pkg_name)
@@ -212,13 +255,12 @@ class WheelDependencyProvider(DependencyProviderBase):
 
     def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
         wheel_pyver, wheel_fname = self.choose_wheel(pkg_name, pkg_version)
-        return ProviderInfo(provider='wheel', wheel_pyver=wheel_pyver, wheel_fname=wheel_fname)
+        return ProviderInfo(provider=self.name, wheel_pyver=wheel_pyver, wheel_fname=wheel_fname)
 
-    def get_pkg_reqs(self, pkg_name, pkg_version: Version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
-        """
-        Get requirements for package
-        """
+    def get_pkg_reqs_raw(self, pkg_name, pkg_version: Version):
         name = self._unify_key(pkg_name)
+        if pkg_version not in self._available_versions(pkg_name):
+            raise PackageNotFound(pkg_name, pkg_version, self.name)
         ver = str(pkg_version)
         pyver, fn = self.choose_wheel(pkg_name, pkg_version)
         deps = self.data[name][pyver][ver][fn]
@@ -226,9 +268,15 @@ class WheelDependencyProvider(DependencyProviderBase):
             key_ver, key_fn = deps.split('@')
             versions = self.data[name][pyver]
             deps = versions[key_ver][key_fn]
-        reqs_raw = deps['requires_dist'] if 'requires_dist' in deps else []
+        return deps['requires_dist'] if 'requires_dist' in deps else []
+
+    def get_pkg_reqs(self, pkg_name, pkg_version: Version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
+        """
+        Get requirements for package
+        """
+        reqs_raw = self.get_pkg_reqs_raw(pkg_name, pkg_version)
         # handle extras by evaluationg markers
-        install_reqs = list(strip_reqs_by_marker(parse_reqs(reqs_raw), self.context_wheel, extras))
+        install_reqs = list(filter_reqs_by_eval_marker(parse_reqs(reqs_raw), self.context_wheel, extras))
         return install_reqs, []
 
     def _get_pyvers_for_pkg(self, name) -> Iterable:
@@ -262,57 +310,68 @@ class WheelDependencyProvider(DependencyProviderBase):
 
 
 class SdistDependencyProvider(DependencyProviderBase):
+    name = 'sdist'
+    blacklist = {
+        # setuptools releases inconsistently use .zip and .tar.gz format which causes problems
+        # with the current nixpkgs expression
+        'setuptools'
+    }
     def __init__(self, data_dir: str, *args, **kwargs):
         self.data = LazyBucketDict(data_dir)
         super(SdistDependencyProvider, self).__init__(*args, **kwargs)
 
     def _blacklist(self) -> Set[str]:
-        return {
-            'setuptools',
-        }
+        return self.blacklist
 
-    def _get_versions(self, name) -> dict:
+    def _get_candidates(self, name) -> dict:
         """
         returns all candidates for the give name which are available for the current python version
         """
         key = self._unify_key(name)
-        print(key)
         candidates = {}
+        try:
+            self.data[key]
+        except KeyError:
+            return {}
         for ver, pyvers in self.data[key].items():
-            # in case pyvers is a string, it is a reference to another pyvers which we need to resolve
-            if key == 'setuptools':
-                x=1
+            # in case pyvers is a string, it is a reference to another ver which we need to resolve
             if isinstance(pyvers, str):
-                pyvers_old = pyvers
                 pyvers = self.data[key][pyvers]
+            # in case pyver is a string, it is a reference to another pyver which we need to resolve
             if self.py_ver_digits in pyvers:
-                if isinstance(pyvers[self.py_ver_digits], str):
-                    candidates[ver] = pyvers[pyvers[self.py_ver_digits]]
+                pyver = pyvers[self.py_ver_digits]
+                if isinstance(pyver, str):
+                    candidates[parse(ver)] = pyvers[pyver]
                 else:
-                    candidates[ver] = pyvers[self.py_ver_digits]
+                    candidates[parse(ver)] = pyvers[self.py_ver_digits]
         return candidates
 
-    def _exists(self, name, ver=None):
-        try:
-            key = self._unify_key(name)
-            vers = self._get_versions(key)
-        except KeyError:
-            return False
-        if ver:
-            return vers['ver'] == ver
-        return True
-
     def get_provider_info(self, pkg_name, pkg_version):
-        return ProviderInfo(provider='sdist')
+        return ProviderInfo(provider=self.name)
+
+    def get_reqs_for_extras(self, pkg_name, pkg_ver, extras):
+        name = self._unify_key(pkg_name)
+        pkg = self._get_candidates(name)[pkg_ver]
+        extras = set(extras)
+        requirements = []
+        if 'extras_require' in pkg:
+            for name, reqs_str in pkg['extras_require'].items():
+                # handle extras with marker in key
+                if ':' in name:
+                    name, marker = name.split(':')
+                    if not distlib.markers.interpret(marker, self.context):
+                        continue
+                if name == '' or name in extras:
+                    requirements += list(filter_reqs_by_eval_marker(parse_reqs(reqs_str), self.context))
+        return requirements
 
     def get_pkg_reqs(self, pkg_name, pkg_version: Version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
         """
         Get requirements for package
         """
-        ver_str = str(pkg_version)
-        if not self._exists(pkg_name) or ver_str not in self._get_versions(pkg_name):
-            raise Exception(f'Cannot find {pkg_name}:{pkg_version} in db')
-        pkg = self._get_versions(pkg_name)[ver_str]
+        if pkg_version not in self._get_candidates(pkg_name):
+            raise PackageNotFound(pkg_name, pkg_version, self.name)
+        pkg = self._get_candidates(pkg_name)[pkg_version]
         requirements = dict(
             setup_requires=[],
             install_requires=[]
@@ -323,23 +382,11 @@ class SdistDependencyProvider(DependencyProviderBase):
             else:
                 reqs_raw = pkg[t]
                 reqs = parse_reqs(reqs_raw)
-                requirements[t] = list(strip_reqs_by_marker(reqs, self.context))
-        extras = set(extras) if extras else []
-        if 'extras_require' in pkg:
-            for name, reqs_str in pkg['extras_require'].items():
-                # handle extras with marker in key
-                if ':' in name:
-                    name, marker = name.split(':')
-                    if not distlib.markers.interpret(marker, self.context):
-                        continue
-                # handle if extra's key only contains marker. like ':python_version < "3.7"'
-                if name == '' or name in extras:
-                    requirements['install_requires'] += list(strip_reqs_by_marker(parse_reqs(reqs_str), self.context))
-
+                requirements[t] = list(filter_reqs_by_eval_marker(reqs, self.context))
+        if extras:
+            requirements['install_requires'] += self.get_reqs_for_extras(pkg_name, pkg_version, extras)
         return requirements['install_requires'], requirements['setup_requires']
 
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
-        name = self._unify_key(pkg_name)
-        if self._exists(name):
-            return [parse(ver) for ver in self._get_versions(name).keys()]
-        return []
+        return [ver for ver in self._get_candidates(pkg_name).keys()]
+

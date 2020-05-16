@@ -16,6 +16,7 @@ class ResolvedPkg:
     prop_build_inputs: List[str]
     is_root: bool
     provider_info: ProviderInfo
+    extras_selected: List[str]
 
 
 class Resolver(ABC):

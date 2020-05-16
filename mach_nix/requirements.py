@@ -42,7 +42,7 @@ class Requirement(pkg_resources.Requirement):
                 yield spec
 
 
-def strip_reqs_by_marker(reqs: Iterable[Requirement], context: dict, selected_extras=None):
+def filter_reqs_by_eval_marker(reqs: Iterable[Requirement], context: dict, selected_extras=None):
     # filter requirements relevant for current environment
     for req in reqs:
         if req.marker is None:

@@ -1,5 +1,6 @@
 from typing import Dict, List
 
+from data.providers import WheelDependencyProvider, SdistDependencyProvider, NixpkgsDependencyProvider
 from mach_nix.data.nixpkgs import NixpkgsDirectory
 from mach_nix.generators import ExpressionGenerator
 from mach_nix.resolver import ResolvedPkg
@@ -23,7 +24,10 @@ class OverlaysGenerator(ExpressionGenerator):
         self.pypi_fetcher_sha256 = pypi_fetcher_sha256
         self.providers = providers
         self.py_ver_nix = py_ver.nix()
-        if all(p in providers for p in ('nixpkgs', 'sdist')) and providers.index('nixpkgs') < providers.index('sdist'):
+        nixpkgs_name = NixpkgsDependencyProvider.name
+        sdist_name = SdistDependencyProvider.name
+        providers = (nixpkgs_name, sdist_name)
+        if all(p in providers for p in providers) and providers.index(nixpkgs_name) < providers.index(sdist_name):
             self.prefer_nixpkgs = True
         else:
             self.prefer_nixpkgs = False
@@ -99,19 +103,19 @@ class OverlaysGenerator(ExpressionGenerator):
             };\n"""
         return unindent(out, 4)
 
-    def _gen_wheel_buildPythonPackage(self, name, ver, prop_build_inputs_str, wheel_pyver, fname):
+    def _gen_wheel_buildPythonPackage(self, name, ver, prop_build_inputs_str, fname):
         manylinux = "manylinux1 ++ " if 'manylinux' in fname else ''
         out = f"""
             {self._get_ref_name(name, ver)} = python-self.buildPythonPackage {{
               name = "{name}-{ver}";
               src = fetchPypiWheel "{name}" "{ver}" "{fname}";
               format = "wheel";
-              nativeBuildInputs = [ self.autoPatchelfHook ];
               doCheck = false;
-              doInstallCheck = false;
-              checkPhase = "";
-              installCheckPhase = "";"""
-        if prop_build_inputs_str.strip():
+              doInstallCheck = false;"""
+        if manylinux:
+            out += f"""
+              nativeBuildInputs = [ self.autoPatchelfHook ];"""
+        if prop_build_inputs_str.strip() or manylinux:
             out += f"""
               propagatedBuildInputs = with python-self; {manylinux}[ {prop_build_inputs_str} ];"""
         out += """
@@ -124,7 +128,7 @@ class OverlaysGenerator(ExpressionGenerator):
             out += f"""        {key} = python-self.{master_key};\n"""
         return out
 
-    def _unif_nixpkgs_keys(self, name, ver, ):
+    def _unif_nixpkgs_keys(self, name, ver):
         master_key = self._get_ref_name(name, ver)
         other_names = (p.nix_key for p in self.nixpkgs.get_all_candidates(name) if p.nix_key != master_key)
         return self._gen_unify_nixpkgs_keys(master_key, sorted(other_names))
@@ -157,24 +161,26 @@ class OverlaysGenerator(ExpressionGenerator):
             prop_build_inputs_str = self._gen_prop_build_inputs(prop_build_inputs_local,
                                                                 prop_build_inputs_nixpkgs).strip()
 
-            if pkg.provider_info.provider == 'sdist':
+            if pkg.provider_info.provider == SdistDependencyProvider.name:
                 # generate package overlays either via `overrideAttrs` if package already exists in nixpkgs,
                 # or by creating it from scratch using `buildPythonPackage`
                 if self.nixpkgs.exists(pkg.name):
-                    nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
+                    nix_name = self._get_ref_name(pkg.name, pkg.ver)
                     out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
                     out += self._unif_nixpkgs_keys(pkg.name, pkg.ver)
                 else:
                     out += self._gen_builPythonPackage(pkg.name, pkg.ver, build_inputs_str, prop_build_inputs_str)
-            elif pkg.provider_info.provider == 'wheel':
+            elif pkg.provider_info.provider == WheelDependencyProvider.name:
                 out += self._gen_wheel_buildPythonPackage(pkg.name, pkg.ver, prop_build_inputs_str,
-                                                          pkg.provider_info.wheel_pyver, pkg.provider_info.wheel_fname)
+                                                          pkg.provider_info.wheel_fname)
                 if self.nixpkgs.exists(pkg.name):
                     out += self._unif_nixpkgs_keys(pkg.name, pkg.ver)
-            elif pkg.provider_info.provider == 'nixpkgs':
-                # No need to do anything since we want to leave the package untouched
-                if self.nixpkgs.exists(pkg.name):
-                    out += self._unif_nixpkgs_keys(pkg.name, pkg.ver)
+            elif pkg.provider_info.provider == NixpkgsDependencyProvider.name:
+                # we only need to touch the nixpkgs definition if extras have been selected for the package
+                if pkg.extras_selected:
+                    nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
+                    out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
+                out += self._unif_nixpkgs_keys(pkg.name, pkg.ver)
         end_overlay_section = f"""
                 }};
               }};
@@ -195,7 +201,9 @@ class OverlaysGenerator(ExpressionGenerator):
                if we don't override all of them to the same version since some sub dependency
                in nixpkgs might point to one of these other versions.
         """
-        if pkg.provider_info.provider == 'wheel':
+        if pkg.provider_info.provider not in (SdistDependencyProvider.name, NixpkgsDependencyProvider.name):
+            return True
+        if pkg.extras_selected:
             return True
         name, ver = pkg.name, pkg.ver
         return not self.nixpkgs.exists(name, ver) or self.nixpkgs.has_multiple_candidates(name)

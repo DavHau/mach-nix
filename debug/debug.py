@@ -9,6 +9,7 @@ pwd = dirname(realpath(__file__))
 
 os.environ['py_ver_str'] = '3.6.5'
 os.environ['out_file'] = f'{pwd}/overlay.nix'
+os.environ['prefer_new'] = f'true'
 os.environ['disable_checks'] = 'true'
 os.environ['providers'] = 'nixpkgs,sdist,wheel'
 

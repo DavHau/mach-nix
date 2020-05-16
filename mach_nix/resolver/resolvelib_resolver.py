@@ -67,9 +67,10 @@ class ResolvelibResolver(Resolver):
             if name is None:
                 continue
             ver = result.mapping[name].ver
-            install_requires, setup_requires = self.deps_provider.get_pkg_reqs(name, ver)
+            install_requires, setup_requires = self.deps_provider.get_pkg_reqs(
+                name, ver, extras=result.mapping[name].extras)
             provider_info = self.deps_provider.get_provider_info(name, ver)
-            prop_build_inputs = list({req.key for req in install_requires}) + list(result.mapping[name].extras)
+            prop_build_inputs = list({req.key for req in install_requires})
             build_inputs = list({req.key for req in setup_requires})
             is_root = name in result.graph._forwards[None]
             nix_py_pkgs.append(ResolvedPkg(
@@ -78,6 +79,7 @@ class ResolvelibResolver(Resolver):
                 build_inputs=build_inputs,
                 prop_build_inputs=prop_build_inputs,
                 is_root=is_root,
-                provider_info=provider_info
+                provider_info=provider_info,
+                extras_selected=list(result.mapping[name].extras)
             ))
         return nix_py_pkgs

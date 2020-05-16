@@ -1,11 +1,12 @@
 {
   requirements,  # content from a requirements.txt file
   python,  # python from nixpkgs as base for overlay
-  providers ? "nixpkgs,sdist,wheel",
-  disable_checks ? true,  # Disable tests wherever possible to decrease build time.
-  pypi_deps_db_commit ? builtins.readFile ./PYPI_DEPS_DB_COMMIT,  # python dependency DB version to use
+  disable_checks ? true,  # disable tests wherever possible
+  prefer_new ? false,  # prefer newest python package versions disregarding the provider priority
+  providers ? "nixpkgs,sdist,wheel",  # re-order to change provider priority or remove providers
+  pypi_deps_db_commit ? builtins.readFile ./PYPI_DEPS_DB_COMMIT,  # python dependency DB version
   # Hash obtained using `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
-  pypi_deps_db_sha256 ? builtins.readFile ./PYPI_DEPS_DB_SHA256  # python dependency DB version to use
+  pypi_deps_db_sha256 ? builtins.readFile ./PYPI_DEPS_DB_SHA256
 }:
 let
   nixpkgs_src = (import ./nixpkgs-src.nix).stable;
@@ -29,7 +30,7 @@ let
   };
   expression = pkgs.runCommand "python-expression"
     { buildInputs = [ src builder_python pypi_deps_db_src];
-      inherit disable_checks nixpkgs_json providers
+      inherit disable_checks nixpkgs_json prefer_new providers
               requirements pypi_deps_db_src pypi_fetcher_commit pypi_fetcher_sha256;
       py_ver_str = python.version;
     }
