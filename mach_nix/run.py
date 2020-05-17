@@ -18,7 +18,7 @@ def gen(args, return_expr=False):
         requirements = f.read().strip()
     o_file = tempfile.mktemp()
     py_ver = PyVer(args.python)
-    cmd = f'nix-build {pwd}/nix/call_mk_overlay.nix -o {o_file}' \
+    cmd = f'nix-build {pwd}/nix/call_mach.nix -o {o_file}' \
           f' --argstr requirements "{requirements}"' \
           f' --argstr python_attr python{py_ver.digits()}' \
           f' --arg prefer_nixpkgs {json.dumps((not args.prefer_new))}'
@@ -26,7 +26,7 @@ def gen(args, return_expr=False):
     if proc.returncode:
         print(proc.stderr.decode(), file=sys.stderr)
         exit(1)
-    with open(f"{o_file}/share/overlay.nix") as src:
+    with open(f"{o_file}/share/mach_nix_file.nix") as src:
         expr = src.read()
         if return_expr:
             return expr

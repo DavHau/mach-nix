@@ -67,7 +67,7 @@ class OverlaysGenerator(ExpressionGenerator):
 
     def _gen_overrideAttrs(self, name, ver, nix_name, build_inputs_str, prop_build_inputs_str):
         out = f"""
-            {nix_name} = python-super.{nix_name}.overrideAttrs ( oldAttrs: {{
+            {nix_name} = python-super.{nix_name}.overridePythonAttrs ( oldAttrs: {{
               name = "{name}-{ver}";
               src = fetchPypi "{name}" "{ver}";"""
         if build_inputs_str:
@@ -82,7 +82,7 @@ class OverlaysGenerator(ExpressionGenerator):
               doInstallCheck = false;"""
         out += """
             });\n"""
-        return unindent(out, 4)
+        return unindent(out, 8)
 
     def _gen_builPythonPackage(self, name, ver, build_inputs_str, prop_build_inputs_str):
         out = f"""
@@ -101,7 +101,7 @@ class OverlaysGenerator(ExpressionGenerator):
               doInstallCheck = false;"""
         out += """
             };\n"""
-        return unindent(out, 4)
+        return unindent(out, 8)
 
     def _gen_wheel_buildPythonPackage(self, name, ver, prop_build_inputs_str, fname):
         manylinux = "manylinux1 ++ " if 'manylinux' in fname else ''
@@ -114,13 +114,13 @@ class OverlaysGenerator(ExpressionGenerator):
               doInstallCheck = false;"""
         if manylinux:
             out += f"""
-              nativeBuildInputs = [ self.autoPatchelfHook ];"""
+              nativeBuildInputs = [ autoPatchelfHook ];"""
         if prop_build_inputs_str.strip() or manylinux:
             out += f"""
               propagatedBuildInputs = with python-self; {manylinux}[ {prop_build_inputs_str} ];"""
         out += """
             };\n"""
-        return unindent(out, 4)
+        return unindent(out, 8)
 
     def _gen_unify_nixpkgs_keys(self, master_key: str, nixpkgs_keys: List[str]):
         out = ''
@@ -133,14 +133,10 @@ class OverlaysGenerator(ExpressionGenerator):
         other_names = (p.nix_key for p in self.nixpkgs.get_all_candidates(name) if p.nix_key != master_key)
         return self._gen_unify_nixpkgs_keys(master_key, sorted(other_names))
 
-    def _gen_overlays(self, pkgs: Dict[str, ResolvedPkg], overlay_keys, pkgs_names: str):
+    def _gen_overrides(self, pkgs: Dict[str, ResolvedPkg], overlay_keys, pkgs_names: str):
         out = f"""
-            overlay = self: super: rec {{
-              machnix_python_pkgs = ps: with ps; [ {pkgs_names.strip()} ];
-              machnix_python = self.{self.py_ver_nix};
-              manylinux1 = [ self.pythonManylinuxPackages.manylinux1 ];
-              {self.py_ver_nix} = super.{self.py_ver_nix}.override {{
-                packageOverrides = python-self: python-super: rec {{
+            select_pkgs = ps: with ps; [ {pkgs_names.strip()} ];
+            overrides = manylinux1: autoPatchelfHook: python-self: python-super: rec {{
           """
         out = unindent(out, 10)
         for pkg in pkgs.values():
@@ -183,10 +179,8 @@ class OverlaysGenerator(ExpressionGenerator):
                 out += self._unif_nixpkgs_keys(pkg.name, pkg.ver)
         end_overlay_section = f"""
                 }};
-              }};
-            }};
           """
-        return out + unindent(end_overlay_section, 10)
+        return out + unindent(end_overlay_section, 14)
 
     def _get_ref_name(self, name, ver) -> str:
         if self.nixpkgs.exists(name):
@@ -212,18 +206,9 @@ class OverlaysGenerator(ExpressionGenerator):
         pkg_names = "".join(
             (f"{self._get_ref_name(name, pkgs[name].ver)}\n{' ' * 14}" for (name, pkg) in pkgs.items() if pkg.is_root))
         overlay_keys = {p.name for p in pkgs.values() if self._needs_overlay(p)}
-        out = self._gen_imports() + self._gen_overlays(pkgs, overlay_keys, pkg_names)
-        # python_with_packages = f"""
-        #     in
-        #
-        #     with import nixpkgs_src {{ config = {{ allowUnfree = true; }}; overlays = [ overlay ]; }};
-        #
-        #     {self.py_ver_nix}.withPackages (ps: with ps; [
-        #       {pkg_names.rstrip()}
-        #     ])
-        #     """
+        out = self._gen_imports() + self._gen_overrides(pkgs, overlay_keys, pkg_names)
         python_with_packages = f"""
             in
-            overlay
+            {{ inherit overrides select_pkgs; }}
             """
         return out + unindent(python_with_packages, 12)

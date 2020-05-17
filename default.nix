@@ -2,6 +2,23 @@ let
   pkgs = import (import ./mach_nix/nix/nixpkgs-src.nix).stable { config = {}; };
   python = import ./mach_nix/nix/python.nix { inherit pkgs; };
   python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = pkgs.fetchurl; }));
+  mergeOverrides = with pkgs.lib; overrides:
+    if length overrides == 0
+    then a: b: {}  # return dummy overrides
+    else
+      if length overrides == 1
+      then elemAt overrides 0
+      else
+        let
+          last = head ( reverseList overrides );
+          rest = reverseList (tail ( reverseList overrides ));
+        in
+          composeExtensions (mergeOverrides rest) last;
+  machnix_nixpkgs = import (builtins.fetchTarball {
+    name = "nixpkgs";
+    url = "https://github.com/nixos/nixpkgs/tarball/${builtins.readFile ./mach_nix/nix/NIXPKGS_COMMIT}";
+    sha256 = "${builtins.readFile ./mach_nix/nix/NIXPKGS_SHA256}";
+  }) { config = {}; overlays = []; };
 in
 rec {
   # the mach-nix cmdline tool derivation
@@ -14,14 +31,16 @@ rec {
     doCheck = false;
   };
 
+  inherit mergeOverrides;
+
   # call this to generate a nix expression defnining a python environment
   #mkPythonExpr = args: import ./mach_nix/nix/expression.nix args;
 
   # call this to generate a nixpkgs overlay .nix file which satisfies your requirements
-  mkOverlayFile = args: import ./mach_nix/nix/mk_overlay.nix args;
+  mkOverridesFile = args: import ./mach_nix/nix/mach.nix args;
 
   # call this to generate a nixpkgs overlay which satisfies your requirements
-  mkOverlay = args: import "${mkOverlayFile args}/share/overlay.nix";
+  mkOverrides = args: import "${mkOverridesFile args}/share/mach_nix_file.nix";
 
   # call this to use the python environment with nix-shell
   mkPythonShell = args: (mkPython args).env;
@@ -31,28 +50,28 @@ rec {
     {
       requirements,  # content from a requirements.txt file
       disable_checks ? true,  # Disable tests wherever possible to decrease build time.
-      nixpkgs_src ? builtins.fetchTarball {
-        name = "nixpkgs";
-        url = "https://github.com/nixos/nixpkgs/tarball/${builtins.readFile ./mach_nix/nix/NIXPKGS_COMMIT}";
-        sha256 = "${builtins.readFile ./mach_nix/nix/NIXPKGS_SHA256}";
-      },
-      overlays_pre ? [],
-      overlays_post ? [],
-      providers ? "nixpkgs,sdist,wheel",
+      overrides_pre ? [],  # list with pythonOverrides functions to apply before the amchnix overrides
+      overrides_post ? [],  # list with pythonOverrides functions to apply after the amchnix overrides
+      pkgs ? machnix_nixpkgs,  # pass custom nixpkgs version (20.03 or higher is recommended)
+      prefer_new ? false,  # prefer newest python package versions disregarding the provider priority
+      providers ? "nixpkgs,sdist,wheel",  # re-order to change provider priority or remove providers
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
       pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
-      python_attr ? "python3"
+      python ? pkgs.python3  # select custom python. It should be taken from `pkgs` passed above.
     }:
     let
-      machnix_overlay = mkOverlay {
-        inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256;
-        python = (import nixpkgs_src { config = {}; overlays = overlays_pre; })."${python_attr}";
+      py = python.override { packageOverrides = mergeOverrides overrides_pre; };
+      result = mkOverrides {
+        inherit requirements disable_checks prefer_new providers pypi_deps_db_commit pypi_deps_db_sha256;
+        python = py;
       };
-      pkgs = import nixpkgs_src {
-        config = {};
-        overlays = overlays_pre ++ [ machnix_overlay ] ++ overlays_post;
-      };
+      overrides_machnix = result.overrides pkgs.pythonManylinuxPackages.manylinux1 pkgs.autoPatchelfHook;
+      py_final = python.override { packageOverrides = mergeOverrides (
+        overrides_pre ++ [
+          overrides_machnix
+        ] ++ overrides_post
+      );};
     in
-      pkgs."${python_attr}".withPackages (ps: pkgs.machnix_python_pkgs ps)
+      py_final.withPackages (ps: result.select_pkgs ps)
     ;
 }

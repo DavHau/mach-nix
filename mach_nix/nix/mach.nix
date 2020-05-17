@@ -28,7 +28,7 @@ let
     url = "https://github.com/DavHau/nix-pypi-fetcher/tarball/${pypi_fetcher_commit}";
     sha256 = "${pypi_fetcher_sha256}";
   };
-  expression = pkgs.runCommand "python-expression"
+  mach_nix_file = pkgs.runCommand "mach_nix_file"
     { buildInputs = [ src builder_python pypi_deps_db_src];
       inherit disable_checks nixpkgs_json prefer_new providers
               requirements pypi_deps_db_src pypi_fetcher_commit pypi_fetcher_sha256;
@@ -36,9 +36,9 @@ let
     }
     ''
       mkdir -p $out/share
-      export out_file=$out/share/overlay.nix
+      export out_file=$out/share/mach_nix_file.nix
       export PYTHONPATH=${src}
       ${builder_python}/bin/python ${src}/mach_nix/generate.py
     '';
 in
-expression
+mach_nix_file
