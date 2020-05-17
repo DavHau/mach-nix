@@ -1,13 +1,8 @@
-import json
 import os
 import sys
 
-from mach_nix.data.providers import \
-    CombinedDependencyProvider,\
-    NixpkgsDependencyProvider,\
-    WheelDependencyProvider,\
-    SdistDependencyProvider
 from mach_nix.data.nixpkgs import NixpkgsDirectory
+from mach_nix.data.providers import CombinedDependencyProvider, ProviderSettings
 from mach_nix.generators.overlay_generator import OverlaysGenerator
 from mach_nix.requirements import parse_reqs, filter_reqs_by_eval_marker, context
 from mach_nix.resolver.resolvelib_resolver import ResolvelibResolver
@@ -22,19 +17,6 @@ def load_env(name, *args, **kwargs):
     return var.strip()
 
 
-def load_providers(providers_str: str):
-    choices = (
-        NixpkgsDependencyProvider.name,
-        SdistDependencyProvider.name,
-        WheelDependencyProvider.name,
-    )
-    providers = tuple(p.strip() for p in providers_str.strip().split(','))
-    unknown_providers = set(providers) - set(choices)
-    if unknown_providers:
-        raise Exception(f"Providers {unknown_providers} are unknown. Please remove them from 'providers='!")
-    return providers
-
-
 def main():
     disable_checks = load_env('disable_checks')
     nixpkgs_json = load_env('nixpkgs_json')
@@ -45,14 +27,14 @@ def main():
     pypi_fetcher_commit = load_env('pypi_fetcher_commit')
     pypi_fetcher_sha256 = load_env('pypi_fetcher_sha256')
     requirements = load_env('requirements')
-    providers = load_providers(load_env('providers'))
+    provider_settings = ProviderSettings(load_env('providers'))
 
     py_ver = PyVer(py_ver_str)
     nixpkgs = NixpkgsDirectory(nixpkgs_json)
     deps_provider = CombinedDependencyProvider(
         nixpkgs=nixpkgs,
         prefer_new=prefer_new,
-        providers=providers,
+        provider_settings=provider_settings,
         pypi_deps_db_src=pypi_deps_db_src,
         py_ver=py_ver
     )
@@ -62,7 +44,6 @@ def main():
         pypi_fetcher_commit,
         pypi_fetcher_sha256,
         disable_checks,
-        providers,
         ResolvelibResolver(nixpkgs, deps_provider),
     )
     reqs = filter_reqs_by_eval_marker(parse_reqs(requirements), context(py_ver))

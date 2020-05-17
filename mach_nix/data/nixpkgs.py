@@ -13,23 +13,24 @@ class NixpkgsPyPkg:
 
 
 class NixpkgsDirectory(UserDict):
+    # mapping from pypi name to nix key
     _aliases = dict(
-        torch='pytorch'
+        torch='pytorch',
+        tensorboard='tensorflowtensorboard'
     )
 
     def __init__(self, nixpkgs_json_file, **kwargs):
         with open(nixpkgs_json_file) as f:
             data = json.load(f)
         self.by_nix_key = {}
+        self.data = {}
         for nix_key, version in data.items():
             if not version:
                 continue
-            self.by_nix_key[nix_key] = NixpkgsPyPkg(
+            self.by_nix_key[nix_key] = pkg = NixpkgsPyPkg(
                 nix_key=nix_key,
                 ver=parse(version)
             )
-        self.data = {}
-        for nix_key, pkg in self.by_nix_key.items():
             key = self._unify_key(nix_key)
             if key not in self.data:
                 self.data[key] = []
@@ -91,7 +92,7 @@ class NixpkgsDirectory(UserDict):
 
     def exists(self, name, ver=None):
         try:
-            candidates = [c for c in self.get_all_candidates(name)]
+            candidates = [c for c in self.get_all_candidates(self._unify_key(name))]
         except KeyError:
             return False
         if ver:

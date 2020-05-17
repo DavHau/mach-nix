@@ -1,0 +1,3 @@
+_default =                "nixpkgs,sdist,wheel"
+setuptools =              "nixpkgs"
+wheel =                   "nixpkgs,sdist"

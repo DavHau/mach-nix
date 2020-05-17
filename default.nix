@@ -19,6 +19,7 @@ let
     url = "https://github.com/nixos/nixpkgs/tarball/${builtins.readFile ./mach_nix/nix/NIXPKGS_COMMIT}";
     sha256 = "${builtins.readFile ./mach_nix/nix/NIXPKGS_SHA256}";
   }) { config = {}; overlays = []; };
+  autoPatchelfHook = import ./mach_nix/nix/auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
 in
 rec {
   # the mach-nix cmdline tool derivation
@@ -54,7 +55,7 @@ rec {
       overrides_post ? [],  # list with pythonOverrides functions to apply after the amchnix overrides
       pkgs ? machnix_nixpkgs,  # pass custom nixpkgs version (20.03 or higher is recommended)
       prefer_new ? false,  # prefer newest python package versions disregarding the provider priority
-      providers ? "nixpkgs,sdist,wheel",  # re-order to change provider priority or remove providers
+      providers ? {},  # define provider preferences
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
       pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
       python ? pkgs.python3  # select custom python. It should be taken from `pkgs` passed above.
@@ -65,7 +66,7 @@ rec {
         inherit requirements disable_checks prefer_new providers pypi_deps_db_commit pypi_deps_db_sha256;
         python = py;
       };
-      overrides_machnix = result.overrides pkgs.pythonManylinuxPackages.manylinux1 pkgs.autoPatchelfHook;
+      overrides_machnix = result.overrides pkgs.pythonManylinuxPackages.manylinux1 autoPatchelfHook;
       py_final = python.override { packageOverrides = mergeOverrides (
         overrides_pre ++ [
           overrides_machnix

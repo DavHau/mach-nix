@@ -3,10 +3,11 @@
   python,  # python from nixpkgs as base for overlay
   disable_checks ? true,  # disable tests wherever possible
   prefer_new ? false,  # prefer newest python package versions disregarding the provider priority
-  providers ? "nixpkgs,sdist,wheel",  # re-order to change provider priority or remove providers
+  providers ? {},  # re-order to change provider priority or remove providers
   pypi_deps_db_commit ? builtins.readFile ./PYPI_DEPS_DB_COMMIT,  # python dependency DB version
   # Hash obtained using `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
-  pypi_deps_db_sha256 ? builtins.readFile ./PYPI_DEPS_DB_SHA256
+  pypi_deps_db_sha256 ? builtins.readFile ./PYPI_DEPS_DB_SHA256,
+  _provider_defaults ? with builtins; fromTOML (readFile ../provider_defaults.toml)
 }:
 let
   nixpkgs_src = (import ./nixpkgs-src.nix).stable;
@@ -28,10 +29,12 @@ let
     url = "https://github.com/DavHau/nix-pypi-fetcher/tarball/${pypi_fetcher_commit}";
     sha256 = "${pypi_fetcher_sha256}";
   };
+  providers_json = builtins.toJSON ( _provider_defaults // providers);
   mach_nix_file = pkgs.runCommand "mach_nix_file"
     { buildInputs = [ src builder_python pypi_deps_db_src];
-      inherit disable_checks nixpkgs_json prefer_new providers
+      inherit disable_checks nixpkgs_json prefer_new
               requirements pypi_deps_db_src pypi_fetcher_commit pypi_fetcher_sha256;
+      providers = providers_json;
       py_ver_str = python.version;
     }
     ''
@@ -41,4 +44,5 @@ let
       ${builder_python}/bin/python ${src}/mach_nix/generate.py
     '';
 in
+# single file derivation containing $out/share/mach_nix_file.nix
 mach_nix_file

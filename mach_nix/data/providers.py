@@ -1,3 +1,4 @@
+import json
 import re
 import sys
 from abc import ABC, abstractmethod
@@ -21,6 +22,41 @@ class ProviderInfo:
     wheel_fname: str = None
 
 
+def unify_key(key: str) -> str:
+    return key.replace('_', '-').lower()
+
+
+class ProviderSettings:
+    def __init__(self, json_str):
+        data = json.loads(json_str)
+        if isinstance(data, list) or isinstance(data, str):
+            self.default_providers = self._parse_provider_list(data)
+            self.pkg_providers = {}
+        elif isinstance(data, dict):
+            if '_default' not in data:
+                raise Exception("Providers must contain '_default' key")
+            self.pkg_providers = {k: self._parse_provider_list(v) for k, v in data.items()}
+            self.default_providers = self.pkg_providers['_default']
+            del self.pkg_providers['_default']
+        else:
+            raise Exception('Wrong format for provider settings')
+
+    def _parse_provider_list(self, str_or_list) -> Tuple[str]:
+        if isinstance(str_or_list, str):
+            return tuple(unify_key(p.strip()) for p in str_or_list.strip().split(','))
+        elif isinstance(str_or_list, list):
+            return tuple(unify_key(k) for k in str_or_list)
+        else:
+            raise Exception("Provider specifiers must be lists or comma separated strings")
+
+    def provider_names_for_pkg(self, pkg_name):
+        name = unify_key(pkg_name)
+        if name in self.pkg_providers:
+            return self.pkg_providers[name]
+        else:
+            return self.default_providers
+
+
 class PackageNotFound(Exception):
     def __init__(self, pkg_name, pkg_ver, provider_name, *args, **kwargs):
         super(PackageNotFound, self).__init__(f"Provider '{provider_name}' cannot provide {pkg_name}:{pkg_ver}")
@@ -37,13 +73,7 @@ class DependencyProviderBase(ABC):
         """
         returns available versions for given package name in reversed preference
         """
-        if self._unify_key(pkg_name) in self.blacklist:
-            return []
         return sorted(self._available_versions(pkg_name), key=ver_sort_key)
-
-    @property
-    def blacklist(self) -> Set[str]:
-        return set()
 
     @property
     @abstractmethod
@@ -56,7 +86,7 @@ class DependencyProviderBase(ABC):
         install_reqs = set(install_reqs_w_extras) - set(install_reqs_wo_extras)
         return list(install_reqs)
 
-    def _unify_key(self, key: str) -> str:
+    def unify_key(self, key: str) -> str:
         return key.replace('_', '-').lower()
 
     @abstractmethod
@@ -85,12 +115,13 @@ class CombinedDependencyProvider(DependencyProviderBase):
     def __init__(self,
                  nixpkgs: NixpkgsDirectory,
                  prefer_new: bool,
-                 providers: Tuple[str],
+                 provider_settings: ProviderSettings,
                  pypi_deps_db_src: str,
                  *args,
                  **kwargs):
         super(CombinedDependencyProvider, self).__init__(*args, **kwargs)
         self.prefer_new = prefer_new
+        self.provider_settings = provider_settings
         wheel = WheelDependencyProvider(f"{pypi_deps_db_src}/wheel", *args, **kwargs)
         sdist = SdistDependencyProvider(f"{pypi_deps_db_src}/sdist", *args, **kwargs)
         nixpkgs = NixpkgsDependencyProvider(nixpkgs, wheel, sdist, *args, **kwargs)
@@ -99,19 +130,26 @@ class CombinedDependencyProvider(DependencyProviderBase):
             f"{sdist.name}": sdist,
             f"{nixpkgs.name}": nixpkgs,
         }
-        unknown_providers = set(providers) - set(self._all_providers.keys())
+        providers_used = set(provider_settings.default_providers)
+        for p_list in provider_settings.pkg_providers.values():
+            for p in p_list:
+                providers_used.add(p)
+        unknown_providers = providers_used - set(self._all_providers.keys())
         if unknown_providers:
-            raise Exception(f"Error: Unknown provider '{tuple(unknown_providers)}'. Please remove from 'providers=...'")
-        selected_providers = ((name, p) for name, p in self._all_providers.items() if name in providers)
-        self.providers = dict(sorted(selected_providers, key=lambda x: providers.index(x[0])))
+            raise Exception(f"Error: Unknown providers '{unknown_providers}'. Please remove from 'providers=...'")
+
+    def providers_for_pkg(self, pkg_name):
+        provider_keys = self.provider_settings.provider_names_for_pkg(pkg_name)
+        selected_providers = ((name, p) for name, p in self._all_providers.items() if name in provider_keys)
+        return dict(sorted(selected_providers, key=lambda x: provider_keys.index(x[0])))
 
     def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
-        for type, provider in self.providers.items():
+        for type, provider in self.providers_for_pkg(pkg_name).items():
             if pkg_version in provider.available_versions(pkg_name):
                 return provider.get_provider_info(pkg_name, pkg_version)
 
     def get_pkg_reqs(self, pkg_name, pkg_version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
-        for provider in self.providers.values():
+        for provider in self.providers_for_pkg(pkg_name).values():
             if pkg_version in provider.available_versions(pkg_name):
                 return provider.get_pkg_reqs(pkg_name, pkg_version, extras=extras)
 
@@ -123,7 +161,7 @@ class CombinedDependencyProvider(DependencyProviderBase):
         return result
 
     def print_error_no_versions_available(self, pkg_name):
-        provider_names = set(self.providers.keys())
+        provider_names = set(self.providers_for_pkg(pkg_name).keys())
         error_text = f"\nThe Package '{pkg_name}' is not available from any of the " \
                      f"selected providers {provider_names}\n for the selected python version"
         if provider_names != set(self._all_providers.keys()):
@@ -146,7 +184,7 @@ class CombinedDependencyProvider(DependencyProviderBase):
         # use dict as ordered set
         available_versions = []
         # order by reversed preference expected
-        for provider in reversed(tuple(self.providers.values())):
+        for provider in reversed(tuple(self.providers_for_pkg(pkg_name).values())):
             for ver in provider.available_versions(pkg_name):
                 available_versions.append(ver)
         if available_versions:
@@ -161,9 +199,12 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
 class NixpkgsDependencyProvider(DependencyProviderBase):
     name = 'nixpkgs'
-    _aliases = dict(
-        torch='pytorch'
-    )
+    # mapping from pypi name to nix key
+    # _aliases = dict(
+    #     torch='pytorch',
+    #     tensorboard='tensorflow-tensorboard'
+    # )
+
     # TODO: implement extras by looking them up via the equivalent wheel
     def __init__(self,
                  nixpkgs: NixpkgsDirectory,
@@ -179,31 +220,33 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
         return ProviderInfo(self.name)
 
     def get_pkg_reqs(self, pkg_name, pkg_version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
-        name = self._unify_key(pkg_name)
+        name = self.unify_key(pkg_name)
         if not self.nixpkgs.exists(name, pkg_version):
             raise Exception(f"Cannot find {name}:{pkg_version} in nixpkgs")
-        if not extras:
-            return [], []
-        for provider in (self.wheel_provider, self.sdist_provider):
+        install_reqs, setup_reqs = [], []
+        for provider in (self.sdist_provider, self.wheel_provider):
             try:
-                extra_reqs = provider.get_reqs_for_extras(pkg_name, pkg_version, extras)
-                return extra_reqs, []
+                install_reqs, setup_reqs = provider.get_pkg_reqs(pkg_name, pkg_version, extras=extras)
             except PackageNotFound:
                 pass
+        return install_reqs, setup_reqs
 
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
-        name = self._unify_key(pkg_name)
+        name = self.unify_key(pkg_name)
         if self.nixpkgs.exists(name):
             return [p.ver for p in self.nixpkgs.get_all_candidates(name)]
         return []
 
+    # def unify_key(self, key: str) -> str:
+    #     key = super(NixpkgsDependencyProvider, self).unify_key(key)
+    #     if key in self._aliases:
+    #         return self._aliases[key]
+    #     return key
+
 
 class WheelDependencyProvider(DependencyProviderBase):
     name = 'wheel'
-    blacklist = {
-        'setuptools',
-        'wheel',
-    }
+
     def __init__(self, data_dir: str, *args, **kwargs):
         super(WheelDependencyProvider, self).__init__(*args, **kwargs)
         self.data = LazyBucketDict(data_dir)
@@ -217,7 +260,7 @@ class WheelDependencyProvider(DependencyProviderBase):
         )
 
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
-        name = self._unify_key(pkg_name)
+        name = self.unify_key(pkg_name)
         result = []
         for pyver in self._get_pyvers_for_pkg(name):
             vers = self.data[name][pyver]
@@ -228,11 +271,9 @@ class WheelDependencyProvider(DependencyProviderBase):
                         break
         return result
 
-    def _blacklist(self) -> Set[str]:
-        return self._black_list
 
     def choose_wheel(self, pkg_name, pkg_version: Version) -> Tuple[str, str]:
-        name = self._unify_key(pkg_name)
+        name = self.unify_key(pkg_name)
         ver = str(pkg_version)
         ok_fnames = {}
         for pyver in self._get_pyvers_for_pkg(name):
@@ -258,7 +299,7 @@ class WheelDependencyProvider(DependencyProviderBase):
         return ProviderInfo(provider=self.name, wheel_pyver=wheel_pyver, wheel_fname=wheel_fname)
 
     def get_pkg_reqs_raw(self, pkg_name, pkg_version: Version):
-        name = self._unify_key(pkg_name)
+        name = self.unify_key(pkg_name)
         if pkg_version not in self._available_versions(pkg_name):
             raise PackageNotFound(pkg_name, pkg_version, self.name)
         ver = str(pkg_version)
@@ -280,7 +321,7 @@ class WheelDependencyProvider(DependencyProviderBase):
         return install_reqs, []
 
     def _get_pyvers_for_pkg(self, name) -> Iterable:
-        name = self._unify_key(name)
+        name = self.unify_key(name)
         if name not in self.data:
             return []
         ok_pyvers = (pyver for pyver in self.data[name].keys() if self._pyver_ok(pyver))
@@ -311,23 +352,15 @@ class WheelDependencyProvider(DependencyProviderBase):
 
 class SdistDependencyProvider(DependencyProviderBase):
     name = 'sdist'
-    blacklist = {
-        # setuptools releases inconsistently use .zip and .tar.gz format which causes problems
-        # with the current nixpkgs expression
-        'setuptools'
-    }
     def __init__(self, data_dir: str, *args, **kwargs):
         self.data = LazyBucketDict(data_dir)
         super(SdistDependencyProvider, self).__init__(*args, **kwargs)
-
-    def _blacklist(self) -> Set[str]:
-        return self.blacklist
 
     def _get_candidates(self, name) -> dict:
         """
         returns all candidates for the give name which are available for the current python version
         """
-        key = self._unify_key(name)
+        key = self.unify_key(name)
         candidates = {}
         try:
             self.data[key]
@@ -350,7 +383,7 @@ class SdistDependencyProvider(DependencyProviderBase):
         return ProviderInfo(provider=self.name)
 
     def get_reqs_for_extras(self, pkg_name, pkg_ver, extras):
-        name = self._unify_key(pkg_name)
+        name = self.unify_key(pkg_name)
         pkg = self._get_candidates(name)[pkg_ver]
         extras = set(extras)
         requirements = []
