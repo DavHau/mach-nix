@@ -61,7 +61,7 @@ class ResolvelibResolver(Resolver):
                 reqs: Iterable[Requirement],
                 prefer_nixpkgs=True) -> List[ResolvedPkg]:
         reporter = resolvelib.BaseReporter()
-        result = resolvelib.Resolver(Provider(self.nixpkgs, self.deps_provider), reporter).resolve(reqs)
+        result = resolvelib.Resolver(Provider(self.nixpkgs, self.deps_provider), reporter).resolve(reqs, max_rounds=1000)
         nix_py_pkgs = []
         for name in result.graph._forwards.keys():
             if name is None:

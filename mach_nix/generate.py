@@ -21,7 +21,6 @@ def main():
     disable_checks = load_env('disable_checks')
     nixpkgs_json = load_env('nixpkgs_json')
     out_file = load_env('out_file')
-    prefer_new = bool(load_env('prefer_new'))
     py_ver_str = load_env('py_ver_str')
     pypi_deps_db_src = load_env('pypi_deps_db_src')
     pypi_fetcher_commit = load_env('pypi_fetcher_commit')
@@ -33,7 +32,6 @@ def main():
     nixpkgs = NixpkgsDirectory(nixpkgs_json)
     deps_provider = CombinedDependencyProvider(
         nixpkgs=nixpkgs,
-        prefer_new=prefer_new,
         provider_settings=provider_settings,
         pypi_deps_db_src=pypi_deps_db_src,
         py_ver=py_ver

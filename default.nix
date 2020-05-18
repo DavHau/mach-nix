@@ -54,7 +54,6 @@ rec {
       overrides_pre ? [],  # list with pythonOverrides functions to apply before the amchnix overrides
       overrides_post ? [],  # list with pythonOverrides functions to apply after the amchnix overrides
       pkgs ? machnix_nixpkgs,  # pass custom nixpkgs version (20.03 or higher is recommended)
-      prefer_new ? false,  # prefer newest python package versions disregarding the provider priority
       providers ? {},  # define provider preferences
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
       pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
@@ -63,7 +62,7 @@ rec {
     let
       py = python.override { packageOverrides = mergeOverrides overrides_pre; };
       result = mkOverrides {
-        inherit requirements disable_checks prefer_new providers pypi_deps_db_commit pypi_deps_db_sha256;
+        inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256;
         python = py;
       };
       overrides_machnix = result.overrides pkgs.pythonManylinuxPackages.manylinux1 autoPatchelfHook;

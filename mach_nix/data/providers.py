@@ -114,13 +114,11 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
     def __init__(self,
                  nixpkgs: NixpkgsDirectory,
-                 prefer_new: bool,
                  provider_settings: ProviderSettings,
                  pypi_deps_db_src: str,
                  *args,
                  **kwargs):
         super(CombinedDependencyProvider, self).__init__(*args, **kwargs)
-        self.prefer_new = prefer_new
         self.provider_settings = provider_settings
         wheel = WheelDependencyProvider(f"{pypi_deps_db_src}/wheel", *args, **kwargs)
         sdist = SdistDependencyProvider(f"{pypi_deps_db_src}/sdist", *args, **kwargs)
@@ -188,8 +186,6 @@ class CombinedDependencyProvider(DependencyProviderBase):
             for ver in provider.available_versions(pkg_name):
                 available_versions.append(ver)
         if available_versions:
-            if self.prefer_new:
-                return tuple(sorted(available_versions, key=ver_sort_key))
             return tuple(available_versions)
         self.print_error_no_versions_available(pkg_name)
 
@@ -271,7 +267,6 @@ class WheelDependencyProvider(DependencyProviderBase):
                         break
         return result
 
-
     def choose_wheel(self, pkg_name, pkg_version: Version) -> Tuple[str, str]:
         name = self.unify_key(pkg_name)
         ver = str(pkg_version)
@@ -286,9 +281,6 @@ class WheelDependencyProvider(DependencyProviderBase):
             raise Exception(f"No wheel available for {name}:{ver}")
         if len(ok_fnames) > 1:
             fn = self._select_preferred_wheel(ok_fnames)
-            print(f"WARNING: multiple wheels available for {name}:{ver}:\n"
-                  f"    {ok_fnames}\n"
-                  f"Picking: {fn}")
         else:
             fn = list(ok_fnames.keys())[0]
         pyver = ok_fnames[fn]

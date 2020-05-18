@@ -51,6 +51,10 @@ class OverlaysGenerator(ExpressionGenerator):
               }};
               fetchPypi = (import pypi_fetcher_src).fetchPypi;
               fetchPypiWheel = (import pypi_fetcher_src).fetchPypiWheel;
+              try_get = obj: name:
+                if builtins.hasAttr name obj
+                then obj."${{name}}"
+                else [];
             """
         return unindent(out, 12)
 
@@ -71,10 +75,10 @@ class OverlaysGenerator(ExpressionGenerator):
               src = fetchPypi "{name}" "{ver}";"""
         if build_inputs_str:
             out += f"""
-              buildInputs = with python-self; oldAttrs.buildInputs ++ [ {build_inputs_str} ];"""
+              buildInputs = with python-self; (try_get oldAttrs "buildInputs") ++ [ {build_inputs_str} ];"""
         if prop_build_inputs_str:
             out += f"""
-              propagatedBuildInputs = with python-self; oldAttrs.propagatedBuildInputs ++ [ {prop_build_inputs_str} ];"""
+              propagatedBuildInputs = with python-self; (try_get oldAttrs "propagatedBuildInputs") ++ [ {prop_build_inputs_str} ];"""
         if self.disable_checks:
             out += """
               doCheck = false;
@@ -125,7 +129,7 @@ class OverlaysGenerator(ExpressionGenerator):
     def _gen_unify_nixpkgs_keys(self, master_key: str, nixpkgs_keys: List[str]):
         out = ''
         for key in nixpkgs_keys:
-            out += f"""        {key} = python-self.{master_key};\n"""
+            out += f"""    {key} = python-self.{master_key};\n"""
         return out
 
     def _unif_nixpkgs_keys(self, name, ver):
@@ -135,7 +139,9 @@ class OverlaysGenerator(ExpressionGenerator):
 
     def _gen_overrides(self, pkgs: Dict[str, ResolvedPkg], overlay_keys, pkgs_names: str):
         out = f"""
-            select_pkgs = ps: with ps; [ {pkgs_names.strip()} ];
+            select_pkgs = ps: with ps; [
+              {pkgs_names.strip()} 
+            ];
             overrides = manylinux1: autoPatchelfHook: python-self: python-super: rec {{
           """
         out = unindent(out, 10)
@@ -187,25 +193,10 @@ class OverlaysGenerator(ExpressionGenerator):
             return self.nixpkgs.find_best_nixpkgs_candidate(name, ver)
         return name
 
-    def _needs_overlay(self, pkg):
-        """
-        We need to generate an overlay if
-            1. a specific candidate does not exist in nixpkgs. (We will build it from scratch via buildPythonPackage)
-            2. there are multiple candidates with the same name in nixpkgs. We would risk a python package collision
-               if we don't override all of them to the same version since some sub dependency
-               in nixpkgs might point to one of these other versions.
-        """
-        if pkg.provider_info.provider not in (SdistDependencyProvider.name, NixpkgsDependencyProvider.name):
-            return True
-        if pkg.extras_selected:
-            return True
-        name, ver = pkg.name, pkg.ver
-        return not self.nixpkgs.exists(name, ver) or self.nixpkgs.has_multiple_candidates(name)
-
     def _gen_python_env(self, pkgs: Dict[str, ResolvedPkg]):
         pkg_names = "".join(
             (f"{self._get_ref_name(name, pkgs[name].ver)}\n{' ' * 14}" for (name, pkg) in pkgs.items() if pkg.is_root))
-        overlay_keys = {p.name for p in pkgs.values() if self._needs_overlay(p)}
+        overlay_keys = {p.name for p in pkgs.values()}
         out = self._gen_imports() + self._gen_overrides(pkgs, overlay_keys, pkg_names)
         python_with_packages = f"""
             in
