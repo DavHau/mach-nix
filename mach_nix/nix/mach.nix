@@ -9,8 +9,7 @@
   _provider_defaults ? with builtins; fromTOML (readFile ../provider_defaults.toml)
 }:
 let
-  nixpkgs_src = (import ./nixpkgs-src.nix).stable;
-  pkgs = import nixpkgs_src { config = {}; overlays = []; };
+  pkgs = import (import ./nixpkgs-src.nix) { config = {}; overlays = []; };
   nixpkgs_json = import ./nixpkgs-json.nix { inherit pkgs python; };
   builder_python = pkgs.python37.withPackages(ps:
     (pkgs.lib.attrValues (import ./python-deps.nix {python = pkgs.python37; fetchurl = pkgs.fetchurl; }))

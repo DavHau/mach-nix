@@ -1,5 +1,5 @@
 let
-  pkgs = import (import ./mach_nix/nix/nixpkgs-src.nix).stable { config = {}; };
+  pkgs = import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; };
   python = import ./mach_nix/nix/python.nix { inherit pkgs; };
   python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = pkgs.fetchurl; }));
   mergeOverrides = with pkgs.lib; overrides:
@@ -14,11 +14,6 @@ let
           rest = reverseList (tail ( reverseList overrides ));
         in
           composeExtensions (mergeOverrides rest) last;
-  machnix_nixpkgs = import (builtins.fetchTarball {
-    name = "nixpkgs";
-    url = "https://github.com/nixos/nixpkgs/tarball/${builtins.readFile ./mach_nix/nix/NIXPKGS_COMMIT}";
-    sha256 = "${builtins.readFile ./mach_nix/nix/NIXPKGS_SHA256}";
-  }) { config = {}; overlays = []; };
   autoPatchelfHook = import ./mach_nix/nix/auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
 in
 rec {
@@ -34,26 +29,23 @@ rec {
 
   inherit mergeOverrides;
 
-  # call this to generate a nix expression defnining a python environment
-  #mkPythonExpr = args: import ./mach_nix/nix/expression.nix args;
-
-  # call this to generate a nixpkgs overlay .nix file which satisfies your requirements
+  # call this to generate a nix expression which contains the python overrides
   mkOverridesFile = args: import ./mach_nix/nix/mach.nix args;
 
-  # call this to generate a nixpkgs overlay which satisfies your requirements
+  # call this to generate `overrides` and `select_pkgs` which satisfy your requirements
   mkOverrides = args: import "${mkOverridesFile args}/share/mach_nix_file.nix";
 
   # call this to use the python environment with nix-shell
   mkPythonShell = args: (mkPython args).env;
 
-  # call this to generate a python environment
+  # (High level API) generates a python environment with minimal user effort
   mkPython =
     {
       requirements,  # content from a requirements.txt file
       disable_checks ? true,  # Disable tests wherever possible to decrease build time.
       overrides_pre ? [],  # list with pythonOverrides functions to apply before the amchnix overrides
       overrides_post ? [],  # list with pythonOverrides functions to apply after the amchnix overrides
-      pkgs ? machnix_nixpkgs,  # pass custom nixpkgs version (20.03 or higher is recommended)
+      pkgs ? pkgs,  # pass custom nixpkgs version (20.03 or higher is recommended)
       providers ? {},  # define provider preferences
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
       pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
