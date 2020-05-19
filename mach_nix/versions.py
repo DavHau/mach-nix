@@ -48,6 +48,9 @@ def ver_lt_other(v: Version, o: Version) -> bool:
 
 
 def ver_sort_key(ver: Version):
+    """
+    For sorting versions by preference in reversed order. (last elem == highest preference)
+    """
     if isinstance(ver, LegacyVersion):
         return 0, 0, 0, ver
     is_dev = int(ver.is_devrelease)
@@ -76,7 +79,8 @@ def filter_versions(
             versions = (parse(ver) for ver in fnmatch.filter(versions_str, str(ver)))
         elif op == '!=':
             versions_str = (str(ver) for ver in versions)
-            versions = set(versions) - set(fnmatch.filter(versions_str, str(ver)))
+            bad_versions_str = set(fnmatch.filter(versions_str, str(ver)))
+            versions = list(filter(lambda v: str(v) not in bad_versions_str, versions))
         else:
             versions = list(filter(lambda v: eval(f'v {op} ver', dict(v=v, ver=ver)), versions))
     return list(versions)

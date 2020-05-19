@@ -14,7 +14,7 @@ def context(py_ver: PyVer):
     context.update(dict(
         platform_version='',  # remove highly impure platform_version
         python_version=py_ver.python_version(),
-        python_fulle_version=py_ver.python_full_version()
+        python_full_version=py_ver.python_full_version()
     ))
     return context
 
@@ -42,14 +42,21 @@ class Requirement(pkg_resources.Requirement):
                 yield spec
 
 
-def strip_reqs_by_marker(reqs: Iterable[Requirement], context: dict):
+def filter_reqs_by_eval_marker(reqs: Iterable[Requirement], context: dict, selected_extras=None):
     # filter requirements relevant for current environment
     for req in reqs:
-        if req.marker:
-            if distlib.markers.interpret(req.marker, context):
-                yield req
-        else:
+        if req.marker is None:
             yield req
+        elif selected_extras:
+            for extra in selected_extras:
+                extra_context = context.copy()
+                extra_context['extra'] = extra
+                if distlib.markers.interpret(str(req.marker), extra_context):
+                    yield req
+        else:
+            if distlib.markers.interpret(str(req.marker), context):
+                yield req
+
 
 
 def parse_reqs(strs):
