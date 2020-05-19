@@ -5,6 +5,7 @@ import sys
 import tempfile
 from argparse import ArgumentParser
 from os.path import realpath, dirname
+from textwrap import dedent
 
 from mach_nix.ensure_nix import ensure_nix
 from mach_nix.versions import PyVer
@@ -41,20 +42,40 @@ def gen(args, return_expr=False):
 def env(args):
     target_dir = args.directory
     expr = gen(args, return_expr=True)
-    python_nix_file = f"{target_dir}/python.nix"
+    machnix_file = f"{target_dir}/machnix.nix"
     shell_nix_file = f"{target_dir}/shell.nix"
     default_nix_file = f"{target_dir}/default.nix"
+    python_nix_file = f"{target_dir}/python.nix"
+    python_nix_content = dedent(f"""
+        let
+          result = import ./machnix.nix;
+          nixpkgs_commit = "{open(pwd + "/nix/NIXPKGS_COMMIT").read().strip()}";
+          nixpkgs_sha256 = "{open(pwd + "/nix/NIXPKGS_SHA256").read().strip()}";
+          pkgs = import (builtins.fetchTarball {{
+            name = "nixpkgs";
+            url = "https://github.com/nixos/nixpkgs/tarball/${{nixpkgs_commit}}";
+            sha256 = nixpkgs_sha256;
+          }}) {{ config = {{}}; overlays = []; }};
+          python = pkgs.python37;
+          manylinux1 = [ pkgs.pythonManylinuxPackages.manylinux1 ];
+          overrides = result.overrides manylinux1 pkgs.autoPatchelfHook;
+          py = pkgs.python37.override {{ packageOverrides = overrides; }};
+        in
+        py.withPackages (ps: result.select_pkgs ps)
+    """)
     if not os.path.isdir(target_dir):
         if os.path.exists(target_dir):
             print(f'Error: {target_dir} already exists and is not a directory!')
             exit(1)
         os.mkdir(target_dir)
+    with open(machnix_file, 'w') as machnix:
+        machnix.write(expr)
     with open(python_nix_file, 'w') as python:
-        with open(shell_nix_file, 'w') as shell:
-            with open(default_nix_file, 'w') as default:
-                python.write(expr)
-                shell.write("(import ./python.nix).env\n")
-                default.write("import ./shell.nix\n")
+        python.write(python_nix_content)
+    with open(shell_nix_file, 'w') as shell:
+        shell.write("(import ./python.nix).env\n")
+    with open(default_nix_file, 'w') as default:
+        default.write("import ./shell.nix\n")
     print(f"\nInitialized python environment in {target_dir}\n"
           f"To activate it, execute: 'nix-shell {target_dir}'")
 

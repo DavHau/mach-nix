@@ -19,7 +19,7 @@ setup(
             "mach-nix = mach_nix:main"
         ],
     },
-    package_data={'': ['nix/*', 'VERSION']},
+    package_data={'': ['nix/*', 'VERSION', 'provider_defaults.toml']},
     install_requires=[
         'distlib ~= 0.3.0',
         'packaging >= 19.0',

@@ -9,11 +9,11 @@ Mach-nix makes it easy to create and share reproducible python environments. Whi
 You can either install mach-nix via pip or by using nix in case you already have the nix package manager installed.
 ### Installing via pip
 ```shell
-pip install git+git://github.com/DavHau/mach-nix@1.0.0
+pip install git+git://github.com/DavHau/mach-nix@2.0.0
 ```
 ### Installing via nix
 ```shell
-nix-env -if https://github.com/DavHau/mach-nix/tarball/1.0.0 -A mach-nix
+nix-env -if https://github.com/DavHau/mach-nix/tarball/2.0.0 -A mach-nix
 ```
 
 ## Basic usage
@@ -123,8 +123,7 @@ All 3 methods take the following set of inputs which are processed in [./mach_ni
 Contributions to this project are welcome in the form of GitHub PRs. If you are planning to make any considerable changes, you should first present your plans in a GitHub issue so it can be discussed.
 
 ## Limitations
- - Currently mach-nix does not provide any functionality which supports you in publishing python projects, like [Poetry](https://python-poetry.org/) does for example.  
- - Mach-nix does not yet support python packages in form of bdist_wheels, therefore some packages from pypi are not available.
+ - Currently mach-nix does not provide any functionality which supports you in publishing python projects, like [Poetry](https://python-poetry.org/) does for example.
 
 ## Alternative / Similar Software:
  - [Poetry](https://python-poetry.org/)
