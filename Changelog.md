@@ -24,9 +24,9 @@
         - Added arguments:
             - `overrides_pre`: list of python overrides to apply before the machnix overrides
             - `overrides_post`: list of python overrides to apply after the machnix overrides
-            - `pkgs`: pass your own nixpkgs which will be used by mach-nix as base for the python overrides
-            - `providers`: select providers for python packages
-            - `_provider_defaults`: override provider defaults. Only use it if necessary
+            - `pkgs`: pass custom nixpkgs. Only used for manylinux wheel dependencies.
+            - `providers`: define provider preferences
+            - `_provider_defaults`: builtin provider defaults. Disable them by passing {}
 
 # 1.0.0
 Initial Release

@@ -1,6 +1,5 @@
 let
-  nixpkgs = import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; };
-  pkgs = nixpkgs;
+  pkgs = import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; };
   python = import ./mach_nix/nix/python.nix { inherit pkgs; };
   python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = pkgs.fetchurl; }));
   mergeOverrides = with pkgs.lib; overrides:
@@ -30,6 +29,9 @@ rec {
 
   inherit mergeOverrides;
 
+  # User might want to access it to choose python version
+  nixpkgs = pkgs;
+
   # call this to generate a nix expression which contains the python overrides
   machNixFile = args: import ./mach_nix/nix/mach.nix args;
 
@@ -44,13 +46,13 @@ rec {
     {
       requirements,  # content from a requirements.txt file
       disable_checks ? true,  # Disable tests wherever possible to decrease build time.
-      overrides_pre ? [],  # list with pythonOverrides functions to apply before the amchnix overrides
-      overrides_post ? [],  # list with pythonOverrides functions to apply after the amchnix overrides
-      pkgs ? nixpkgs,  # pass custom nixpkgs version (20.03 or higher is recommended)
+      overrides_pre ? [],  # list of pythonOverrides to apply before the machnix overrides
+      overrides_post ? [],  # list of pythonOverrides to apply after the machnix overrides
+      pkgs ? nixpkgs,  # pass custom nixpkgs. Only used for manylinux wheel dependencies
       providers ? {},  # define provider preferences
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
       pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
-      python ? pkgs.python3,  # select custom python. It should be taken from `pkgs` passed above.
+      python ? pkgs.python3,  # select custom python to base overrides on. Should be from nixpkgs >= 20.03
       _provider_defaults ? with builtins; fromTOML (readFile ./mach_nix/provider_defaults.toml)
     }:
     let

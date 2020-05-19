@@ -57,7 +57,7 @@ def env(args):
             sha256 = nixpkgs_sha256;
           }}) {{ config = {{}}; overlays = []; }};
           python = pkgs.python37;
-          manylinux1 = [ pkgs.pythonManylinuxPackages.manylinux1 ];
+          manylinux1 = pkgs.pythonManylinuxPackages.manylinux1;
           overrides = result.overrides manylinux1 pkgs.autoPatchelfHook;
           py = pkgs.python37.override {{ packageOverrides = overrides; }};
         in
