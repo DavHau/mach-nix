@@ -25,7 +25,6 @@ def gen(args, return_expr=False):
           f' --arg prefer_nixpkgs {json.dumps((not args.prefer_new))}'
     proc = sp.run(cmd, shell=True, stdout=sys.stderr)
     if proc.returncode:
-        print(proc.stderr.decode(), file=sys.stderr)
         exit(1)
     with open(f"{o_file}/share/mach_nix_file.nix") as src:
         expr = src.read()
