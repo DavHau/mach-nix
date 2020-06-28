@@ -132,7 +132,7 @@ class OverlaysGenerator(ExpressionGenerator):
             out += f"""    {key} = python-self.{master_key};\n"""
         return out
 
-    def _unif_nixpkgs_keys(self, name, ver):
+    def _unify_nixpkgs_keys(self, name, ver):
         master_key = self._get_ref_name(name, ver)
         other_names = (p.nix_key for p in self.nixpkgs.get_all_candidates(name) if p.nix_key != master_key)
         return self._gen_unify_nixpkgs_keys(master_key, sorted(other_names))
@@ -169,20 +169,18 @@ class OverlaysGenerator(ExpressionGenerator):
                 if self.nixpkgs.exists(pkg.name):
                     nix_name = self._get_ref_name(pkg.name, pkg.ver)
                     out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
-                    out += self._unif_nixpkgs_keys(pkg.name, pkg.ver)
+                    out += self._unify_nixpkgs_keys(pkg.name, pkg.ver)
                 else:
                     out += self._gen_builPythonPackage(pkg.name, pkg.ver, build_inputs_str, prop_build_inputs_str)
             elif pkg.provider_info.provider == WheelDependencyProvider.name:
                 out += self._gen_wheel_buildPythonPackage(pkg.name, pkg.ver, prop_build_inputs_str,
                                                           pkg.provider_info.wheel_fname)
                 if self.nixpkgs.exists(pkg.name):
-                    out += self._unif_nixpkgs_keys(pkg.name, pkg.ver)
+                    out += self._unify_nixpkgs_keys(pkg.name, pkg.ver)
             elif pkg.provider_info.provider == NixpkgsDependencyProvider.name:
-                # we only need to touch the nixpkgs definition if extras have been selected for the package
-                if pkg.extras_selected:
-                    nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
-                    out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
-                out += self._unif_nixpkgs_keys(pkg.name, pkg.ver)
+                nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
+                out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
+                out += self._unify_nixpkgs_keys(pkg.name, pkg.ver)
         end_overlay_section = f"""
                 }};
           """
