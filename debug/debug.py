@@ -17,7 +17,7 @@ os.environ['disable_checks'] = 'true'
 with open(pwd + "/../mach_nix/provider_defaults.toml") as f:
     provider_settings = toml.load(f)
 provider_settings.update(dict(
-    _default="wheel,nixpkgs,sdist",
+    _default="wheel,sdist,nixpkgs",
 ))
 os.environ['providers'] = json.dumps(provider_settings)
 

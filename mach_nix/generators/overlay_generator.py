@@ -26,9 +26,7 @@ class OverlaysGenerator(ExpressionGenerator):
         super(OverlaysGenerator, self).__init__(*args, **kwargs)
 
     def generate(self, reqs) -> str:
-        pkgs = self.resolver.resolve(
-            reqs,
-        )
+        pkgs = self.resolver.resolve(reqs)
         pkgs = dict(sorted(((p.name, p) for p in pkgs), key=lambda x: x[1].name))
         return self._gen_python_env(pkgs)
 

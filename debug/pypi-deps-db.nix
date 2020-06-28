@@ -1,5 +1,5 @@
 let
-  pkgs =  import (import ../mach_nix/nix/nixpkgs-src.nix).stable {};
+  pkgs =  import (import ../mach_nix/nix/nixpkgs-src.nix) {};
   commit = builtins.readFile ../mach_nix/nix/PYPI_DEPS_DB_COMMIT;
   sha256 = builtins.readFile ../mach_nix/nix/PYPI_DEPS_DB_SHA256;
   src = builtins.fetchTarball {

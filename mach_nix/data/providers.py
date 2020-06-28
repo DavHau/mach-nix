@@ -233,12 +233,6 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
             return [p.ver for p in self.nixpkgs.get_all_candidates(name)]
         return []
 
-    # def unify_key(self, key: str) -> str:
-    #     key = super(NixpkgsDependencyProvider, self).unify_key(key)
-    #     if key in self._aliases:
-    #         return self._aliases[key]
-    #     return key
-
 
 class WheelDependencyProvider(DependencyProviderBase):
     name = 'wheel'
@@ -408,8 +402,11 @@ class SdistDependencyProvider(DependencyProviderBase):
                 reqs_raw = pkg[t]
                 reqs = parse_reqs(reqs_raw)
                 requirements[t] = list(filter_reqs_by_eval_marker(reqs, self.context))
-        if extras:
-            requirements['install_requires'] += self.get_reqs_for_extras(pkg_name, pkg_version, extras)
+        if not extras:
+            extras = []
+        # even if no extras are selected we need to collect reqs for extras,
+        # because some extras consist of only a marker which needs to be evaluated
+        requirements['install_requires'] += self.get_reqs_for_extras(pkg_name, pkg_version, extras)
         return requirements['install_requires'], requirements['setup_requires']
 
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
