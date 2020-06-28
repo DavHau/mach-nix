@@ -23,25 +23,16 @@ class OverlaysGenerator(ExpressionGenerator):
         self.pypi_fetcher_commit = pypi_fetcher_commit
         self.pypi_fetcher_sha256 = pypi_fetcher_sha256
         self.py_ver_nix = py_ver.nix()
-        nixpkgs_name = NixpkgsDependencyProvider.name
-        sdist_name = SdistDependencyProvider.name
-        providers = (nixpkgs_name, sdist_name)
-        if all(p in providers for p in providers) and providers.index(nixpkgs_name) < providers.index(sdist_name):
-            self.prefer_nixpkgs = True
-        else:
-            self.prefer_nixpkgs = False
         super(OverlaysGenerator, self).__init__(*args, **kwargs)
 
     def generate(self, reqs) -> str:
-        pkgs = self.resolver.resolve(
-            reqs,
-            prefer_nixpkgs=self.prefer_nixpkgs
-        )
+        pkgs = self.resolver.resolve(reqs)
         pkgs = dict(sorted(((p.name, p) for p in pkgs), key=lambda x: x[1].name))
         return self._gen_python_env(pkgs)
 
     def _gen_imports(self):
         out = f"""
+            with builtins;
             let
               pypi_fetcher_src = builtins.fetchTarball {{
                 name = "nix-pypi-fetcher";
@@ -52,9 +43,13 @@ class OverlaysGenerator(ExpressionGenerator):
               fetchPypi = (import pypi_fetcher_src).fetchPypi;
               fetchPypiWheel = (import pypi_fetcher_src).fetchPypiWheel;
               try_get = obj: name:
-                if builtins.hasAttr name obj
+                if hasAttr name obj
                 then obj."${{name}}"
                 else [];
+              is_py_module = pkg:
+                isAttrs pkg && hasAttr "pythonModule" pkg;
+              filter_deps = oldAttrs: inputs_type:
+                filter (pkg: ! is_py_module pkg) (try_get oldAttrs inputs_type);
             """
         return unindent(out, 12)
 
@@ -71,14 +66,15 @@ class OverlaysGenerator(ExpressionGenerator):
     def _gen_overrideAttrs(self, name, ver, nix_name, build_inputs_str, prop_build_inputs_str):
         out = f"""
             {nix_name} = python-super.{nix_name}.overridePythonAttrs ( oldAttrs: {{
-              name = "{name}-{ver}";
+              pname = "{name}";
+              version = "{ver}";
               src = fetchPypi "{name}" "{ver}";"""
         if build_inputs_str:
             out += f"""
-              buildInputs = with python-self; (try_get oldAttrs "buildInputs") ++ [ {build_inputs_str} ];"""
+              buildInputs = with python-self; (filter_deps oldAttrs "buildInputs") ++ [ {build_inputs_str} ];"""
         if prop_build_inputs_str:
             out += f"""
-              propagatedBuildInputs = with python-self; (try_get oldAttrs "propagatedBuildInputs") ++ [ {prop_build_inputs_str} ];"""
+              propagatedBuildInputs = with python-self; (filter_deps oldAttrs "propagatedBuildInputs") ++ [ {prop_build_inputs_str} ];"""
         if self.disable_checks:
             out += """
               doCheck = false;
@@ -90,7 +86,8 @@ class OverlaysGenerator(ExpressionGenerator):
     def _gen_builPythonPackage(self, name, ver, build_inputs_str, prop_build_inputs_str):
         out = f"""
             {self._get_ref_name(name, ver)} = python-self.buildPythonPackage {{
-              name = "{name}-{ver}";
+              pname = "{name}";
+              version = "{ver}";
               src = fetchPypi "{name}" "{ver}";"""
         if build_inputs_str.strip():
             out += f"""
@@ -110,7 +107,8 @@ class OverlaysGenerator(ExpressionGenerator):
         manylinux = "manylinux1 ++ " if 'manylinux' in fname else ''
         out = f"""
             {self._get_ref_name(name, ver)} = python-self.buildPythonPackage {{
-              name = "{name}-{ver}";
+              pname = "{name}";
+              version = "{ver}";
               src = fetchPypiWheel "{name}" "{ver}" "{fname}";
               format = "wheel";
               doCheck = false;
@@ -132,7 +130,7 @@ class OverlaysGenerator(ExpressionGenerator):
             out += f"""    {key} = python-self.{master_key};\n"""
         return out
 
-    def _unif_nixpkgs_keys(self, name, ver):
+    def _unify_nixpkgs_keys(self, name, ver):
         master_key = self._get_ref_name(name, ver)
         other_names = (p.nix_key for p in self.nixpkgs.get_all_candidates(name) if p.nix_key != master_key)
         return self._gen_unify_nixpkgs_keys(master_key, sorted(other_names))
@@ -169,20 +167,18 @@ class OverlaysGenerator(ExpressionGenerator):
                 if self.nixpkgs.exists(pkg.name):
                     nix_name = self._get_ref_name(pkg.name, pkg.ver)
                     out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
-                    out += self._unif_nixpkgs_keys(pkg.name, pkg.ver)
+                    out += self._unify_nixpkgs_keys(pkg.name, pkg.ver)
                 else:
                     out += self._gen_builPythonPackage(pkg.name, pkg.ver, build_inputs_str, prop_build_inputs_str)
             elif pkg.provider_info.provider == WheelDependencyProvider.name:
                 out += self._gen_wheel_buildPythonPackage(pkg.name, pkg.ver, prop_build_inputs_str,
                                                           pkg.provider_info.wheel_fname)
                 if self.nixpkgs.exists(pkg.name):
-                    out += self._unif_nixpkgs_keys(pkg.name, pkg.ver)
+                    out += self._unify_nixpkgs_keys(pkg.name, pkg.ver)
             elif pkg.provider_info.provider == NixpkgsDependencyProvider.name:
-                # we only need to touch the nixpkgs definition if extras have been selected for the package
-                if pkg.extras_selected:
-                    nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
-                    out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
-                out += self._unif_nixpkgs_keys(pkg.name, pkg.ver)
+                nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
+                out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
+                out += self._unify_nixpkgs_keys(pkg.name, pkg.ver)
         end_overlay_section = f"""
                 }};
           """

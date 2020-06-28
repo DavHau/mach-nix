@@ -16,9 +16,9 @@ os.environ['disable_checks'] = 'true'
 
 with open(pwd + "/../mach_nix/provider_defaults.toml") as f:
     provider_settings = toml.load(f)
-provider_settings.update(dict(
-    _default="wheel,nixpkgs,sdist",
-))
+if os.path.isfile("./providers.toml"):
+    with open(pwd + "./providers.toml") as f:
+        provider_settings.update(toml.load(f))
 os.environ['providers'] = json.dumps(provider_settings)
 
 nixpkgs_json = tempfile.mktemp()
