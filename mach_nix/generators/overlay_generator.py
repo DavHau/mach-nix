@@ -32,6 +32,7 @@ class OverlaysGenerator(ExpressionGenerator):
 
     def _gen_imports(self):
         out = f"""
+            with builtins;
             let
               pypi_fetcher_src = builtins.fetchTarball {{
                 name = "nix-pypi-fetcher";
@@ -42,9 +43,13 @@ class OverlaysGenerator(ExpressionGenerator):
               fetchPypi = (import pypi_fetcher_src).fetchPypi;
               fetchPypiWheel = (import pypi_fetcher_src).fetchPypiWheel;
               try_get = obj: name:
-                if builtins.hasAttr name obj
+                if hasAttr name obj
                 then obj."${{name}}"
                 else [];
+              is_py_module = pkg:
+                isAttrs pkg && hasAttr "pythonModule" pkg;
+              filter_deps = oldAttrs: inputs_type:
+                filter (pkg: ! is_py_module pkg) (try_get oldAttrs inputs_type);
             """
         return unindent(out, 12)
 
@@ -65,10 +70,10 @@ class OverlaysGenerator(ExpressionGenerator):
               src = fetchPypi "{name}" "{ver}";"""
         if build_inputs_str:
             out += f"""
-              buildInputs = with python-self; (try_get oldAttrs "buildInputs") ++ [ {build_inputs_str} ];"""
+              buildInputs = with python-self; (filter_deps oldAttrs "buildInputs") ++ [ {build_inputs_str} ];"""
         if prop_build_inputs_str:
             out += f"""
-              propagatedBuildInputs = with python-self; (try_get oldAttrs "propagatedBuildInputs") ++ [ {prop_build_inputs_str} ];"""
+              propagatedBuildInputs = with python-self; (filter_deps oldAttrs "propagatedBuildInputs") ++ [ {prop_build_inputs_str} ];"""
         if self.disable_checks:
             out += """
               doCheck = false;
