@@ -57,9 +57,7 @@ class ResolvelibResolver(Resolver):
         self.nixpkgs = nixpkgs
         self.deps_provider = deps_provider
 
-    def resolve(self,
-                reqs: Iterable[Requirement],
-                prefer_nixpkgs=True) -> List[ResolvedPkg]:
+    def resolve(self, reqs: Iterable[Requirement]) -> List[ResolvedPkg]:
         reporter = resolvelib.BaseReporter()
         result = resolvelib.Resolver(Provider(self.nixpkgs, self.deps_provider), reporter).resolve(reqs, max_rounds=1000)
         nix_py_pkgs = []

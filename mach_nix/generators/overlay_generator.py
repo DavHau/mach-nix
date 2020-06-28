@@ -23,19 +23,11 @@ class OverlaysGenerator(ExpressionGenerator):
         self.pypi_fetcher_commit = pypi_fetcher_commit
         self.pypi_fetcher_sha256 = pypi_fetcher_sha256
         self.py_ver_nix = py_ver.nix()
-        nixpkgs_name = NixpkgsDependencyProvider.name
-        sdist_name = SdistDependencyProvider.name
-        providers = (nixpkgs_name, sdist_name)
-        if all(p in providers for p in providers) and providers.index(nixpkgs_name) < providers.index(sdist_name):
-            self.prefer_nixpkgs = True
-        else:
-            self.prefer_nixpkgs = False
         super(OverlaysGenerator, self).__init__(*args, **kwargs)
 
     def generate(self, reqs) -> str:
         pkgs = self.resolver.resolve(
             reqs,
-            prefer_nixpkgs=self.prefer_nixpkgs
         )
         pkgs = dict(sorted(((p.name, p) for p in pkgs), key=lambda x: x[1].name))
         return self._gen_python_env(pkgs)

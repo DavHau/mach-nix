@@ -21,8 +21,7 @@ def gen(args, return_expr=False):
     py_ver = PyVer(args.python)
     cmd = f'nix-build {pwd}/nix/call_mach.nix -o {o_file}' \
           f' --argstr requirements "{requirements}"' \
-          f' --argstr python_attr python{py_ver.digits()}' \
-          f' --arg prefer_nixpkgs {json.dumps((not args.prefer_new))}'
+          f' --argstr python_attr python{py_ver.digits()}'
     proc = sp.run(cmd, shell=True, stdout=sys.stderr)
     if proc.returncode:
         exit(1)
@@ -95,11 +94,6 @@ def main():
             help='path to requirements.txt file',
             metavar='requirements.txt',
             required=True)),
-
-        (('--prefer-new',), dict(
-            action='store_true',
-            help='Prefer newer python package versions instead of the ones from nixpkgs. '
-                 'This might increase build times significantly since no cache can be used'))
     )
     parser = ArgumentParser()
     parser.add_argument('--version', '-V', help='show program version', action='store_true')
