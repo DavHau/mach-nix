@@ -66,7 +66,8 @@ class OverlaysGenerator(ExpressionGenerator):
     def _gen_overrideAttrs(self, name, ver, nix_name, build_inputs_str, prop_build_inputs_str):
         out = f"""
             {nix_name} = python-super.{nix_name}.overridePythonAttrs ( oldAttrs: {{
-              name = "{name}-{ver}";
+              pname = "{name}";
+              version = "{ver}";
               src = fetchPypi "{name}" "{ver}";"""
         if build_inputs_str:
             out += f"""
@@ -85,7 +86,8 @@ class OverlaysGenerator(ExpressionGenerator):
     def _gen_builPythonPackage(self, name, ver, build_inputs_str, prop_build_inputs_str):
         out = f"""
             {self._get_ref_name(name, ver)} = python-self.buildPythonPackage {{
-              name = "{name}-{ver}";
+              pname = "{name}";
+              version = "{ver}";
               src = fetchPypi "{name}" "{ver}";"""
         if build_inputs_str.strip():
             out += f"""
@@ -105,7 +107,8 @@ class OverlaysGenerator(ExpressionGenerator):
         manylinux = "manylinux1 ++ " if 'manylinux' in fname else ''
         out = f"""
             {self._get_ref_name(name, ver)} = python-self.buildPythonPackage {{
-              name = "{name}-{ver}";
+              pname = "{name}";
+              version = "{ver}";
               src = fetchPypiWheel "{name}" "{ver}" "{fname}";
               format = "wheel";
               doCheck = false;
