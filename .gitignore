@@ -2,3 +2,4 @@
 **/__pycache__/
 interpreter
 debug/expr.nix
+/media/
