@@ -1,4 +1,8 @@
-# mach-nix - Create highly reproducible python environments
+<p align="center">
+<img width="200" src="https://gist.githubusercontent.com/DavHau/9a66b8c66b798254b714cc3ca44ffda8/raw/ef6b947b3753425118c730a5dfe81084c1bcfe86/logo_small.jpg">  
+</p>
+
+## mach-nix - Create highly reproducible python environments
 Mach-nix makes it easy to create and share reproducible python environments. While other python package management tools are mostly a trade off between ease of use and reproducibility, mach-nix aims to provide both at the same time. Mach-nix is based on the nix ecosystem but doesn't require you to understand anything about nix. Given a simple requirements.txt file, mach-nix will take care about the rest. 
 
 
