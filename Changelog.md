@@ -1,3 +1,11 @@
+# 2.1.0 (04 Jul 2020)
+Bug fixes + new feature **buildPythonPackage** / **buildPythonApplication**
+### Fixes:
+ - fix `value is null while a set was expected` error when python package is used which is set to null in nixpkgs.
+
+### Features:
+ - **buildPythonPackage** / **buildPythonApplication**: Interface to build python packages from their source code + requirements.txt
+
 # 2.0.1 (29 Jun 2020)
 Improves build-time closure, build success rate and fixes disable_checks option.
 ### Fixes:

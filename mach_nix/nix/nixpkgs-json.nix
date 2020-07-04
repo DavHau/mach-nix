@@ -13,16 +13,18 @@ let
     in
       {"${pname}" = (toString res.value);};
 
-  is_broken = pkg:
+  not_usable = pkg:
     (tryEval (
-      if hasAttrByPath ["meta" "broken"] pkg
+      if pkg == null
+      then true
+      else if hasAttrByPath ["meta" "broken"] pkg
       then pkg.meta.broken
       else false
     )).value;
 
 
-  without_broken = python_pkgs: filterAttrs (name: val: ! (is_broken val)) python_pkgs;
-  all_versions = python: map (pname: get_version python pname) (attrNames (without_broken python.pkgs));
-  merged = python: mapAttrs (name: val: builtins.elemAt val 0) (zipAttrs (all_versions python));
+  usable_pkgs = python_pkgs: filterAttrs (name: val: ! (not_usable val)) python_pkgs;
+  all_versions = python: map (pname: get_version python pname) (attrNames (usable_pkgs python.pkgs));
+  merged = python: mapAttrs (name: val: elemAt val 0) (zipAttrs (all_versions python));
 in
-writeText "nixpkgs-py-pkgs-json" (builtins.toJSON (merged python))
+writeText "nixpkgs-py-pkgs-json" (toJSON (merged python))

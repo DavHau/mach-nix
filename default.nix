@@ -36,10 +36,50 @@ rec {
   machNixFile = args: import ./mach_nix/nix/mach.nix args;
 
   # Returns `overrides` and `select_pkgs` which satisfy your requirements
-  machNix = args: import "${machNixFile args}/share/mach_nix_file.nix";
+  machNix = args:
+    let result = import "${machNixFile args}/share/mach_nix_file.nix";
+    in {
+      overrides = result.overrides pkgs.pythonManylinuxPackages.manylinux1 autoPatchelfHook;
+      select_pkgs = result.select_pkgs;
+    };
 
   # call this to use the python environment with nix-shell
   mkPythonShell = args: (mkPython args).env;
+
+  # equivalent to buildPythonPackage of nixpkgs
+  buildPythonPackage = _buildPython "buildPythonPackage";
+
+  # equivalent to buildPythonApplication of nixpkgs
+  buildPythonApplication = _buildPython "buildPythonApplication";
+
+  _buildPython = func: args@{
+      requirements,  # content from a requirements.txt file
+      disable_checks ? true,  # Disable tests wherever possible to decrease build time.
+      overrides_pre ? [],  # list of pythonOverrides to apply before the machnix overrides
+      overrides_post ? [],  # list of pythonOverrides to apply after the machnix overrides
+      pkgs ? nixpkgs,  # pass custom nixpkgs. Only used for manylinux wheel dependencies
+      providers ? {},  # define provider preferences
+      pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
+      pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
+      python ? pkgs.python3,  # select custom python to base overrides on. Should be from nixpkgs >= 20.03
+      _provider_defaults ? with builtins; fromTOML (readFile ./mach_nix/provider_defaults.toml),
+      ...
+    }:
+    let
+      py = python.override { packageOverrides = mergeOverrides overrides_pre; };
+      result = machNix {
+        inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
+        python = py;
+      };
+      py_final = python.override { packageOverrides = mergeOverrides (
+          overrides_pre ++ [ result.overrides ] ++ overrides_post
+        );};
+      pass_args = removeAttrs args (builtins.attrNames ({inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;}));
+    in
+    py_final.pkgs."${func}" ( pass_args // {
+      propagatedBuildInputs = result.select_pkgs py_final.pkgs;
+    });
+
 
   # (High level API) generates a python environment with minimal user effort
   mkPython =
@@ -61,11 +101,8 @@ rec {
         inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
         python = py;
       };
-      overrides_machnix = result.overrides pkgs.pythonManylinuxPackages.manylinux1 autoPatchelfHook;
       py_final = python.override { packageOverrides = mergeOverrides (
-        overrides_pre ++ [
-          overrides_machnix
-        ] ++ overrides_post
+        overrides_pre ++ [ result.overrides ] ++ overrides_post
       );};
     in
       py_final.withPackages (ps: result.select_pkgs ps)
