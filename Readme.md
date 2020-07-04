@@ -55,11 +55,11 @@ Table of Contents
 You can either install mach-nix via pip or by using nix in case you already have the nix package manager installed.
 #### Installing via pip
 ```shell
-pip install git+git://github.com/DavHau/mach-nix@2.0.1
+pip install git+git://github.com/DavHau/mach-nix@2.1.0
 ```
 #### Installing via nix
 ```shell
-nix-env -if https://github.com/DavHau/mach-nix/tarball/2.0.1 -A mach-nix
+nix-env -if https://github.com/DavHau/mach-nix/tarball/2.1.0 -A mach-nix
 ```
 
 ---
@@ -91,7 +91,7 @@ You can call mach-nix directly from a nix expression
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.0.1";
+    ref = "2.1.0";
   });
 in
 mach-nix.mkPython {
@@ -131,7 +131,7 @@ Mach-nix can be fine tuned with additional arguments by importing it via `builti
 #### Configure Providers
 **Providers** allow you to configure the origin for your packages on a granular basis.
 
-The following 3 providers are available in version 2.0.0:
+The following 3 providers are available in version 2.1.0:
   1. **nixpkgs**: Provides packages directly from nixpkgs without modifying their sources. Has only a few versions available, but has a high success rate and all the nix features, like `cudaSupport` for tensorflow for example.
   2. **sdist**: Provides all package versions available from pypi which support setuptools and builds them via nixpkgs overlays wherever possible to resolve external dependencies. It still supports the nixpkgs specific features no matter which package version is selected. But chances are higher for a build to fail than with the **nixpkgs** provider.
   3. **wheel**: Provides all linux compatible wheel releases from pypi. Wheels can contain binaries. Mach-nix autopatches them to work on nix. Wheels are super quick to install and work quite reliable. Therefore this provider is preferred by default.
