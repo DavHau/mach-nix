@@ -1,4 +1,0 @@
-## EXAMPLE
-requests
-
-# ... put your requirements here
