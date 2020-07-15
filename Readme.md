@@ -102,7 +102,7 @@ mach-nix.mkPython {
   '';
 }
 ```
-find mroe examples under [./examples.md](/examples.md)
+find more examples under [./examples.md](/examples.md)
 
 ### Advanced
 Mach-nix can be fine tuned with additional arguments by importing it via `builtins.fetchGit`. Examples can be found in [./examples.md](/examples.md). There are 4 different methods which can be invoked:
