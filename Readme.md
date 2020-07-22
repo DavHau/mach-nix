@@ -108,10 +108,10 @@ find more examples under [./examples.md](/examples.md)
 Mach-nix can be fine tuned with additional arguments by importing it via `builtins.fetchGit`. Examples can be found in [./examples.md](/examples.md). There are 4 different methods which can be invoked:
 1. **mkPython** - builds a python environment for a given `requirements.txt`.
 1. **mkPythonShell** - returns the python environment suitable for nix-shell.
-1. **buildPytonPackage** - build a single python package from a source code and a list of requirements
-1. **buildPythonApplication** - same as **buildPytonPackage**, but package will not be importable by other python packages.
+1. **buildPythonPackage** - build a single python package from a source code and a list of requirements
+1. **buildPythonApplication** - same as **buildPythonPackage**, but package will not be importable by other python packages.
 
-**buildPytonPackage** and **buildPythonApplication** require the same arguments like their equally named partners in nixpkgs, plus the arguments of **mkPython**.  
+**buildPythonPackage** and **buildPythonApplication** require the same arguments like their equally named partners in nixpkgs, plus the arguments of **mkPython**.  
 **mkPython** and **mkPythonShell** take exactly the following arguments:
 
 #### Required Arguments:
