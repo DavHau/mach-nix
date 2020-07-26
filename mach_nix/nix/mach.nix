@@ -2,7 +2,6 @@
   requirements,  # content from a requirements.txt file
   python,  # python from nixpkgs as base for overlay
   disable_checks ? true,  # disable tests wherever possible
-  dont_strip ? [], # list of libraries to not strip. Some libraries cannot be stripped twice (https://github.com/pypa/manylinux/issues/119)
   providers ? {},  # re-order to change provider priority or remove providers
   pypi_deps_db_commit ? builtins.readFile ./PYPI_DEPS_DB_COMMIT,  # python dependency DB version
   # Hash obtained using `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
@@ -31,7 +30,7 @@ let
   providers_json = builtins.toJSON ( _provider_defaults // providers);
   mach_nix_file = pkgs.runCommand "mach_nix_file"
     { buildInputs = [ src builder_python pypi_deps_db_src];
-      inherit disable_checks dont_strip nixpkgs_json requirements pypi_deps_db_src pypi_fetcher_commit pypi_fetcher_sha256;
+      inherit disable_checks nixpkgs_json requirements pypi_deps_db_src pypi_fetcher_commit pypi_fetcher_sha256;
       providers = providers_json;
       py_ver_str = python.version;
     }

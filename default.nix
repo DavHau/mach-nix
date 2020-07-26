@@ -55,7 +55,6 @@ rec {
   _buildPython = func: args@{
       requirements,  # content from a requirements.txt file
       disable_checks ? true,  # Disable tests wherever possible to decrease build time.
-      dont_strip ? [], # list of libraries to not strip. Some libraries cannot be stripped twice (https://github.com/pypa/manylinux/issues/119)
       overrides_pre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overrides_post ? [],  # list of pythonOverrides to apply after the machnix overrides
       pkgs ? nixpkgs,  # pass custom nixpkgs. Only used for manylinux wheel dependencies
@@ -69,7 +68,7 @@ rec {
     let
       py = python.override { packageOverrides = mergeOverrides overrides_pre; };
       result = machNix {
-        inherit requirements disable_checks dont_strip providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
+        inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
         python = py;
       };
       py_final = python.override { packageOverrides = mergeOverrides (
@@ -87,7 +86,6 @@ rec {
     {
       requirements,  # content from a requirements.txt file
       disable_checks ? true,  # Disable tests wherever possible to decrease build time.
-      dont_strip ? [], # list of libraries to not strip. Some libraries cannot be stripped twice (https://github.com/pypa/manylinux/issues/119)
       overrides_pre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overrides_post ? [],  # list of pythonOverrides to apply after the machnix overrides
       pkgs ? nixpkgs,  # pass custom nixpkgs. Only used for manylinux wheel dependencies
@@ -100,7 +98,7 @@ rec {
     let
       py = python.override { packageOverrides = mergeOverrides overrides_pre; };
       result = machNix {
-        inherit requirements disable_checks dont_strip providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
+        inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
         python = py;
       };
       py_final = python.override { packageOverrides = mergeOverrides (

@@ -19,7 +19,6 @@ def load_env(name, *args, **kwargs):
 
 def main():
     disable_checks = load_env('disable_checks')
-    dont_strip = load_env('dont_strip')
     nixpkgs_json = load_env('nixpkgs_json')
     out_file = load_env('out_file')
     py_ver_str = load_env('py_ver_str')
@@ -43,7 +42,6 @@ def main():
         pypi_fetcher_commit,
         pypi_fetcher_sha256,
         disable_checks,
-        dont_strip,
         ResolvelibResolver(nixpkgs, deps_provider),
     )
     reqs = filter_reqs_by_eval_marker(parse_reqs(requirements), context(py_ver))
