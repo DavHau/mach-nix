@@ -15,11 +15,12 @@ def unindent(text: str, remove: int):
 class OverlaysGenerator(ExpressionGenerator):
 
     def __init__(self, py_ver, nixpkgs: NixpkgsDirectory, pypi_fetcher_commit,
-                 pypi_fetcher_sha256, disable_checks,
+                 pypi_fetcher_sha256, disable_checks, dont_strip,
                  *args,
                  **kwargs):
         self.nixpkgs = nixpkgs
         self.disable_checks = disable_checks
+        self.dont_strip = dont_strip
         self.pypi_fetcher_commit = pypi_fetcher_commit
         self.pypi_fetcher_sha256 = pypi_fetcher_sha256
         self.py_ver_nix = py_ver.nix()
@@ -117,6 +118,9 @@ class OverlaysGenerator(ExpressionGenerator):
             out += f"""
               nativeBuildInputs = [ autoPatchelfHook ];
               autoPatchelfIgnoreNotFound = true;"""
+        if name in self.dont_strip:
+            out += """
+              dontStrip = true;"""
         if prop_build_inputs_str.strip() or manylinux:
             out += f"""
               propagatedBuildInputs = with python-self; {manylinux}[ {prop_build_inputs_str} ];"""
