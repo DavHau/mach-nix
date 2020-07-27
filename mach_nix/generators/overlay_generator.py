@@ -105,6 +105,8 @@ class OverlaysGenerator(ExpressionGenerator):
 
     def _gen_wheel_buildPythonPackage(self, name, ver, prop_build_inputs_str, fname):
         manylinux = "manylinux1 ++ " if 'manylinux' in fname else ''
+
+        # dontStrip added due to this bug - https://github.com/pypa/manylinux/issues/119
         out = f"""
             {self._get_ref_name(name, ver)} = python-self.buildPythonPackage {{
               pname = "{name}";
@@ -112,7 +114,8 @@ class OverlaysGenerator(ExpressionGenerator):
               src = fetchPypiWheel "{name}" "{ver}" "{fname}";
               format = "wheel";
               doCheck = false;
-              doInstallCheck = false;"""
+              doInstallCheck = false;
+              dontStrip = true;"""
         if manylinux:
             out += f"""
               nativeBuildInputs = [ autoPatchelfHook ];
