@@ -3,7 +3,7 @@ import sys
 
 from mach_nix.data.nixpkgs import NixpkgsDirectory
 from mach_nix.data.providers import CombinedDependencyProvider, ProviderSettings
-from mach_nix.generators.overlay_generator import OverlaysGenerator
+from mach_nix.generators.overides_generator import OverridesGenerator
 from mach_nix.requirements import parse_reqs, filter_reqs_by_eval_marker, context
 from mach_nix.resolver.resolvelib_resolver import ResolvelibResolver
 from mach_nix.versions import PyVer
@@ -36,7 +36,7 @@ def main():
         pypi_deps_db_src=pypi_deps_db_src,
         py_ver=py_ver
     )
-    generator = OverlaysGenerator(
+    generator = OverridesGenerator(
         py_ver,
         nixpkgs,
         pypi_fetcher_commit,

@@ -1,3 +1,8 @@
+# 2.1.1 (30 Jul 2020)
+Fix broken wheel packages
+### Fixes:
+ - Some wheel packages could brake through patchelf if they already contained stripped binaries. Packages like numpy wouldn't work because of this. This is now fixed by passing `dontStrip` to the `autoPatchelf` routine.
+
 # 2.1.0 (04 Jul 2020)
 Bug fixes + new feature **buildPythonPackage** / **buildPythonApplication**
 ### Fixes:

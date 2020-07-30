@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from data.providers import WheelDependencyProvider, SdistDependencyProvider, NixpkgsDependencyProvider
+from mach_nix.data.providers import WheelDependencyProvider, SdistDependencyProvider, NixpkgsDependencyProvider
 from mach_nix.data.nixpkgs import NixpkgsDirectory
 from mach_nix.generators import ExpressionGenerator
 from mach_nix.resolver import ResolvedPkg
@@ -12,7 +12,7 @@ def unindent(text: str, remove: int):
     return ''.join(map(lambda l: l[remove:], text.splitlines(keepends=True)))
 
 
-class OverlaysGenerator(ExpressionGenerator):
+class OverridesGenerator(ExpressionGenerator):
 
     def __init__(self, py_ver, nixpkgs: NixpkgsDirectory, pypi_fetcher_commit,
                  pypi_fetcher_sha256, disable_checks,
@@ -23,7 +23,7 @@ class OverlaysGenerator(ExpressionGenerator):
         self.pypi_fetcher_commit = pypi_fetcher_commit
         self.pypi_fetcher_sha256 = pypi_fetcher_sha256
         self.py_ver_nix = py_ver.nix()
-        super(OverlaysGenerator, self).__init__(*args, **kwargs)
+        super(OverridesGenerator, self).__init__(*args, **kwargs)
 
     def generate(self, reqs) -> str:
         pkgs = self.resolver.resolve(reqs)
