@@ -24,7 +24,7 @@ build a python environment from a list of requirements
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.1.0";
+    ref = "2.1.1";
   });
 in mach-nix.mkPython {
   requirements = builtins.readFile ./requirements.txt;
@@ -37,7 +37,7 @@ Build a python package from its source code and a list of requirements
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.1.0";
+    ref = "2.1.1";
   });
 in mach-nix.buildPythonPackage {
   pname = "my-package";
@@ -53,7 +53,7 @@ Build a python package from its source code and a list of requirements
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.1.0";
+    ref = "2.1.1";
   });
 in mach-nix.buildPythonPackage rec {
   pname = "projectname";
@@ -77,7 +77,7 @@ I have a complex set of requirements including tensorflow. I'd like to have tens
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.1.0";
+    ref = "2.1.1";
   });
 in mach-nix.mkPython {
 
@@ -100,7 +100,7 @@ I'd like to install a more recent version of tensorflow which is not available f
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.1.0";
+    ref = "2.1.1";
   });
 in mach-nix.mkPython {
 
@@ -129,7 +129,7 @@ I'd like to use a recent version of Pytorch from wheel, but I'd like to build th
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.1.0";
+    ref = "2.1.1";
   });
 overlays = []; # some very useful overlays
 in mach-nix.mkPython rec {
@@ -164,7 +164,7 @@ I have a complex requirements.txt which includes `imagecodecs`. It is available 
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.1.0";
+    ref = "2.1.1";
   });
 in mach-nix.mkPython rec {
 
