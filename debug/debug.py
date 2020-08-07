@@ -3,6 +3,7 @@ import os
 import subprocess as sp
 import tempfile
 from os.path import realpath, dirname
+from time import time
 
 import toml
 
@@ -43,4 +44,7 @@ with open(pwd + "/reqs.txt") as f:
     os.environ['requirements'] = f.read()
 
 # generates and writes nix expression into ./debug/expr.nix
+start = time()
 main()
+dur = round(time() - start, 1)
+print(f"resolving took: {dur}s")

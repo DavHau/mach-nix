@@ -14,10 +14,15 @@ def unindent(text: str, remove: int):
 
 class OverridesGenerator(ExpressionGenerator):
 
-    def __init__(self, py_ver, nixpkgs: NixpkgsDirectory, pypi_fetcher_commit,
-                 pypi_fetcher_sha256, disable_checks,
-                 *args,
-                 **kwargs):
+    def __init__(
+            self,
+            py_ver,
+            nixpkgs: NixpkgsDirectory,
+            pypi_fetcher_commit,
+            pypi_fetcher_sha256,
+            disable_checks,
+            *args,
+            **kwargs):
         self.nixpkgs = nixpkgs
         self.disable_checks = disable_checks
         self.pypi_fetcher_commit = pypi_fetcher_commit
