@@ -64,11 +64,13 @@ class PackageNotFound(Exception):
 
 
 class DependencyProviderBase(ABC):
-    def __init__(self, py_ver: PyVer, *args, **kwargs):
+    def __init__(self, py_ver: PyVer, platform, system, *args, **kwargs):
         self.context = context(py_ver)
         self.context_wheel = self.context.copy()
         self.context_wheel['extra'] = None
         self.py_ver_digits = py_ver.digits()
+        self.platform = platform
+        self.system = system
 
     @cached()
     def available_versions(self, pkg_name: str) -> Iterable[Version]:
@@ -115,12 +117,13 @@ class DependencyProviderBase(ABC):
 class CombinedDependencyProvider(DependencyProviderBase):
     name = 'combined'
 
-    def __init__(self,
-                 nixpkgs: NixpkgsDirectory,
-                 provider_settings: ProviderSettings,
-                 pypi_deps_db_src: str,
-                 *args,
-                 **kwargs):
+    def __init__(
+            self,
+            nixpkgs: NixpkgsDirectory,
+            provider_settings: ProviderSettings,
+            pypi_deps_db_src: str,
+            *args,
+            **kwargs):
         super(CombinedDependencyProvider, self).__init__(*args, **kwargs)
         self.provider_settings = provider_settings
         wheel = WheelDependencyProvider(f"{pypi_deps_db_src}/wheel", *args, **kwargs)
@@ -258,18 +261,16 @@ class WheelDependencyProvider(DependencyProviderBase):
     def __init__(self, data_dir: str, *args, **kwargs):
         super(WheelDependencyProvider, self).__init__(*args, **kwargs)
         self.data = LazyBucketDict(data_dir)
-        major, minor = self.py_ver_digits
-        self.py_ver_re = re.compile(rf"^(py|cp)?{major}\.?{minor}?$")
         m = self.py_ver_digits[-1]
-        if platform.system() == "Linux":
+        if self.system == "linux":
             self.preferred_wheels = (
-                re.compile(rf"(py3|cp3)[{m}]?-(cp3{m}m|abi3|none)-manylinux2014_x86_64"),
-                re.compile(rf"(py3|cp3)[{m}]?-(cp3{m}m|abi3|none)-manylinux2010_x86_64"),
-                re.compile(rf"(py3|cp3)[{m}]?-(cp3{m}m|abi3|none)-manylinux1_x86_64"),
-                re.compile(rf"(py3|cp3)[{m}]?-(cp3{m}m|abi3|none)-linux_x86_64"),
-                re.compile(rf"(py3|cp3)[{m}]?-(cp3{m}m|abi3|none)-any"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux2014_{self.platform}"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux2010_{self.platform}"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux1_{self.platform}"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-linux_{self.platform}"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-any"),
             )
-        elif platform.system() == "Darwin":
+        elif self.system == "darwin":
             self.preferred_wheels = (
                 re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_universal"),
                 re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_x86_64"),

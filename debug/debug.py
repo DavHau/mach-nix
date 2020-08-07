@@ -12,6 +12,7 @@ from mach_nix.generate import main
 pwd = dirname(realpath(__file__))
 
 os.environ['py_ver_str'] = '3.7.5'
+os.environ['system'] = 'x86_64-linux'
 os.environ['out_file'] = f'{pwd}/overrides.nix'
 os.environ['disable_checks'] = 'true'
 
