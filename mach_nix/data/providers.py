@@ -8,6 +8,7 @@ from typing import List, Tuple, Iterable
 
 import distlib.markers
 from packaging.version import Version, parse
+from pkg_resources import RequirementParseError
 
 from .nixpkgs import NixpkgsIndex
 from mach_nix.requirements import filter_reqs_by_eval_marker, Requirement, parse_reqs, context
@@ -202,11 +203,6 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
 class NixpkgsDependencyProvider(DependencyProviderBase):
     name = 'nixpkgs'
-    # mapping from pypi name to nix key
-    # _aliases = dict(
-    #     torch='pytorch',
-    #     tensorboard='tensorflow-tensorboard'
-    # )
 
     # TODO: implement extras by looking them up via the equivalent wheel
     def __init__(
@@ -317,7 +313,7 @@ class WheelDependencyProvider(DependencyProviderBase):
                         fn,
                         deps['requires_dist'] if 'requires_dist' in deps else None,
                         deps['requires_extras'] if 'requires_extras' in deps else None,
-                        deps['requires_python'] if 'requires_python' in deps else None,
+                        deps['requires_python'].strip(',') if 'requires_python' in deps else None,
                     )
 
     def _apply_filters(self, filters: List[callable], objects: Iterable):
@@ -362,7 +358,12 @@ class WheelDependencyProvider(DependencyProviderBase):
         if not wheel.requires_python:
             return True
         ver = parse('.'.join(self.py_ver_digits))
-        return bool(filter_versions([ver], list(parse_reqs(f"python{wheel.requires_python}"))[0].specs))
+        try:
+            parsed_py_requires = list(parse_reqs(f"python{wheel.requires_python}"))
+            return bool(filter_versions([ver], parsed_py_requires[0].specs))
+        except RequirementParseError:
+            print(f"WARNING: `requires_python` attribute of wheel {wheel.name}:{wheel.ver} could not be parsed")
+            return False
 
 
 class SdistDependencyProvider(DependencyProviderBase):

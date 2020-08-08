@@ -5,6 +5,8 @@ from typing import List
 
 from packaging.version import Version, parse
 
+from mach_nix.cache import cached
+
 
 @dataclass
 class NixpkgsPyPkg:
@@ -48,6 +50,7 @@ class NixpkgsIndex(UserDict):
             return False
         return ver1.release[ver_idx] == ver2.release[ver_idx]
 
+    @cached(lambda args: (args[1], args[2]))
     def find_best_nixpkgs_candidate(self, name, ver):
         """
         In case a python package has more than one candidate in nixpkgs
