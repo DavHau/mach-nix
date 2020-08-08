@@ -21,6 +21,9 @@ with open(pwd + "/../mach_nix/provider_defaults.toml") as f:
 if os.path.isfile("./providers.toml"):
     with open(pwd + "./providers.toml") as f:
         provider_settings.update(toml.load(f))
+provider_settings.update(dict(
+    # add providers here
+))
 os.environ['providers'] = json.dumps(provider_settings)
 
 nixpkgs_json = tempfile.mktemp()

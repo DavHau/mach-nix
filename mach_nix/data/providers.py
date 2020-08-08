@@ -9,7 +9,7 @@ from typing import List, Tuple, Iterable
 import distlib.markers
 from packaging.version import Version, parse
 
-from .nixpkgs import NixpkgsDirectory
+from .nixpkgs import NixpkgsIndex
 from mach_nix.requirements import filter_reqs_by_eval_marker, Requirement, parse_reqs, context
 from mach_nix.versions import PyVer, ver_sort_key, filter_versions
 from .bucket_dict import LazyBucketDict
@@ -119,7 +119,7 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
     def __init__(
             self,
-            nixpkgs: NixpkgsDirectory,
+            nixpkgs: NixpkgsIndex,
             provider_settings: ProviderSettings,
             pypi_deps_db_src: str,
             *args,
@@ -211,7 +211,7 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
     # TODO: implement extras by looking them up via the equivalent wheel
     def __init__(
             self,
-            nixpkgs: NixpkgsDirectory,
+            nixpkgs: NixpkgsIndex,
             wheel_provider: 'WheelDependencyProvider',
             sdist_provider: 'SdistDependencyProvider',
             *args, **kwargs):
@@ -331,7 +331,10 @@ class WheelDependencyProvider(DependencyProviderBase):
 
     @cached()
     def _choose_wheel(self, pkg_name, pkg_version: Version) -> WheelRelease:
-        return self._select_preferred_wheel(self._suitable_wheels(pkg_name, pkg_version))
+        suitable = list(self._suitable_wheels(pkg_name, pkg_version))
+        if not suitable:
+            raise PackageNotFound(pkg_name, pkg_version, self.name)
+        return self._select_preferred_wheel(suitable)
 
     def _suitable_wheels(self, pkg_name: str, ver: Version = None) -> Iterable[WheelRelease]:
         wheels = self._all_releases(pkg_name)
@@ -350,7 +353,7 @@ class WheelDependencyProvider(DependencyProviderBase):
             for wheel in wheels:
                 if re.search(pattern, wheel.fn):
                     return wheel
-        raise Exception("No wheel type found that is compatible to the current system")
+        raise Exception(f"No wheel type found that is compatible to the current system")
 
     def _wheel_type_ok(self, wheel: WheelRelease):
         return any(re.search(pattern, wheel.fn) for pattern in self.preferred_wheels)

@@ -1,7 +1,7 @@
 import os
 import sys
 
-from mach_nix.data.nixpkgs import NixpkgsDirectory
+from mach_nix.data.nixpkgs import NixpkgsIndex
 from mach_nix.data.providers import CombinedDependencyProvider, ProviderSettings
 from mach_nix.generators.overides_generator import OverridesGenerator
 from mach_nix.requirements import parse_reqs, filter_reqs_by_eval_marker, context
@@ -31,7 +31,7 @@ def main():
     platform, system = load_env('system').split('-')
 
     py_ver = PyVer(py_ver_str)
-    nixpkgs = NixpkgsDirectory(nixpkgs_json)
+    nixpkgs = NixpkgsIndex(nixpkgs_json)
     deps_provider = CombinedDependencyProvider(
         nixpkgs=nixpkgs,
         provider_settings=provider_settings,

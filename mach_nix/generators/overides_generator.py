@@ -1,7 +1,7 @@
 from typing import Dict, List
 
 from mach_nix.data.providers import WheelDependencyProvider, SdistDependencyProvider, NixpkgsDependencyProvider
-from mach_nix.data.nixpkgs import NixpkgsDirectory
+from mach_nix.data.nixpkgs import NixpkgsIndex
 from mach_nix.generators import ExpressionGenerator
 from mach_nix.resolver import ResolvedPkg
 
@@ -17,7 +17,7 @@ class OverridesGenerator(ExpressionGenerator):
     def __init__(
             self,
             py_ver,
-            nixpkgs: NixpkgsDirectory,
+            nixpkgs: NixpkgsIndex,
             pypi_fetcher_commit,
             pypi_fetcher_sha256,
             disable_checks,
@@ -88,9 +88,9 @@ class OverridesGenerator(ExpressionGenerator):
             });\n"""
         return unindent(out, 8)
 
-    def _gen_builPythonPackage(self, name, ver, build_inputs_str, prop_build_inputs_str):
+    def _gen_builPythonPackage(self, name, ver, nix_name, build_inputs_str, prop_build_inputs_str):
         out = f"""
-            {self._get_ref_name(name, ver)} = python-self.buildPythonPackage {{
+            {nix_name} = python-self.buildPythonPackage {{
               pname = "{name}";
               version = "{ver}";
               src = fetchPypi "{name}" "{ver}";"""
@@ -113,7 +113,7 @@ class OverridesGenerator(ExpressionGenerator):
 
         # dontStrip added due to this bug - https://github.com/pypa/manylinux/issues/119
         out = f"""
-            {self._get_ref_name(name, ver)} = python-self.buildPythonPackage {{
+            "{name}" = python-self.buildPythonPackage {{
               pname = "{name}";
               version = "{ver}";
               src = fetchPypiWheel "{name}" "{ver}" "{fname}";
@@ -132,16 +132,14 @@ class OverridesGenerator(ExpressionGenerator):
             };\n"""
         return unindent(out, 8)
 
-    def _gen_unify_nixpkgs_keys(self, master_key: str, nixpkgs_keys: List[str]):
+    def _unify_nixpkgs_keys(self, name, main_key=None):
+        other_names = set(
+            p.nix_key for p in self.nixpkgs.get_all_candidates(name) if p.nix_key not in (name, main_key)
+        )
         out = ''
-        for key in nixpkgs_keys:
-            out += f"""    {key} = python-self.{master_key};\n"""
+        for key in sorted(other_names):
+            out += f"""    {key} = python-self.{name};\n"""
         return out
-
-    def _unify_nixpkgs_keys(self, name, ver):
-        master_key = self._get_ref_name(name, ver)
-        other_names = (p.nix_key for p in self.nixpkgs.get_all_candidates(name) if p.nix_key != master_key)
-        return self._gen_unify_nixpkgs_keys(master_key, sorted(other_names))
 
     def _gen_overrides(self, pkgs: Dict[str, ResolvedPkg], overlay_keys, pkgs_names: str):
         out = f"""
@@ -172,21 +170,21 @@ class OverridesGenerator(ExpressionGenerator):
             if pkg.provider_info.provider == SdistDependencyProvider.name:
                 # generate package overlays either via `overrideAttrs` if package already exists in nixpkgs,
                 # or by creating it from scratch using `buildPythonPackage`
+                nix_name = self._get_ref_name(pkg.name, pkg.ver)
                 if self.nixpkgs.exists(pkg.name):
-                    nix_name = self._get_ref_name(pkg.name, pkg.ver)
                     out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
-                    out += self._unify_nixpkgs_keys(pkg.name, pkg.ver)
+                    out += self._unify_nixpkgs_keys(pkg.name, main_key=nix_name)
                 else:
-                    out += self._gen_builPythonPackage(pkg.name, pkg.ver, build_inputs_str, prop_build_inputs_str)
+                    out += self._gen_builPythonPackage(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
             elif pkg.provider_info.provider == WheelDependencyProvider.name:
                 out += self._gen_wheel_buildPythonPackage(pkg.name, pkg.ver, prop_build_inputs_str,
                                                           pkg.provider_info.wheel_fname)
                 if self.nixpkgs.exists(pkg.name):
-                    out += self._unify_nixpkgs_keys(pkg.name, pkg.ver)
+                    out += self._unify_nixpkgs_keys(pkg.name)
             elif pkg.provider_info.provider == NixpkgsDependencyProvider.name:
                 nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
                 out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
-                out += self._unify_nixpkgs_keys(pkg.name, pkg.ver)
+                out += self._unify_nixpkgs_keys(pkg.name, main_key=nix_name)
         end_overlay_section = f"""
                 }};
           """
