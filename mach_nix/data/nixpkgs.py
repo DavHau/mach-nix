@@ -12,7 +12,7 @@ class NixpkgsPyPkg:
     ver: Version
 
 
-class NixpkgsDirectory(UserDict):
+class NixpkgsIndex(UserDict):
     # mapping from pypi name to nix key
     _aliases = dict(
         torch='pytorch',
@@ -22,32 +22,22 @@ class NixpkgsDirectory(UserDict):
     def __init__(self, nixpkgs_json_file, **kwargs):
         with open(nixpkgs_json_file) as f:
             data = json.load(f)
-        self.by_nix_key = {}
         self.data = {}
-        for nix_key, version in data.items():
-            if not version:
+        for nix_key, s in data.items():
+            if '@' not in s:
                 continue
-            self.by_nix_key[nix_key] = pkg = NixpkgsPyPkg(
-                nix_key=nix_key,
-                ver=parse(version)
-            )
-            key = self._unify_key(nix_key)
-            if key not in self.data:
-                self.data[key] = []
-            # Skip if version already exists. Prevents infinite recursions in nix (see 'pytest' + 'pytest_5')
-            elif any(existing_pkg.ver == pkg.ver for existing_pkg in self.data[key]):
-                continue
-            self.data[key].append(pkg)
-        super(NixpkgsDirectory, self).__init__(self.data, **kwargs)
-
-    def __getitem__(self, name) -> NixpkgsPyPkg:
-        return self.data[self._unify_key(name)][-1]
+            pname, version = s.split('@')
+            pname_key = pname.replace('_', '-').lower()
+            if pname_key not in self.data:
+                self.data[pname_key] = {}
+            self.data[pname_key][version] = nix_key
+        super(NixpkgsIndex, self).__init__(self.data, **kwargs)
 
     def has_multiple_candidates(self, name):
-        return len(self.data[self._unify_key(name)]) > 1
+        return len(self.data[name]) > 1
 
     def get_all_candidates(self, name) -> List[NixpkgsPyPkg]:
-        return self.data[self._unify_key(name)]
+        return [NixpkgsPyPkg(nix_key, parse(ver)) for ver, nix_key in self.data[name].items()]
 
     def get_highest_ver(self, pkgs: List[NixpkgsPyPkg]):
         return max(pkgs, key=lambda p: p.ver)
@@ -65,7 +55,7 @@ class NixpkgsDirectory(UserDict):
         """
         pkgs: List[NixpkgsPyPkg] = sorted(self.get_all_candidates(name), key=lambda pkg: pkg.ver)
         if len(pkgs) == 1:
-            return self[name].nix_key
+            return pkgs[0].nix_key
         # try to find nixpkgs candidate with closest version
         remaining_pkgs = pkgs
         for i in range(7):  # usually there are not more than 4 parts in a version
@@ -74,25 +64,16 @@ class NixpkgsDirectory(UserDict):
                 return same_ver[0].nix_key
             elif len(same_ver) == 0:
                 highest = self.get_highest_ver(remaining_pkgs).nix_key
-                print(f'WARNING: Unable to decide which of nixpkgs\'s definitions {[p.nix_key for p in remaining_pkgs]}'
-                      f' suits best as base for {name}:{ver}. Picking {highest}')
+                print(f'Multiple nixkgs attributes found for {name}-{ver}: {[p.nix_key for p in remaining_pkgs]}'
+                      f"\nPicking '{highest}' as base attribute name.")
                 return highest
             remaining_pkgs = same_ver
-        # In every case we should have returned by now
+        # In any case we should have returned by now
         raise Exception("Dude... Check yor code!")
-
-    def get_by_nix_key(self, nix_key):
-        return self.data[nix_key]
-
-    def _unify_key(self, key) -> str:
-        key = key.replace('-', '').replace('_', '').lower().rstrip('0123456789')
-        if key in self._aliases:
-            return self._aliases[key]
-        return key
 
     def exists(self, name, ver=None):
         try:
-            candidates = [c for c in self.get_all_candidates(self._unify_key(name))]
+            candidates = [c for c in self.get_all_candidates(name)]
         except KeyError:
             return False
         if ver:

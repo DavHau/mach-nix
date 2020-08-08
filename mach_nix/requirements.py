@@ -6,6 +6,7 @@ from distlib.markers import DEFAULT_CONTEXT
 from packaging.version import parse, _Version
 from pkg_resources._vendor.packaging.specifiers import SpecifierSet
 
+from mach_nix.cache import cached
 from mach_nix.versions import PyVer
 
 
@@ -58,7 +59,7 @@ def filter_reqs_by_eval_marker(reqs: Iterable[Requirement], context: dict, selec
                 yield req
 
 
-
+@cached(lambda args: tuple(args[0]) if isinstance(args[0], list) else args[0])
 def parse_reqs(strs):
     reqs = list(pkg_resources.parse_requirements(strs))
     for req in reqs:

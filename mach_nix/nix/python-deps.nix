@@ -24,6 +24,15 @@ rec {
     };
     doCheck = false;
   };
+  tree-format = python.pkgs.buildPythonPackage {
+    name = "tree-format-0.1.2";
+    src = fetchurl {
+      url = "https://files.pythonhosted.org/packages/0d/91/8d860c75c3e70e6bbec7b898b5f753bf5da404be9296e245034360759645/tree-format-0.1.2.tar.gz";
+      sha256 = "a538523aa78ae7a4b10003b04f3e1b37708e0e089d99c9d3b9e1c71384c9a7f9";
+    };
+    doCheck = false;
+  };
+
   packaging = python.pkgs.packaging;
   setuptools = python.pkgs.setuptools;
 }

@@ -3,6 +3,7 @@ import os
 import subprocess as sp
 import tempfile
 from os.path import realpath, dirname
+from time import time
 
 import toml
 
@@ -11,6 +12,7 @@ from mach_nix.generate import main
 pwd = dirname(realpath(__file__))
 
 os.environ['py_ver_str'] = '3.7.5'
+os.environ['system'] = 'x86_64-linux'
 os.environ['out_file'] = f'{pwd}/overrides.nix'
 os.environ['disable_checks'] = 'true'
 
@@ -19,6 +21,9 @@ with open(pwd + "/../mach_nix/provider_defaults.toml") as f:
 if os.path.isfile("./providers.toml"):
     with open(pwd + "./providers.toml") as f:
         provider_settings.update(toml.load(f))
+provider_settings.update(dict(
+    # add providers here
+))
 os.environ['providers'] = json.dumps(provider_settings)
 
 nixpkgs_json = tempfile.mktemp()
@@ -43,4 +48,7 @@ with open(pwd + "/reqs.txt") as f:
     os.environ['requirements'] = f.read()
 
 # generates and writes nix expression into ./debug/expr.nix
+start = time()
 main()
+dur = round(time() - start, 1)
+print(f"resolving took: {dur}s")

@@ -5,10 +5,11 @@ import resolvelib
 from packaging.version import Version
 
 from mach_nix.data.providers import DependencyProviderBase
-from mach_nix.data.nixpkgs import NixpkgsDirectory
+from mach_nix.data.nixpkgs import NixpkgsIndex
 from mach_nix.requirements import Requirement
 from mach_nix.resolver import Resolver, ResolvedPkg
 from mach_nix.versions import filter_versions
+from mach_nix.visualize import print_deps
 
 
 @dataclass
@@ -20,7 +21,7 @@ class Candidate:
 
 # Implement logic so the resolver understands the requirement format.
 class Provider:
-    def __init__(self, nixpkgs: NixpkgsDirectory, deps_db: DependencyProviderBase):
+    def __init__(self, nixpkgs: NixpkgsIndex, deps_db: DependencyProviderBase):
         self.nixpkgs = nixpkgs
         self.deps_db = deps_db
 
@@ -53,7 +54,7 @@ class Provider:
 
 
 class ResolvelibResolver(Resolver):
-    def __init__(self, nixpkgs: NixpkgsDirectory, deps_provider: DependencyProviderBase):
+    def __init__(self, nixpkgs: NixpkgsIndex, deps_provider: DependencyProviderBase):
         self.nixpkgs = nixpkgs
         self.deps_provider = deps_provider
 
@@ -80,4 +81,5 @@ class ResolvelibResolver(Resolver):
                 provider_info=provider_info,
                 extras_selected=list(result.mapping[name].extras)
             ))
+        print_deps(nix_py_pkgs, self.nixpkgs)
         return nix_py_pkgs

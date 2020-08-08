@@ -5,6 +5,8 @@ from typing import Iterable, Tuple, List
 
 from packaging.version import Version, parse, LegacyVersion
 
+from mach_nix.cache import cached
+
 
 class PyVer(Version):
     def nix(self):
@@ -69,9 +71,14 @@ def best_version(versions: Iterable[Version]) -> Version:
     return best
 
 
+@cached(keyfunc=lambda args: tuple(args[0]) + tuple(args[1]))
 def filter_versions(
         versions: Iterable[Version],
         specs: Iterable[Tuple[str, Version]]) -> List[Version]:
+    """
+    Reduces a given list of versions to contain only versions
+    which are allowed according to the given specifiers
+    """
     for op, ver in specs:
         ver = parse(ver)
         if op == '==':

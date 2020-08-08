@@ -1,24 +1,25 @@
 import json
+import platform
 import re
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Tuple, Iterable, Set
+from typing import List, Tuple, Iterable
 
 import distlib.markers
 from packaging.version import Version, parse
 
-from .nixpkgs import NixpkgsDirectory
+from .nixpkgs import NixpkgsIndex
 from mach_nix.requirements import filter_reqs_by_eval_marker, Requirement, parse_reqs, context
-from mach_nix.versions import PyVer, ver_sort_key
+from mach_nix.versions import PyVer, ver_sort_key, filter_versions
 from .bucket_dict import LazyBucketDict
+from ..cache import cached
 
 
 @dataclass
 class ProviderInfo:
     provider: str
     # following args are only required in case of wheel
-    wheel_pyver: str = None
     wheel_fname: str = None
 
 
@@ -63,12 +64,15 @@ class PackageNotFound(Exception):
 
 
 class DependencyProviderBase(ABC):
-    def __init__(self, py_ver: PyVer, *args, **kwargs):
+    def __init__(self, py_ver: PyVer, platform, system, *args, **kwargs):
         self.context = context(py_ver)
         self.context_wheel = self.context.copy()
         self.context_wheel['extra'] = None
         self.py_ver_digits = py_ver.digits()
+        self.platform = platform
+        self.system = system
 
+    @cached()
     def available_versions(self, pkg_name: str) -> Iterable[Version]:
         """
         returns available versions for given package name in reversed preference
@@ -98,6 +102,7 @@ class DependencyProviderBase(ABC):
         pass
 
     @abstractmethod
+    @cached()
     def get_pkg_reqs(self, pkg_name, pkg_version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
         """
         Get all requirements of a candidate for the current platform and the specified extras
@@ -112,12 +117,13 @@ class DependencyProviderBase(ABC):
 class CombinedDependencyProvider(DependencyProviderBase):
     name = 'combined'
 
-    def __init__(self,
-                 nixpkgs: NixpkgsDirectory,
-                 provider_settings: ProviderSettings,
-                 pypi_deps_db_src: str,
-                 *args,
-                 **kwargs):
+    def __init__(
+            self,
+            nixpkgs: NixpkgsIndex,
+            provider_settings: ProviderSettings,
+            pypi_deps_db_src: str,
+            *args,
+            **kwargs):
         super(CombinedDependencyProvider, self).__init__(*args, **kwargs)
         self.provider_settings = provider_settings
         wheel = WheelDependencyProvider(f"{pypi_deps_db_src}/wheel", *args, **kwargs)
@@ -178,6 +184,7 @@ class CombinedDependencyProvider(DependencyProviderBase):
         print(error_text, file=sys.stderr)
         exit(1)
 
+    @cached()
     def available_versions(self, pkg_name: str) -> Iterable[Version]:
         # use dict as ordered set
         available_versions = []
@@ -202,11 +209,12 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
     # )
 
     # TODO: implement extras by looking them up via the equivalent wheel
-    def __init__(self,
-                 nixpkgs: NixpkgsDirectory,
-                 wheel_provider: 'WheelDependencyProvider',
-                 sdist_provider: 'SdistDependencyProvider',
-                 *args, **kwargs):
+    def __init__(
+            self,
+            nixpkgs: NixpkgsIndex,
+            wheel_provider: 'WheelDependencyProvider',
+            sdist_provider: 'SdistDependencyProvider',
+            *args, **kwargs):
         super(NixpkgsDependencyProvider, self).__init__(*args, **kwargs)
         self.nixpkgs = nixpkgs
         self.wheel_provider = wheel_provider
@@ -234,106 +242,127 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
         return []
 
 
+@dataclass
+class WheelRelease:
+    fn_pyver: str  # the python version indicated by the filename
+    name: str
+    ver: str
+    fn: str
+    requires_dist: list
+    provided_extras: list
+    requires_python: str  # the python version of the wheel metadata
+
+    def __hash__(self):
+        return hash(self.fn)
+
+
 class WheelDependencyProvider(DependencyProviderBase):
     name = 'wheel'
-
     def __init__(self, data_dir: str, *args, **kwargs):
         super(WheelDependencyProvider, self).__init__(*args, **kwargs)
         self.data = LazyBucketDict(data_dir)
-        major, minor = self.py_ver_digits
-        self.py_ver_re = re.compile(rf"^(py|cp)?{major}\.?{minor}?$")
-        self.preferred_wheels = (
-            'manylinux2014_x86_64.whl',
-            'manylinux2010_x86_64.whl',
-            'manylinux1_x86_64.whl',
-            'none-any.whl'
-        )
+        m = self.py_ver_digits[-1]
+        if self.system == "linux":
+            self.preferred_wheels = (
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux2014_{self.platform}"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux2010_{self.platform}"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux1_{self.platform}"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-linux_{self.platform}"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-any"),
+            )
+        elif self.system == "darwin":
+            self.preferred_wheels = (
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_universal"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_x86_64"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_intel"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_(fat64|fat32)"),
+                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-any"),)
+        else:
+            raise Exception(f"Unsupported Platform {platform.system()}")
 
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
-        name = self.unify_key(pkg_name)
-        result = []
-        for pyver in self._get_pyvers_for_pkg(name):
-            vers = self.data[name][pyver]
-            for ver, fnames in vers.items():
-                for fn, deps in fnames.items():
-                    if self._wheel_ok(fn):
-                        result.append(parse(ver))
-                        break
-        return result
-
-    def choose_wheel(self, pkg_name, pkg_version: Version) -> Tuple[str, str]:
-        name = self.unify_key(pkg_name)
-        ver = str(pkg_version)
-        ok_fnames = {}
-        for pyver in self._get_pyvers_for_pkg(name):
-            if not ver in self.data[name][pyver]:
-                continue
-            fnames = self.data[name][pyver][ver]
-            ok_fnames = {fn: pyver for fn in fnames if
-                         self._wheel_ok(fn) and any(fn.endswith(end) for end in self.preferred_wheels)}
-        if not ok_fnames:
-            raise Exception(f"No wheel available for {name}:{ver}")
-        if len(ok_fnames) > 1:
-            fn = self._select_preferred_wheel(ok_fnames)
-        else:
-            fn = list(ok_fnames.keys())[0]
-        pyver = ok_fnames[fn]
-        return pyver, fn
-
-    def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
-        wheel_pyver, wheel_fname = self.choose_wheel(pkg_name, pkg_version)
-        return ProviderInfo(provider=self.name, wheel_pyver=wheel_pyver, wheel_fname=wheel_fname)
-
-    def get_pkg_reqs_raw(self, pkg_name, pkg_version: Version):
-        name = self.unify_key(pkg_name)
-        if pkg_version not in self._available_versions(pkg_name):
-            raise PackageNotFound(pkg_name, pkg_version, self.name)
-        ver = str(pkg_version)
-        pyver, fn = self.choose_wheel(pkg_name, pkg_version)
-        deps = self.data[name][pyver][ver][fn]
-        if isinstance(deps, str):
-            key_ver, key_fn = deps.split('@')
-            versions = self.data[name][pyver]
-            deps = versions[key_ver][key_fn]
-        return deps['requires_dist'] if 'requires_dist' in deps else []
+        return (parse(wheel.ver) for wheel in self._suitable_wheels(pkg_name))
 
     def get_pkg_reqs(self, pkg_name, pkg_version: Version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
         """
         Get requirements for package
         """
-        reqs_raw = self.get_pkg_reqs_raw(pkg_name, pkg_version)
+        reqs_raw = self._choose_wheel(pkg_name, pkg_version).requires_dist
+        if reqs_raw is None:
+            reqs_raw = []
         # handle extras by evaluationg markers
         install_reqs = list(filter_reqs_by_eval_marker(parse_reqs(reqs_raw), self.context_wheel, extras))
         return install_reqs, []
 
-    def _get_pyvers_for_pkg(self, name) -> Iterable:
-        name = self.unify_key(name)
+    def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
+        wheel = self._choose_wheel(pkg_name, pkg_version)
+        return ProviderInfo(provider=self.name, wheel_fname=wheel.fn)
+
+    def _all_releases(self, pkg_name):
+        name = self.unify_key(pkg_name)
         if name not in self.data:
             return []
-        ok_pyvers = (pyver for pyver in self.data[name].keys() if self._pyver_ok(pyver))
-        return ok_pyvers
+        for fn_pyver, vers in self.data[name].items():
+            for ver, fnames in vers.items():
+                for fn, deps in fnames.items():
+                    if isinstance(deps, str):
+                        key_ver, key_fn = deps.split('@')
+                        versions = self.data[name][fn_pyver]
+                        deps = versions[key_ver][key_fn]
+                    assert isinstance(deps, dict)
+                    yield WheelRelease(
+                        fn_pyver,
+                        name,
+                        ver,
+                        fn,
+                        deps['requires_dist'] if 'requires_dist' in deps else None,
+                        deps['requires_extras'] if 'requires_extras' in deps else None,
+                        deps['requires_python'] if 'requires_python' in deps else None,
+                    )
 
-    def _select_preferred_wheel(self, filenames: Iterable[str]):
-        for key in self.preferred_wheels:
-            for fn in filenames:
-                if fn.endswith(key):
-                    return fn
-        raise Exception("No wheel matches expected format")
+    def _apply_filters(self, filters: List[callable], objects: Iterable):
+        """
+        Applies multiple filters to objects. First filter in the list is applied first
+        """
+        assert len(filters) > 0
+        if len(filters) == 1:
+            return filter(filters[0], objects)
+        return filter(filters[-1], self._apply_filters(filters[:-1], objects))
 
-    def _pyver_ok(self, ver: str):
-        ver = ver.strip()
-        major, minor = self.py_ver_digits
-        if re.fullmatch(self.py_ver_re, ver) \
-                or ver == f"py{major}"\
-                or ver == "py2.py3":
-            return True
-        return False
+    @cached()
+    def _choose_wheel(self, pkg_name, pkg_version: Version) -> WheelRelease:
+        suitable = list(self._suitable_wheels(pkg_name, pkg_version))
+        if not suitable:
+            raise PackageNotFound(pkg_name, pkg_version, self.name)
+        return self._select_preferred_wheel(suitable)
 
-    def _wheel_ok(self, fn):
-        if fn.endswith('any.whl'):
+    def _suitable_wheels(self, pkg_name: str, ver: Version = None) -> Iterable[WheelRelease]:
+        wheels = self._all_releases(pkg_name)
+        if ver is not None:
+            wheels = filter(lambda w: parse(w.ver) == ver, wheels)
+        return self._apply_filters(
+            [
+                self._wheel_type_ok,
+                self._python_requires_ok,
+            ],
+            wheels)
+
+    def _select_preferred_wheel(self, wheels: Iterable[WheelRelease]):
+        wheels = list(wheels)
+        for pattern in self.preferred_wheels:
+            for wheel in wheels:
+                if re.search(pattern, wheel.fn):
+                    return wheel
+        raise Exception(f"No wheel type found that is compatible to the current system")
+
+    def _wheel_type_ok(self, wheel: WheelRelease):
+        return any(re.search(pattern, wheel.fn) for pattern in self.preferred_wheels)
+
+    def _python_requires_ok(self, wheel: WheelRelease):
+        if not wheel.requires_python:
             return True
-        elif "manylinux" in fn:
-            return True
+        ver = parse('.'.join(self.py_ver_digits))
+        return bool(filter_versions([ver], list(parse_reqs(f"python{wheel.requires_python}"))[0].specs))
 
 
 class SdistDependencyProvider(DependencyProviderBase):
@@ -342,6 +371,7 @@ class SdistDependencyProvider(DependencyProviderBase):
         self.data = LazyBucketDict(data_dir)
         super(SdistDependencyProvider, self).__init__(*args, **kwargs)
 
+    @cached()
     def _get_candidates(self, name) -> dict:
         """
         returns all candidates for the give name which are available for the current python version
