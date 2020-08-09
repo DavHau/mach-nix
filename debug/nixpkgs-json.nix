@@ -10,4 +10,8 @@ let
   python = (import target_nixpkgs_src { config = {}; }).python37;
 in
 with import target_nixpkgs_src { config = {}; overlays = []; };
-import ../mach_nix/nix/nixpkgs-json.nix { inherit pkgs python; }
+import ../mach_nix/nix/nixpkgs-json.nix rec {
+  inherit pkgs python;
+  overrides = [(import ./overrides_pre.nix)];
+  mergeOverrides = lib.foldr lib.composeExtensions (self: super: { });
+}

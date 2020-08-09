@@ -2,18 +2,7 @@ let
   pkgs = import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; };
   python = import ./mach_nix/nix/python.nix { inherit pkgs; };
   python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = pkgs.fetchurl; }));
-  mergeOverrides = with pkgs.lib; overrides:
-    if length overrides == 0
-    then a: b: {}  # return dummy overrides
-    else
-      if length overrides == 1
-      then elemAt overrides 0
-      else
-        let
-          last = head ( reverseList overrides );
-          rest = reverseList (tail ( reverseList overrides ));
-        in
-          composeExtensions (mergeOverrides rest) last;
+  mergeOverrides = with pkgs.lib; foldr composeExtensions (self: super: { });
   autoPatchelfHook = import ./mach_nix/nix/auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
 in
 rec {
@@ -75,6 +64,7 @@ rec {
       py = python.override { packageOverrides = mergeOverrides overrides_pre; };
       result = machNix {
         inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
+        overrides = overrides_pre;
         python = py;
       };
       py_final = python.override { packageOverrides = mergeOverrides (
@@ -105,6 +95,7 @@ rec {
       py = python.override { packageOverrides = mergeOverrides overrides_pre; };
       result = machNix {
         inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
+        overrides = overrides_pre;
         python = py;
       };
       py_final = python.override { packageOverrides = mergeOverrides (

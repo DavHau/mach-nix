@@ -1,0 +1,19 @@
+pySelf: pySuper: {
+  pulsar = pySuper.buildPythonPackage {
+    src = fetchGit {
+      url = "https://github.com/DavHau/pulsar";
+      ref = "dev";
+      rev = "4b01fa19cc28ac912a6ffb18ef64d46bae77f800";
+    };
+    pname = "pulsar";
+    version = "2.0.2";  # not really
+    doCheck = false;
+    doInstallCheck = false;
+  };
+  asyncssh = pySuper.asyncssh.overridePythonAttrs (oldAttrs: {
+    patches = [];
+  });
+  pytest-dependency = pySuper.pytest-dependency.overridePythonAttrs (oldAttrs: {
+    patches = [];
+  });
+}
