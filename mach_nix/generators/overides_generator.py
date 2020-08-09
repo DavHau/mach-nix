@@ -68,11 +68,13 @@ class OverridesGenerator(ExpressionGenerator):
             f"{b}" for b in sorted(prop_build_inputs_local | prop_build_inputs_nixpkgs))
         return prop_build_inputs_str
 
-    def _gen_overrideAttrs(self, name, ver, nix_name, build_inputs_str, prop_build_inputs_str):
+    def _gen_overrideAttrs(self, name, ver, nix_name, build_inputs_str, prop_build_inputs_str, keep_src=False):
         out = f"""
             {nix_name} = python-super.{nix_name}.overridePythonAttrs ( oldAttrs: {{
               pname = "{name}";
-              version = "{ver}";
+              version = "{ver}";"""
+        if not keep_src:
+            out += f"""
               src = fetchPypi "{name}" "{ver}";"""
         if build_inputs_str:
             out += f"""
@@ -183,7 +185,9 @@ class OverridesGenerator(ExpressionGenerator):
                     out += self._unify_nixpkgs_keys(pkg.name)
             elif pkg.provider_info.provider == NixpkgsDependencyProvider.name:
                 nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
-                out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
+                out += self._gen_overrideAttrs(
+                    pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str,
+                    keep_src=True)
                 out += self._unify_nixpkgs_keys(pkg.name, main_key=nix_name)
         end_overlay_section = f"""
                 }};
