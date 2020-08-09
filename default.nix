@@ -37,9 +37,15 @@ rec {
 
   # Returns `overrides` and `select_pkgs` which satisfy your requirements
   machNix = args:
-    let result = import "${machNixFile args}/share/mach_nix_file.nix";
+    let
+      result = import "${machNixFile args}/share/mach_nix_file.nix";
+      manylinux =
+        if pkgs.stdenv.hostPlatform.system == "x86_64-darwin" then
+          []
+        else
+          pkgs.pythonManylinuxPackages.manylinux1;
     in {
-      overrides = result.overrides pkgs.pythonManylinuxPackages.manylinux1 autoPatchelfHook;
+      overrides = result.overrides manylinux autoPatchelfHook;
       select_pkgs = result.select_pkgs;
     };
 
@@ -57,11 +63,11 @@ rec {
       disable_checks ? true,  # Disable tests wherever possible to decrease build time.
       overrides_pre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overrides_post ? [],  # list of pythonOverrides to apply after the machnix overrides
-      pkgs ? nixpkgs,  # pass custom nixpkgs. Only used for manylinux wheel dependencies
+      pkgs ? nixpkgs,  # pass custom nixpkgs.
       providers ? {},  # define provider preferences
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
       pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
-      python ? pkgs.python3,  # select custom python to base overrides on. Should be from nixpkgs >= 20.03
+      python ? pkgs.python3,  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
       _provider_defaults ? with builtins; fromTOML (readFile ./mach_nix/provider_defaults.toml),
       ...
     }:
@@ -88,11 +94,11 @@ rec {
       disable_checks ? true,  # Disable tests wherever possible to decrease build time.
       overrides_pre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overrides_post ? [],  # list of pythonOverrides to apply after the machnix overrides
-      pkgs ? nixpkgs,  # pass custom nixpkgs. Only used for manylinux wheel dependencies
+      pkgs ? nixpkgs,  # pass custom nixpkgs.
       providers ? {},  # define provider preferences
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
       pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
-      python ? pkgs.python3,  # select custom python to base overrides on. Should be from nixpkgs >= 20.03
+      python ? pkgs.python3,  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
       _provider_defaults ? with builtins; fromTOML (readFile ./mach_nix/provider_defaults.toml)
     }:
     let

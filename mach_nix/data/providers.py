@@ -257,22 +257,24 @@ class WheelDependencyProvider(DependencyProviderBase):
     def __init__(self, data_dir: str, *args, **kwargs):
         super(WheelDependencyProvider, self).__init__(*args, **kwargs)
         self.data = LazyBucketDict(data_dir)
-        m = self.py_ver_digits[-1]
+        maj = self.py_ver_digits[0]  # major version
+        min = self.py_ver_digits[1]  # minor version
         if self.system == "linux":
+            cp_abi = f"cp{maj}{min}mu" if int(maj) == 2 else f"cp{maj}{min}m"
             self.preferred_wheels = (
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux2014_{self.platform}"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux2010_{self.platform}"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux1_{self.platform}"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-linux_{self.platform}"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-any"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-manylinux2014_{self.platform}"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-manylinux2010_{self.platform}"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-manylinux1_{self.platform}"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-linux_{self.platform}"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-any"),
             )
         elif self.system == "darwin":
             self.preferred_wheels = (
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_universal"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_x86_64"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_intel"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_(fat64|fat32)"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-any"),)
+                re.compile(rf"(py{maj}|cp{maj}){min}?-(cp{maj}{min}|abi3|none)-macosx_\d*_\d*_universal"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-(cp{maj}{min}|abi3|none)-macosx_\d*_\d*_x86_64"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-(cp{maj}{min}|abi3|none)-macosx_\d*_\d*_intel"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-(cp{maj}{min}|abi3|none)-macosx_\d*_\d*_(fat64|fat32)"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-(cp{maj}{min}|abi3|none)-any"),)
         else:
             raise Exception(f"Unsupported Platform {platform.system()}")
 
