@@ -8,6 +8,7 @@ from typing import List, Tuple, Iterable
 
 import distlib.markers
 from packaging.version import Version, parse
+from pkg_resources import RequirementParseError
 
 from .nixpkgs import NixpkgsIndex
 from mach_nix.requirements import filter_reqs_by_eval_marker, Requirement, parse_reqs, context
@@ -65,7 +66,7 @@ class PackageNotFound(Exception):
 
 class DependencyProviderBase(ABC):
     def __init__(self, py_ver: PyVer, platform, system, *args, **kwargs):
-        self.context = context(py_ver)
+        self.context = context(py_ver, platform, system)
         self.context_wheel = self.context.copy()
         self.context_wheel['extra'] = None
         self.py_ver_digits = py_ver.digits()
@@ -202,11 +203,6 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
 class NixpkgsDependencyProvider(DependencyProviderBase):
     name = 'nixpkgs'
-    # mapping from pypi name to nix key
-    # _aliases = dict(
-    #     torch='pytorch',
-    #     tensorboard='tensorflow-tensorboard'
-    # )
 
     # TODO: implement extras by looking them up via the equivalent wheel
     def __init__(
@@ -261,22 +257,24 @@ class WheelDependencyProvider(DependencyProviderBase):
     def __init__(self, data_dir: str, *args, **kwargs):
         super(WheelDependencyProvider, self).__init__(*args, **kwargs)
         self.data = LazyBucketDict(data_dir)
-        m = self.py_ver_digits[-1]
+        maj = self.py_ver_digits[0]  # major version
+        min = self.py_ver_digits[1]  # minor version
         if self.system == "linux":
+            cp_abi = f"cp{maj}{min}mu" if int(maj) == 2 else f"cp{maj}{min}m"
             self.preferred_wheels = (
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux2014_{self.platform}"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux2010_{self.platform}"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-manylinux1_{self.platform}"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-linux_{self.platform}"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}m|abi3|none)-any"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-manylinux2014_{self.platform}"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-manylinux2010_{self.platform}"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-manylinux1_{self.platform}"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-linux_{self.platform}"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-any"),
             )
         elif self.system == "darwin":
             self.preferred_wheels = (
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_universal"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_x86_64"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_intel"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-macosx_\d*_\d*_(fat64|fat32)"),
-                re.compile(rf"(py3|cp3){m}?-(cp3{m}|abi3|none)-any"),)
+                re.compile(rf"(py{maj}|cp{maj}){min}?-(cp{maj}{min}|abi3|none)-macosx_\d*_\d*_universal"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-(cp{maj}{min}|abi3|none)-macosx_\d*_\d*_x86_64"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-(cp{maj}{min}|abi3|none)-macosx_\d*_\d*_intel"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-(cp{maj}{min}|abi3|none)-macosx_\d*_\d*_(fat64|fat32)"),
+                re.compile(rf"(py{maj}|cp{maj}){min}?-(cp{maj}{min}|abi3|none)-any"),)
         else:
             raise Exception(f"Unsupported Platform {platform.system()}")
 
@@ -317,7 +315,7 @@ class WheelDependencyProvider(DependencyProviderBase):
                         fn,
                         deps['requires_dist'] if 'requires_dist' in deps else None,
                         deps['requires_extras'] if 'requires_extras' in deps else None,
-                        deps['requires_python'] if 'requires_python' in deps else None,
+                        deps['requires_python'].strip(',') if 'requires_python' in deps else None,
                     )
 
     def _apply_filters(self, filters: List[callable], objects: Iterable):
@@ -362,7 +360,12 @@ class WheelDependencyProvider(DependencyProviderBase):
         if not wheel.requires_python:
             return True
         ver = parse('.'.join(self.py_ver_digits))
-        return bool(filter_versions([ver], list(parse_reqs(f"python{wheel.requires_python}"))[0].specs))
+        try:
+            parsed_py_requires = list(parse_reqs(f"python{wheel.requires_python}"))
+            return bool(filter_versions([ver], parsed_py_requires[0].specs))
+        except RequirementParseError:
+            print(f"WARNING: `requires_python` attribute of wheel {wheel.name}:{wheel.ver} could not be parsed")
+            return False
 
 
 class SdistDependencyProvider(DependencyProviderBase):

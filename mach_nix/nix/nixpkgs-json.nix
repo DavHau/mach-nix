@@ -1,4 +1,4 @@
-{pkgs, python}:
+{pkgs, python, mergeOverrides, overrides}:
 let
   fetchPypiPnamePassthruOverride = pySelf: PySuper: {
     fetchPypi = let
@@ -22,7 +22,7 @@ let
       });
   };
 
-  py = python.override { packageOverrides = fetchPypiPnamePassthruOverride; };
+  py = python.override { packageOverrides = mergeOverrides ( overrides ++ [ fetchPypiPnamePassthruOverride ] ); };
 in
 
 with pkgs;

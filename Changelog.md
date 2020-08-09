@@ -1,3 +1,21 @@
+# 2.2.0 (09 Aug 2020)
+Improved success rate, MacOS support, bugfixes, optimizations
+
+### Features
+ - Improved selection of wheel releases. MacOS is now supported and architectures besides x86_64 should be handled correctly.
+ - Whenever mach-nix resolves dependencies, a visualization of the resulting dependency tree is printed on the terminal. 
+ - The dependency DB is now accessed through a caching layer which reduces the resolver's CPU time significantly for larger environments.
+ - The python platform context is now generated from the nix build environment variable `system`. This should decrease the chance of impurities during dependency resolution.
+ 
+### Fixes
+ - The requires_python attribute of wheels was not respected. This lead to failing builds especially for older python versions. Now `requires_python` is part of the dependency graph and affects resolution.
+ - Detecting the correct package name for python packages in nixpkgs often failed since the attribute names don't follow a fixed schema. This lead to a handful of different errors in different situations. Now the package names are extracted from the pypi `url` inside the `src` attribute which is much more reliable. For packages which are not fetched from pypi, the `pname` attribute is used as fallback.
+ - Fixed bug which lead to the error `attribute 'sdist' missing` if a package from the nixpkgs provider was used which doesn't publish it's source on pypi. (For example `tensorflow`)
+ 
+### Other Changes
+ - Mach-nix now uses a revision of the nixpkgs-unstable branch instead of nixos-20.03 as base fo the tool and the nixpkgs provider.
+ - Updated revision of the dependency DB
+
 # 2.1.1 (30 Jul 2020)
 Fix broken wheel packages
 ### Fixes:

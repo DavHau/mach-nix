@@ -48,7 +48,7 @@ def main():
         disable_checks,
         ResolvelibResolver(nixpkgs, deps_provider),
     )
-    reqs = filter_reqs_by_eval_marker(parse_reqs(requirements), context(py_ver))
+    reqs = filter_reqs_by_eval_marker(parse_reqs(requirements), context(py_ver, platform, system))
     expr = generator.generate(reqs)
     with open(out_file, 'w') as f:
         f.write(expr)

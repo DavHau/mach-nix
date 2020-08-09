@@ -10,10 +10,13 @@ from mach_nix.cache import cached
 from mach_nix.versions import PyVer
 
 
-def context(py_ver: PyVer):
+def context(py_ver: PyVer, platform: str, system: str):
     context = DEFAULT_CONTEXT.copy()
     context.update(dict(
-        platform_version='',  # remove highly impure platform_version
+        platform_version='',  # remove impure platform_version
+        platform_release='',  # remove impure kernel verison
+        platform_system=system[0].upper() + system[1:],  # eg. Linux or Darwin
+        platform_machine=platform,  # eg. x86_64
         python_version=py_ver.python_version(),
         python_full_version=py_ver.python_full_version()
     ))
