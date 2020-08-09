@@ -66,7 +66,7 @@ class PackageNotFound(Exception):
 
 class DependencyProviderBase(ABC):
     def __init__(self, py_ver: PyVer, platform, system, *args, **kwargs):
-        self.context = context(py_ver)
+        self.context = context(py_ver, platform, system)
         self.context_wheel = self.context.copy()
         self.context_wheel['extra'] = None
         self.py_ver_digits = py_ver.digits()
