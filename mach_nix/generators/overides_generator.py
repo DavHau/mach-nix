@@ -149,7 +149,7 @@ class OverridesGenerator(ExpressionGenerator):
         )
         out = ''
         for key in sorted(other_names):
-            out += f"""    {key} = python-self.{name};\n"""
+            out += f"""    {key} = python-self."{name}";\n"""
         return out
 
     def _gen_overrides(self, pkgs: Dict[str, ResolvedPkg], overlay_keys, pkgs_names: str):
