@@ -55,11 +55,11 @@ Table of Contents
 You can either install mach-nix via pip or by using nix in case you already have the nix package manager installed.
 #### Installing via pip
 ```shell
-pip install git+git://github.com/DavHau/mach-nix@2.2.0
+pip install git+git://github.com/DavHau/mach-nix@2.2.1
 ```
 #### Installing via nix
 ```shell
-nix-env -if https://github.com/DavHau/mach-nix/tarball/2.2.0 -A mach-nix
+nix-env -if https://github.com/DavHau/mach-nix/tarball/2.2.1 -A mach-nix
 ```
 
 ---
@@ -91,7 +91,7 @@ You can call mach-nix directly from a nix expression
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.2.0";
+    ref = "2.2.1";
   });
 in
 mach-nix.mkPython {

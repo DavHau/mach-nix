@@ -1,3 +1,17 @@
+# 2.2.1 (11 Aug 2020)
+Handle circular dependencies, fix python 3.8 wheels, improve error message
+
+### Features
+ - Print more detailed info when the resolver raises a ResolutionImpossible error.
+ - Warm on circular dependencies and fix them automatically.
+
+### Fixes
+ - Fix crash on circular dependencies.
+ - Python 3.8 wheels have abi tag cp38, not cp38m. This was not considered before which prevented finding suitable manylinux wheels for python 3.8
+ 
+### Development
+ - Added integration tests under [./tests/](/tests/)
+
 # 2.2.0 (09 Aug 2020)
 Improved success rate, MacOS support, bugfixes, optimizations
 
