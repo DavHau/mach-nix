@@ -1,8 +1,6 @@
 _default =                "wheel,sdist,nixpkgs"
+
+pip =                     "nixpkgs"
+setupmeta =               "wheel"
 setuptools =              "nixpkgs"
 wheel =                   "nixpkgs,sdist"
-setupmeta =               "wheel"
-
-
-# gets mapped to 'importmagic' in nixpkgs provider which is the wrong package
-importmagic3 =            "sdist,wheel"
