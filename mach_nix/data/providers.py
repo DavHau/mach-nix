@@ -260,7 +260,7 @@ class WheelDependencyProvider(DependencyProviderBase):
         maj = self.py_ver_digits[0]  # major version
         min = self.py_ver_digits[1]  # minor version
         if self.system == "linux":
-            cp_abi = f"cp{maj}{min}mu" if int(maj) == 2 else f"cp{maj}{min}m"
+            cp_abi = f"cp{maj}{min}mu" if int(maj) == 2 else f"cp{maj}{min}m?"
             self.preferred_wheels = (
                 re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-manylinux2014_{self.platform}"),
                 re.compile(rf"(py{maj}|cp{maj}){min}?-({cp_abi}|abi3|none)-manylinux2010_{self.platform}"),

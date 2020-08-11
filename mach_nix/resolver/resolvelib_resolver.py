@@ -9,7 +9,7 @@ from mach_nix.data.nixpkgs import NixpkgsIndex
 from mach_nix.requirements import Requirement
 from mach_nix.resolver import Resolver, ResolvedPkg
 from mach_nix.versions import filter_versions
-from mach_nix.visualize import print_deps
+from mach_nix.deptree import remove_circles_and_print
 
 
 @dataclass
@@ -81,5 +81,5 @@ class ResolvelibResolver(Resolver):
                 provider_info=provider_info,
                 extras_selected=list(result.mapping[name].extras)
             ))
-        print_deps(nix_py_pkgs, self.nixpkgs)
+        remove_circles_and_print(nix_py_pkgs, self.nixpkgs)
         return nix_py_pkgs

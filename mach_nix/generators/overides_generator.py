@@ -68,7 +68,7 @@ class OverridesGenerator(ExpressionGenerator):
             f"{b}" for b in sorted(prop_build_inputs_local | prop_build_inputs_nixpkgs))
         return prop_build_inputs_str
 
-    def _gen_overrideAttrs(self, name, ver, nix_name, build_inputs_str, prop_build_inputs_str, keep_src=False):
+    def _gen_overrideAttrs(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str, keep_src=False):
         out = f"""
             {nix_name} = python-super.{nix_name}.overridePythonAttrs ( oldAttrs: {{
               pname = "{name}";
@@ -76,6 +76,9 @@ class OverridesGenerator(ExpressionGenerator):
         if not keep_src:
             out += f"""
               src = fetchPypi "{name}" "{ver}";"""
+        if circular_deps:
+            out += f"""
+              pipInstallFlags = "--no-dependencies";"""
         if build_inputs_str:
             out += f"""
               buildInputs = with python-self; (filter_deps oldAttrs "buildInputs") ++ [ {build_inputs_str} ];"""
@@ -90,12 +93,15 @@ class OverridesGenerator(ExpressionGenerator):
             });\n"""
         return unindent(out, 8)
 
-    def _gen_builPythonPackage(self, name, ver, nix_name, build_inputs_str, prop_build_inputs_str):
+    def _gen_builPythonPackage(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str):
         out = f"""
             {nix_name} = python-self.buildPythonPackage {{
               pname = "{name}";
               version = "{ver}";
               src = fetchPypi "{name}" "{ver}";"""
+        if circular_deps:
+            out += f"""
+              pipInstallFlags = "--no-dependencies";"""
         if build_inputs_str.strip():
             out += f"""
               buildInputs = with python-self; [ {build_inputs_str} ];"""
@@ -110,7 +116,7 @@ class OverridesGenerator(ExpressionGenerator):
             };\n"""
         return unindent(out, 8)
 
-    def _gen_wheel_buildPythonPackage(self, name, ver, prop_build_inputs_str, fname):
+    def _gen_wheel_buildPythonPackage(self, name, ver, circular_deps, prop_build_inputs_str, fname):
         manylinux = "manylinux1 ++ " if 'manylinux' in fname else ''
 
         # dontStrip added due to this bug - https://github.com/pypa/manylinux/issues/119
@@ -123,6 +129,9 @@ class OverridesGenerator(ExpressionGenerator):
               doCheck = false;
               doInstallCheck = false;
               dontStrip = true;"""
+        if circular_deps:
+            out += f"""
+              pipInstallFlags = "--no-dependencies";"""
         if manylinux:
             out += f"""
               nativeBuildInputs = [ autoPatchelfHook ];
@@ -174,19 +183,19 @@ class OverridesGenerator(ExpressionGenerator):
                 # or by creating it from scratch using `buildPythonPackage`
                 nix_name = self._get_ref_name(pkg.name, pkg.ver)
                 if self.nixpkgs.exists(pkg.name):
-                    out += self._gen_overrideAttrs(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
+                    out += self._gen_overrideAttrs(pkg.name, pkg.ver, pkg.removed_circular_deps, nix_name, build_inputs_str, prop_build_inputs_str)
                     out += self._unify_nixpkgs_keys(pkg.name, main_key=nix_name)
                 else:
-                    out += self._gen_builPythonPackage(pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str)
+                    out += self._gen_builPythonPackage(pkg.name, pkg.ver, pkg.removed_circular_deps, nix_name, build_inputs_str, prop_build_inputs_str)
             elif pkg.provider_info.provider == WheelDependencyProvider.name:
-                out += self._gen_wheel_buildPythonPackage(pkg.name, pkg.ver, prop_build_inputs_str,
+                out += self._gen_wheel_buildPythonPackage(pkg.name, pkg.ver, pkg.removed_circular_deps, prop_build_inputs_str,
                                                           pkg.provider_info.wheel_fname)
                 if self.nixpkgs.exists(pkg.name):
                     out += self._unify_nixpkgs_keys(pkg.name)
             elif pkg.provider_info.provider == NixpkgsDependencyProvider.name:
                 nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
                 out += self._gen_overrideAttrs(
-                    pkg.name, pkg.ver, nix_name, build_inputs_str, prop_build_inputs_str,
+                    pkg.name, pkg.ver, pkg.removed_circular_deps, nix_name, build_inputs_str, prop_build_inputs_str,
                     keep_src=True)
                 out += self._unify_nixpkgs_keys(pkg.name, main_key=nix_name)
         end_overlay_section = f"""

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Iterable, Optional
 
 from packaging.version import Version
@@ -17,6 +17,7 @@ class ResolvedPkg:
     is_root: bool
     provider_info: ProviderInfo
     extras_selected: List[str]
+    removed_circular_deps: List[str] = field(default_factory=list)
 
 
 class Resolver(ABC):
