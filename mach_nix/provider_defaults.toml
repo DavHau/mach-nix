@@ -1,5 +1,6 @@
 _default =                "wheel,sdist,nixpkgs"
 
+gdal =                    "nixpkgs"
 pip =                     "nixpkgs"
 setupmeta =               "wheel"
 setuptools =              "nixpkgs"
