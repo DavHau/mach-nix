@@ -1,3 +1,19 @@
+# 2.2.2 (17 Aug 2020)
+
+### Fixes
+ - Packages with dot in name led to invalid nix expression
+ - Problem generating error message for resolution impossible errors
+ - `buildPythonPackage` of mach-nix failed if arguments like `pkgs` were passed.
+ - When overriding packages, mach-nix now falls back to using `overrideAttrs` if `overridePythonAttrs` is not available.
+ 
+### Package Fixes:
+ - pip: installation failed. Fixed by forcing `nixpkgs` provider
+ - gdal: building from sdist doesn't work. Fixed by forcing `nixpkgs` provider
+
+### Development
+ - Merged project `pypi-crawlers` into mach-nix (was separated project before)
+
+
 # 2.2.1 (11 Aug 2020)
 Handle circular dependencies, fix python 3.8 wheels, improve error message
 
@@ -11,6 +27,7 @@ Handle circular dependencies, fix python 3.8 wheels, improve error message
  
 ### Development
  - Added integration tests under [./tests/](/tests/)
+
 
 # 2.2.0 (09 Aug 2020)
 Improved success rate, MacOS support, bugfixes, optimizations
@@ -30,10 +47,12 @@ Improved success rate, MacOS support, bugfixes, optimizations
  - Mach-nix now uses a revision of the nixpkgs-unstable branch instead of nixos-20.03 as base fo the tool and the nixpkgs provider.
  - Updated revision of the dependency DB
 
+
 # 2.1.1 (30 Jul 2020)
 Fix broken wheel packages
 ### Fixes:
  - Some wheel packages could brake through patchelf if they already contained stripped binaries. Packages like numpy wouldn't work because of this. This is now fixed by passing `dontStrip` to the `autoPatchelf` routine.
+
 
 # 2.1.0 (04 Jul 2020)
 Bug fixes + new feature **buildPythonPackage** / **buildPythonApplication**
@@ -43,6 +62,7 @@ Bug fixes + new feature **buildPythonPackage** / **buildPythonApplication**
 ### Features:
  - **buildPythonPackage** / **buildPythonApplication**: Interface to build python packages from their source code + requirements.txt
 
+
 # 2.0.1 (29 Jun 2020)
 Improves build-time closure, build success rate and fixes disable_checks option.
 ### Fixes:
@@ -50,6 +70,7 @@ Improves build-time closure, build success rate and fixes disable_checks option.
  - fix: some dependencies with markers were ignored completely
  - fix: providers `nixpkgs` and `sdist` inherited many unneeded build inputs from nixpkgs leading to bloated build-time closures, increased failure rate and uneffective `disable_checks` option. After this fix, only non-python build-inputs are inherited from nixpkgs.
  - mach-nix now sets `pname` + `version` for python packages instead of `name`
+
 
 # 2.0.0
 ### Features:
@@ -80,6 +101,7 @@ Improves build-time closure, build success rate and fixes disable_checks option.
             - `pkgs`: pass custom nixpkgs. Only used for manylinux wheel dependencies.
             - `providers`: define provider preferences
             - `_provider_defaults`: builtin provider defaults. Disable them by passing {}
+
 
 # 1.0.0
 Initial Release
