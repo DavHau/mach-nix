@@ -68,9 +68,12 @@ rec {
         python = py;
       };
       py_final = python.override { packageOverrides = mergeOverrides (
-          overrides_pre ++ [ result.overrides ] ++ overrides_post
-        );};
-      pass_args = removeAttrs args (builtins.attrNames ({inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;}));
+        overrides_pre ++ [ result.overrides ] ++ overrides_post
+      );};
+      pass_args = removeAttrs args (builtins.attrNames ({
+        inherit requirements disable_checks overrides_pre overrides_post pkgs providers
+                pypi_deps_db_commit pypi_deps_db_sha256 python _provider_defaults;
+      }));
     in
     py_final.pkgs."${func}" ( pass_args // {
       propagatedBuildInputs = result.select_pkgs py_final.pkgs;
