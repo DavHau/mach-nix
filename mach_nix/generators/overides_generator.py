@@ -55,6 +55,11 @@ class OverridesGenerator(ExpressionGenerator):
                 isAttrs pkg && hasAttr "pythonModule" pkg;
               filter_deps = oldAttrs: inputs_type:
                 filter (pkg: ! is_py_module pkg) (try_get oldAttrs inputs_type);
+              override = pkg:
+                if hasAttr "overridePythonAttrs" pkg then
+                    pkg.overridePythonAttrs
+                else
+                    pkg.overrideAttrs;
             """
         return unindent(out, 12)
 
@@ -70,7 +75,7 @@ class OverridesGenerator(ExpressionGenerator):
 
     def _gen_overrideAttrs(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str, keep_src=False):
         out = f"""
-            {nix_name} = python-super.{nix_name}.overridePythonAttrs ( oldAttrs: {{
+            {nix_name} = override python-super.{nix_name} ( oldAttrs: {{
               pname = "{name}";
               version = "{ver}";"""
         if not keep_src:
