@@ -214,10 +214,11 @@ class OverridesGenerator(ExpressionGenerator):
         return name
 
     def _gen_python_env(self, pkgs: Dict[str, ResolvedPkg]):
-        pkg_names = "".join(
-            (f"{self._get_ref_name(name, pkgs[name].ver)}\n{' ' * 14}" for (name, pkg) in pkgs.items() if pkg.is_root))
+        pkg_names_str = "".join(
+            (f"\"{self._get_ref_name(name, pkgs[name].ver)}\"\n{' ' * 14}"
+             for (name, pkg) in pkgs.items() if pkg.is_root))
         overlay_keys = {p.name for p in pkgs.values()}
-        out = self._gen_imports() + self._gen_overrides(pkgs, overlay_keys, pkg_names)
+        out = self._gen_imports() + self._gen_overrides(pkgs, overlay_keys, pkg_names_str)
         python_with_packages = f"""
             in
             {{ inherit overrides select_pkgs; }}
