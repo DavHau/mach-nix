@@ -165,7 +165,7 @@ class OverridesGenerator(ExpressionGenerator):
             select_pkgs = ps: [
               {pkg_names_str.strip()}
             ];
-            overrides = manylinux1: autoPatchelfHook: python-self: python-super: rec {{
+            overrides = manylinux1: autoPatchelfHook: python-self: python-super: {{
           """
         out = unindent(out, 10)
         for pkg in pkgs.values():
