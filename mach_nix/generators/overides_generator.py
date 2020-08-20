@@ -157,25 +157,28 @@ class OverridesGenerator(ExpressionGenerator):
             out += f"""    {key} = python-self."{name}";\n"""
         return out
 
-    def _gen_overrides(self, pkgs: Dict[str, ResolvedPkg], overlay_keys, pkgs_names: str):
+    def _gen_overrides(self, pkgs: Dict[str, ResolvedPkg], overrides_keys):
+        pkg_names_str = "".join(
+            (f"ps.\"{self._get_ref_name(name, pkgs[name].ver)}\"\n{' ' * 14}"
+             for (name, pkg) in pkgs.items() if pkg.is_root))
         out = f"""
-            select_pkgs = ps: with ps; [
-              {pkgs_names.strip()} 
+            select_pkgs = ps: [
+              {pkg_names_str.strip()}
             ];
             overrides = manylinux1: autoPatchelfHook: python-self: python-super: rec {{
           """
         out = unindent(out, 10)
         for pkg in pkgs.values():
-            if pkg.name not in overlay_keys:
+            if pkg.name not in overrides_keys:
                 continue
             overlays_required = True
             # get correct build input names
             _build_inputs = [self._get_ref_name(b, pkgs[b].ver) for b in pkg.build_inputs]
-            build_inputs_local = {b for b in _build_inputs if b in overlay_keys}
+            build_inputs_local = {b for b in _build_inputs if b in overrides_keys}
             build_inputs_nixpkgs = set(_build_inputs) - build_inputs_local
             # get correct propagated build input names
             _prop_build_inputs = [self._get_ref_name(b, pkgs[b].ver) for b in pkg.prop_build_inputs]
-            prop_build_inputs_local = {b for b in _prop_build_inputs if b in overlay_keys}
+            prop_build_inputs_local = {b for b in _prop_build_inputs if b in overrides_keys}
             prop_build_inputs_nixpkgs = set(_prop_build_inputs) - prop_build_inputs_local
             # convert build inputs to string
             build_inputs_str = self._gen_build_inputs(build_inputs_local, build_inputs_nixpkgs, ).strip()
@@ -214,11 +217,8 @@ class OverridesGenerator(ExpressionGenerator):
         return name
 
     def _gen_python_env(self, pkgs: Dict[str, ResolvedPkg]):
-        pkg_names_str = "".join(
-            (f"\"{self._get_ref_name(name, pkgs[name].ver)}\"\n{' ' * 14}"
-             for (name, pkg) in pkgs.items() if pkg.is_root))
-        overlay_keys = {p.name for p in pkgs.values()}
-        out = self._gen_imports() + self._gen_overrides(pkgs, overlay_keys, pkg_names_str)
+        overrides_keys = {p.name for p in pkgs.values()}
+        out = self._gen_imports() + self._gen_overrides(pkgs, overrides_keys)
         python_with_packages = f"""
             in
             {{ inherit overrides select_pkgs; }}
