@@ -124,7 +124,7 @@ in mach-nix.mkPython {
 ```
 
 ### Recent PyTorch with nixpkgs dependencies, overlays, and custom python
-I'd like to use a recent version of Pytorch from wheel, but I'd like to build the rest of the requirements from sdist or nixpkgs, since I've already written overlays for those packages which I'd like to continue using. Also I require python 3.6
+I'd like to use a recent version of Pytorch from wheel, but I'd like to build the rest of the requirements from sdist or nixpkgs. I want to use python 3.6.
 ```nix
 let
   mach-nix = import (builtins.fetchGit {
@@ -146,11 +146,8 @@ in mach-nix.mkPython rec {
     torch = "wheel";
   };
 
-  # Include my own overlay.
-  pkgs = import <nixpkgs> { config = { allowUnfree = true; }; inherit overlays; };
-
   # Select custom python version (Must be taken from pkgs with the overlay applied)
-  python = pkgs.python36;
+  python = mach-nix.nixpkgs.python36;
 }
 ```
 
@@ -177,16 +174,13 @@ in mach-nix.mkPython rec {
     _default = "sdist";
   };
 
-  # Use unstable channel
-  pkgs = import <unstable> {};
-
   # Import overrides from poetry2nix
   # Caution! Use poetry2nix overrides only in `overrides_post`, not `overrides_pre`.
   overrides_post = [
     (
       import (builtins.fetchurl {
         url = "https://raw.githubusercontent.com/nix-community/poetry2nix/1cfaa4084d651d73af137866622e3d0699851008/overrides.nix";
-      }) { inherit pkgs; }
+      }) { pkgs = mach-nix.nixpkgs; }
     )
   ];
 }

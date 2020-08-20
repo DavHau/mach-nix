@@ -119,13 +119,13 @@ Mach-nix can be fine tuned with additional arguments by importing it via `builti
 
 #### Optional Arguments:
  - **disable_checks** (bool): Disable tests wherever possible to decrease build time and failures due to nix incompatible tests
- - **overrides_pre** (list): list of pythonOverrides to apply before the machnix overrides
- - **overrides_post** (list): list of pythonOverrides to apply after the machnix overrides
- - **pkgs** (set): pass custom nixpkgs version (20.03 or higher is required for wheel support)
- - **providers** (set): define provider preferences
+ - **overrides_pre** (list): list of pythonOverrides to apply before the machnix overrides. Use this to include additional packages which can then be selected inside the `requirements`
+ - **overrides_post** (list): list of pythonOverrides to apply after the machnix overrides. Use this to fixup packages.
+ - **pkgs** (set): pass custom nixpkgs (20.03 or higher is required for wheel support). Base it on `mach-nix.nixpkgs.path` to avoid incompatibilities.
+ - **providers** (set): define provider preferences (see examples below)
  - **pypi_deps_db_commit** (string): commit hash of a specific version of the dependency graph ([pypi-deps-db](https://github.com/DavHau/pypi-deps-db)).
  - **pypi_deps_db_sha256** (string): sha256 hash obtained via `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
- - **python** (set): select custom python to base overrides on. Should be from nixpkgs >= 20.03
+ - **python** (set): select custom python version. To prevent compatibility issues, only take python packages from the nixpkgs version used by mach-nix. For example:  `mach-nix.nixpkgs.python36`
  - **_provider_defaults** (set): builtin provider defaults. Disable them by passing {}
  
 #### Configure Providers
