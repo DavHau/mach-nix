@@ -20,6 +20,7 @@ setup(
         ],
     },
     package_data={'': ['nix/*', 'VERSION', 'provider_defaults.toml']},
+    setup_requires=["wheel"],
     install_requires=[
         'distlib ~= 0.3.0',
         'packaging >= 19.0',
