@@ -24,5 +24,7 @@ setup(
         'distlib ~= 0.3.0',
         'packaging >= 19.0',
         'resolvelib == 0.3.0',
+        'toml',
+        'tree-format == 0.1.2',
     ],
 )
