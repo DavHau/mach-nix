@@ -186,21 +186,38 @@ class OverridesGenerator(ExpressionGenerator):
             prop_build_inputs_str = self._gen_prop_build_inputs(prop_build_inputs_local,
                                                                 prop_build_inputs_nixpkgs).strip()
 
-            if pkg.provider_info.provider == SdistDependencyProvider.name:
+            # SDIST
+            if isinstance(pkg.provider_info.provider, SdistDependencyProvider):
                 # generate package overlays either via `overrideAttrs` if package already exists in nixpkgs,
                 # or by creating it from scratch using `buildPythonPackage`
                 nix_name = self._get_ref_name(pkg.name, pkg.ver)
                 if self.nixpkgs.exists(pkg.name):
-                    out += self._gen_overrideAttrs(pkg.name, pkg.ver, pkg.removed_circular_deps, nix_name, build_inputs_str, prop_build_inputs_str)
+                    out += self._gen_overrideAttrs(
+                        pkg.name,
+                        pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver),
+                        pkg.removed_circular_deps,
+                        nix_name, build_inputs_str,
+                        prop_build_inputs_str)
                     out += self._unify_nixpkgs_keys(pkg.name, main_key=nix_name)
                 else:
-                    out += self._gen_builPythonPackage(pkg.name, pkg.ver, pkg.removed_circular_deps, nix_name, build_inputs_str, prop_build_inputs_str)
-            elif pkg.provider_info.provider == WheelDependencyProvider.name:
-                out += self._gen_wheel_buildPythonPackage(pkg.name, pkg.ver, pkg.removed_circular_deps, prop_build_inputs_str,
-                                                          pkg.provider_info.wheel_fname)
+                    out += self._gen_builPythonPackage(
+                        pkg.name,
+                        pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver),
+                        pkg.removed_circular_deps,
+                        nix_name,
+                        build_inputs_str,
+                        prop_build_inputs_str)
+            # WHEEL
+            elif isinstance(pkg.provider_info.provider, WheelDependencyProvider):
+                out += self._gen_wheel_buildPythonPackage(
+                    pkg.name,
+                    pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver),
+                    pkg.removed_circular_deps, prop_build_inputs_str,
+                    pkg.provider_info.wheel_fname)
                 if self.nixpkgs.exists(pkg.name):
                     out += self._unify_nixpkgs_keys(pkg.name)
-            elif pkg.provider_info.provider == NixpkgsDependencyProvider.name:
+            # NIXPKGS
+            elif isinstance(pkg.provider_info.provider, NixpkgsDependencyProvider):
                 nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
                 out += self._gen_overrideAttrs(
                     pkg.name, pkg.ver, pkg.removed_circular_deps, nix_name, build_inputs_str, prop_build_inputs_str,

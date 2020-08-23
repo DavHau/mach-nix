@@ -2,8 +2,6 @@ import sys
 from dataclasses import asdict, dataclass
 from typing import Set, Dict
 
-from packaging.version import parse
-
 from bucket_dict import LazyBucketDict
 from db import Package as P
 
@@ -71,7 +69,7 @@ def pkg_to_dict(pkg):
 
 
 def insert(py_ver, name, ver, release, target):
-    ver = str(parse(ver))
+    ver = ver.strip()
     # create structure
     if name not in target:
         target[name] = {}

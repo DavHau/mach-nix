@@ -165,7 +165,6 @@ in
   systemd.timers.crawl-sdist = {
     inherit enable;
     wantedBy = [ "timers.target" ];
-    partOf = [ "crawl-deps.service" ];
     timerConfig.OnCalendar = [
       "Mon-Sun *-*-* 4:00:00"
       "Mon-Sun *-*-* 16:00:00"
@@ -208,7 +207,6 @@ in
   systemd.timers.crawl-wheel = {
     inherit enable;
     wantedBy = [ "timers.target" ];
-    partOf = [ "dump-deps.service" ];
     timerConfig.OnCalendar = [
       "Mon-Sun *-*-* 8:00:00"
       "Mon-Sun *-*-* 20:00:00"

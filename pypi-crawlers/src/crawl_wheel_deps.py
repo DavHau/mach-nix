@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 import traceback
@@ -12,10 +11,8 @@ from typing import Union
 
 import pkginfo
 import requests
-
 from bucket_dict import LazyBucketDict
 from utils import parallel
-
 
 email = os.environ.get("EMAIL")
 if not email:

@@ -74,7 +74,7 @@ def best_version(versions: Iterable[Version]) -> Version:
 @cached(keyfunc=lambda args: tuple(args[0]) + tuple(args[1]))
 def filter_versions(
         versions: Iterable[Version],
-        specs: Iterable[Tuple[str, Version]]) -> List[Version]:
+        specs: Iterable[Tuple[str, str]]) -> List[Version]:
     """
     Reduces a given list of versions to contain only versions
     which are allowed according to the given specifiers
@@ -83,7 +83,8 @@ def filter_versions(
         ver = parse(ver)
         if op == '==':
             versions_str = (str(ver) for ver in versions)
-            versions = (parse(ver) for ver in fnmatch.filter(versions_str, str(ver)))
+            remaining_versions_str = set(parse(ver) for ver in fnmatch.filter(versions_str, str(ver)))
+            versions = [ver for ver in versions if str(ver) in remaining_versions_str]
         elif op == '!=':
             versions_str = (str(ver) for ver in versions)
             bad_versions_str = set(fnmatch.filter(versions_str, str(ver)))

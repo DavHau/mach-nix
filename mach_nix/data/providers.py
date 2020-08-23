@@ -19,7 +19,7 @@ from ..cache import cached
 
 @dataclass
 class ProviderInfo:
-    provider: str
+    provider: 'DependencyProviderBase'
     # following args are only required in case of wheel
     wheel_fname: str = None
 
@@ -114,6 +114,11 @@ class DependencyProviderBase(ABC):
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
         pass
 
+    @abstractmethod
+    def deviated_version(self, pkg_name, normalized_version: Version):
+        # returns version like originally specified by package maintainer without normalization
+        pass
+
 
 class CombinedDependencyProvider(DependencyProviderBase):
     name = 'combined'
@@ -143,22 +148,25 @@ class CombinedDependencyProvider(DependencyProviderBase):
         if unknown_providers:
             raise Exception(f"Error: Unknown providers '{unknown_providers}'. Please remove from 'providers=...'")
 
-    def providers_for_pkg(self, pkg_name):
+    def allowed_providers_for_pkg(self, pkg_name):
         provider_keys = self.provider_settings.provider_names_for_pkg(pkg_name)
         selected_providers = ((name, p) for name, p in self._all_providers.items() if name in provider_keys)
         return dict(sorted(selected_providers, key=lambda x: provider_keys.index(x[0])))
 
-    def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
-        for type, provider in self.providers_for_pkg(pkg_name).items():
+    def get_provider(self, pkg_name, pkg_version) -> DependencyProviderBase:
+        for type, provider in self.allowed_providers_for_pkg(pkg_name).items():
             if pkg_version in provider.available_versions(pkg_name):
-                return provider.get_provider_info(pkg_name, pkg_version)
+                return provider
+
+    def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
+        return self.get_provider(pkg_name, pkg_version).get_provider_info(pkg_name, pkg_version)
 
     def get_pkg_reqs(self, pkg_name, pkg_version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
-        for provider in self.providers_for_pkg(pkg_name).values():
+        for provider in self.allowed_providers_for_pkg(pkg_name).values():
             if pkg_version in provider.available_versions(pkg_name):
                 return provider.get_pkg_reqs(pkg_name, pkg_version, extras=extras)
 
-    def list_providers_for_pkg(self, pkg_name):
+    def list_all_providers_for_pkg(self, pkg_name):
         result = []
         for p_name, provider in self._all_providers.items():
             if provider.available_versions(pkg_name):
@@ -166,11 +174,11 @@ class CombinedDependencyProvider(DependencyProviderBase):
         return result
 
     def print_error_no_versions_available(self, pkg_name):
-        provider_names = set(self.providers_for_pkg(pkg_name).keys())
+        provider_names = set(self.allowed_providers_for_pkg(pkg_name).keys())
         error_text = f"\nThe Package '{pkg_name}' is not available from any of the " \
                      f"selected providers {provider_names}\n for the selected python version"
         if provider_names != set(self._all_providers.keys()):
-            alternative_providers = self.list_providers_for_pkg(pkg_name)
+            alternative_providers = self.list_all_providers_for_pkg(pkg_name)
             if alternative_providers:
                 error_text += f'... but the package is is available from providers {alternative_providers}\n' \
                               f"Consider adding them via 'providers='"
@@ -190,7 +198,7 @@ class CombinedDependencyProvider(DependencyProviderBase):
         # use dict as ordered set
         available_versions = []
         # order by reversed preference expected
-        for provider in reversed(tuple(self.providers_for_pkg(pkg_name).values())):
+        for provider in reversed(tuple(self.allowed_providers_for_pkg(pkg_name).values())):
             for ver in provider.available_versions(pkg_name):
                 available_versions.append(ver)
         if available_versions:
@@ -199,6 +207,9 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
         return self.available_versions(pkg_name)
+
+    def deviated_version(self, pkg_name, pkg_version: Version):
+        self.get_provider(pkg_name, pkg_version).deviated_version(pkg_name, pkg_version)
 
 
 class NixpkgsDependencyProvider(DependencyProviderBase):
@@ -217,7 +228,7 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
         self.sdist_provider = sdist_provider
 
     def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
-        return ProviderInfo(self.name)
+        return ProviderInfo(self)
 
     def get_pkg_reqs(self, pkg_name, pkg_version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
         name = self.unify_key(pkg_name)
@@ -236,6 +247,10 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
         if self.nixpkgs.exists(name):
             return [p.ver for p in self.nixpkgs.get_all_candidates(name)]
         return []
+
+    def deviated_version(self, pkg_name, normalized_version: Version):
+        # not necessary for nixpkgs provider since source doesn't need to be fetched
+        return str(normalized_version)
 
 
 @dataclass
@@ -294,7 +309,10 @@ class WheelDependencyProvider(DependencyProviderBase):
 
     def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
         wheel = self._choose_wheel(pkg_name, pkg_version)
-        return ProviderInfo(provider=self.name, wheel_fname=wheel.fn)
+        return ProviderInfo(provider=self, wheel_fname=wheel.fn)
+
+    def deviated_version(self, pkg_name, pkg_version: Version):
+        return self._choose_wheel(pkg_name, pkg_version).ver
 
     def _all_releases(self, pkg_name):
         name = self.unify_key(pkg_name)
@@ -398,8 +416,15 @@ class SdistDependencyProvider(DependencyProviderBase):
                     candidates[parse(ver)] = pyvers[self.py_ver_digits]
         return candidates
 
+    def deviated_version(self, pkg_name, normalized_version: Version):
+        for raw_ver in self.data[unify_key(pkg_name)].keys():
+            if parse(raw_ver) == normalized_version:
+                return raw_ver
+        raise Exception(
+            f"Something went wrong while trying to find the deviated version for {pkg_name}:{normalized_version}")
+
     def get_provider_info(self, pkg_name, pkg_version):
-        return ProviderInfo(provider=self.name)
+        return ProviderInfo(provider=self)
 
     def get_reqs_for_extras(self, pkg_name, pkg_ver, extras):
         name = self.unify_key(pkg_name)
