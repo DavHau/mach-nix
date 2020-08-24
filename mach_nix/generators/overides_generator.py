@@ -64,13 +64,15 @@ class OverridesGenerator(ExpressionGenerator):
         return unindent(out, 12)
 
     def _gen_build_inputs(self, build_inputs_local, build_inputs_nixpkgs) -> str:
+        name = lambda n: f'python-self."{n}"' if '.' in n else n
         build_inputs_str = ' '.join(
-            f"{b}" for b in sorted(build_inputs_local | build_inputs_nixpkgs))
+            name(b) for b in sorted(build_inputs_local | build_inputs_nixpkgs))
         return build_inputs_str
 
     def _gen_prop_build_inputs(self, prop_build_inputs_local, prop_build_inputs_nixpkgs) -> str:
+        name = lambda n: f'python-self."{n}"' if '.' in n else n
         prop_build_inputs_str = ' '.join(
-            f"{b}" for b in sorted(prop_build_inputs_local | prop_build_inputs_nixpkgs))
+            name(b) for b in sorted(prop_build_inputs_local | prop_build_inputs_nixpkgs))
         return prop_build_inputs_str
 
     def _gen_overrideAttrs(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str, keep_src=False):
@@ -183,8 +185,8 @@ class OverridesGenerator(ExpressionGenerator):
             # convert build inputs to string
             build_inputs_str = self._gen_build_inputs(build_inputs_local, build_inputs_nixpkgs, ).strip()
             # convert prop build inputs to string
-            prop_build_inputs_str = self._gen_prop_build_inputs(prop_build_inputs_local,
-                                                                prop_build_inputs_nixpkgs).strip()
+            prop_build_inputs_str = self._gen_prop_build_inputs(
+                prop_build_inputs_local, prop_build_inputs_nixpkgs).strip()
 
             # SDIST
             if isinstance(pkg.provider_info.provider, SdistDependencyProvider):

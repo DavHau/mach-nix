@@ -25,7 +25,7 @@ class Node:
 def make_name(pkg: ResolvedPkg, nixpkgs: NixpkgsIndex):
     pi = pkg.provider_info
     extras = f"[{' '.join(pkg.extras_selected)}]" if pkg.extras_selected else ''
-    name = f"{pkg.name}{extras} - {pkg.ver} - {pi.provider}"
+    name = f"{pkg.name}{extras} - {pkg.ver} - {pi.provider.name}"
     if pi.provider == 'wheel':
         name += f" - {'-'.join(pi.wheel_fname.split('-')[-3:])[:-4]}"
     if pi.provider == 'nixpkgs':
