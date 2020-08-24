@@ -164,6 +164,41 @@ def exec_or_return_exc(func, job):
         return e
 
 
+def prune_entries(bucket, pypi_dict, dump_dict):
+    """
+    Since the wheel data set is updated incrementally, we need to check
+    if existing entries have been deleted from pypi and prune them accordingly.
+    """
+    def fn_in_pypi(name, pkg_ver, fn):
+        if name in pypi_dict\
+                and pkg_ver in pypi_dict[name]\
+                and 'wheels' in pypi_dict[name][pkg_ver]\
+                and fn in pypi_dict[name][pkg_ver]['wheels']:
+            return True
+        return False
+
+    to_delete = []
+    # get to delete
+    for name in dump_dict.keys(bucket):
+        for py_ver, pkg_vers in dump_dict[name].items():
+            delete = False
+            for pkg_ver, fnames in pkg_vers.items():
+                for fn in fnames.keys():
+                    if not fn_in_pypi(name, pkg_ver, fn):
+                        delete = True
+                        break
+                if delete:
+                    to_delete.append((name, py_ver))
+                    break
+    # delete
+    for name, py_ver in to_delete:
+        print(f"deleting {name}:{py_ver}")
+        del dump_dict[name][py_ver]
+    for name, _ in to_delete:
+        if name in dump_dict and not len(dump_dict[name]):
+            del dump_dict[name]
+
+
 def main():
     dump_dir = sys.argv[1]
     workers = int(os.environ.get('WORKERS', "1"))
@@ -171,9 +206,13 @@ def main():
     print(f'Index directory: {pypi_fetcher_dir}')
     assert isdir(pypi_fetcher_dir)
     for bucket in LazyBucketDict.bucket_keys():
-        print(f"Begin wit bucket {bucket}")
         pypi_dict = LazyBucketDict(f"{pypi_fetcher_dir}/pypi")
         dump_dict = LazyBucketDict(dump_dir, restrict_to_bucket=bucket)
+        print(f"Prune bucket {bucket}")
+        prune_entries(bucket, pypi_dict, dump_dict)
+        pypi_dict.save()
+        dump_dict.save()
+        print(f"Calculating jobs for bucket {bucket}")
         jobs = list(get_jobs(bucket, pypi_dict, dump_dict))
         if not jobs:
             continue
