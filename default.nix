@@ -48,8 +48,10 @@ rec {
   buildPythonApplication = _buildPython "buildPythonApplication";
 
   _buildPython = func: args@{
-      requirements,  # content from a requirements.txt file
+      requirements ? null,  # content from a requirements.txt file
       disable_checks ? true,  # Disable tests wherever possible to decrease build time.
+      extras ? [],
+      doCheck ? ! disable_checks,
       overrides_pre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overrides_post ? [],  # list of pythonOverrides to apply after the machnix overrides
       pkgs ? nixpkgs,  # pass custom nixpkgs.
@@ -61,22 +63,50 @@ rec {
       ...
     }:
     let
+      # Extract dependencies automatically if requirements is unset
+      reqs =
+        with builtins;
+        if requirements == null then
+          if builtins.hasAttr "format" args && args.format != "setuptools" then
+            throw "Automatic dependency extraction is only available for 'setuptools' format."
+                  " Please specify requirements="
+          else
+            let
+              file = (builtins.readFile "${(import ./lib/extractor).extract_from_src {
+                py = python;
+                src = args.src;
+              }}/python.json");
+              data = fromJSON file;
+              setup_requires = if hasAttr "setup_requires" data then data.setup_requires else [];
+              install_requires = if hasAttr "install_requires" data then data.install_requires else [];
+              extras_require =
+                if hasAttr "install_requires" data then
+                  nixpkgs.lib.flatten (map (extra: data.extras_require."${extra}") extras)
+                else [];
+              concat = s1: s2: s1 + "\n" + s2;
+              all_reqs = builtins.foldl' concat "" (setup_requires ++ install_requires ++ extras_require);
+            in
+              trace "${all_reqs}\n${if doCheck then "check: true" else "check: false"}" all_reqs
+        else
+          requirements;
       py = python.override { packageOverrides = mergeOverrides overrides_pre; };
       result = machNix {
-        inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
+        inherit disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
         overrides = overrides_pre;
         python = py;
+        requirements = reqs;
       };
       py_final = python.override { packageOverrides = mergeOverrides (
         overrides_pre ++ [ result.overrides ] ++ overrides_post
       );};
       pass_args = removeAttrs args (builtins.attrNames ({
-        inherit requirements disable_checks overrides_pre overrides_post pkgs providers
-                pypi_deps_db_commit pypi_deps_db_sha256 python _provider_defaults;
+        inherit disable_checks overrides_pre overrides_post pkgs providers
+                requirements pypi_deps_db_commit pypi_deps_db_sha256 python _provider_defaults;
       }));
     in
     py_final.pkgs."${func}" ( pass_args // {
       propagatedBuildInputs = result.select_pkgs py_final.pkgs;
+      inherit doCheck;
     });
 
 

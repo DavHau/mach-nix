@@ -102,6 +102,11 @@ let
     echo "python38"
     out_file=$out/python38.json ${py38}/bin/python -c "${setuptools_shim}" install &> $out/python38.log || true
   '';
+  script_single = py: ''
+    mkdir $out
+    echo "extracting dependencies"
+    out_file=$out/python.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python.log || true
+  '';
   base_derivation = with pkgs; {
     buildInputs = [ unzip pkg-config pipenv ];
     phases = ["unpackPhase" "installPhase"];
@@ -117,6 +122,12 @@ rec {
   all = { inherit py27 py35 py36 py37 py38; };
   inherit machnix_source;
   example = extractor {pkg = "requests"; version = "2.22.0";};
+  extract_from_src = {py, src}:
+    stdenv.mkDerivation ( base_derivation // {
+      inherit src;
+      name = "package-requirements";
+      installPhase = script_single (mkPy py);
+    });
   extractor = {pkg, version}:
     stdenv.mkDerivation ({
       name = "${pkg}-${version}-requirements";

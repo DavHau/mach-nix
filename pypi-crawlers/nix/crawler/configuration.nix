@@ -5,7 +5,8 @@ let
   src = "${../../src}";
   nixpkgs_src = (import ../../nix/nixpkgs-src.nix).stable;
   db_host = "10.147.19.69";
-  extractor = import ../../src/extractor;
+  extractor_dir = "${../../../lib/extractor}";
+  extractor = import extractor_dir;
   branch = "master";
   enable = true;
   serviceConfig = {
@@ -134,6 +135,7 @@ in
         EMAIL = "hsngrmpf+pypidepscrawler@gmail.com";
         CLEANUP = "y";
         pypi_fetcher = "/home/${user}/nix-pypi-fetcher";
+        inherit extractor_dir;
       };
     in
     {

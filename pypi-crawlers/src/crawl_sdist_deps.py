@@ -35,7 +35,9 @@ class JobResult:
 
 
 def extractor_cmd(pkg_name, pkg_ver, out='./result', url=None, sha256=None, substitutes=True, store=None) -> List[str]:
-    extractor_dir = os.path.dirname(os.path.abspath(__file__)) + '/extractor/'
+    extractor_dir = os.environ.get("extractor_dir")
+    if not extractor_dir:
+        raise Exception("Set env variable 'extractor_dir'")
     base_args = [
         "--arg", "pkg", f'"{pkg_name}"',
         "--arg", "version", f'"{pkg_ver}"',
