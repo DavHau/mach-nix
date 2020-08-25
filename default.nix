@@ -80,6 +80,7 @@ rec {
     if builtins.isString args then _buildPython func { src = args; } else _buildPython func args;
 
   _buildPython = func: args@{
+      add_requirements ? "",  # add additional requirements to the packge
       requirements ? null,  # content from a requirements.txt file
       disable_checks ? true,  # Disable tests wherever possible to decrease build time.
       extras ? [],
@@ -122,13 +123,13 @@ rec {
         inherit disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
         overrides = overrides_pre;
         python = py;
-        requirements = reqs;
+        requirements = reqs + "\n" + add_requirements;
       };
       py_final = python.override { packageOverrides = mergeOverrides (
         overrides_pre ++ [ result.overrides ] ++ overrides_post
       );};
       pass_args = removeAttrs args (builtins.attrNames ({
-        inherit disable_checks overrides_pre overrides_post pkgs providers
+        inherit add_requirements disable_checks overrides_pre overrides_post pkgs providers
                 requirements pypi_deps_db_commit pypi_deps_db_sha256 python _provider_defaults;
       }));
     in
