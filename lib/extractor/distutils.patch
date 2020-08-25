@@ -2,7 +2,7 @@ diff --git a/Lib/distutils/core.py b/Lib/distutils/core.py
 index d603d4a45a..a589477b8e 100644
 --- a/Lib/distutils/core.py
 +++ b/Lib/distutils/core.py
-@@ -120,6 +120,50 @@ def setup (**attrs):
+@@ -120,6 +120,59 @@ def setup (**attrs):
      # the setup script, but be overridden by the command line.
      dist.parse_config_files()
  
@@ -31,9 +31,18 @@ index d603d4a45a..a589477b8e 100644
 +            'tests_require',
 +            'python_requires'
 +        )
++        meta_keys = (
++            'name',
++            'version'
++        )
 +        data = {}
 +        for key in keys:
 +            val = getattr(dist, key, None)
++            if not val:
++                continue
++            data[key] = jsonify(val)
++        for key in meta_keys:
++            val = getattr(dist.metadata, key, None)
 +            if not val:
 +                continue
 +            data[key] = jsonify(val)
