@@ -3,8 +3,7 @@
 </p>
 
 ## mach-nix - Create highly reproducible python environments
-Mach-nix makes it easy to create and share reproducible python environments. While other python package management tools are mostly a trade off between ease of use and reproducibility, mach-nix aims to provide both at the same time. Mach-nix is based on the nix ecosystem but doesn't require you to understand anything about nix. Given a simple requirements.txt file, mach-nix will take care about the rest. 
-
+Mach-nix makes it easy to create and share reproducible python environments. Existing tools for python package management often either do not achieve reproducibility, are difficult to use, or require additional virtualization layers to make them reliable. Mach-nix aims to solve these problems by providing a simple way to use nix, a revolutionary build system which is known to achieve great reproducibility and portability besides [many other advantages](https://nixos.org/features.html). 
 
 ## Who is this meant for?
  - Anyone who has no idea about nix but wants to maintain python environments for their projects which are reliable and easy to reproduce.
@@ -91,7 +90,7 @@ You can call mach-nix directly from a nix expression
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.2.2";
+    ref = "refs/tags/2.2.2";
   });
 in
 mach-nix.mkPython {
@@ -108,10 +107,11 @@ find more examples under [./examples.md](/examples.md)
 Mach-nix can be fine tuned with additional arguments by importing it via `builtins.fetchGit`. Examples can be found in [./examples.md](/examples.md). There are 4 different methods which can be invoked:
 1. **mkPython** - builds a python environment for a given `requirements.txt`.
 1. **mkPythonShell** - returns the python environment suitable for nix-shell.
-1. **buildPythonPackage** - build a single python package from a source code and a list of requirements
+1. **buildPythonPackage** - build a single python package from a source code while automatically detecting requirements.
 1. **buildPythonApplication** - same as **buildPythonPackage**, but package will not be importable by other python packages.
 
-**buildPythonPackage** and **buildPythonApplication** require the same arguments like their equally named partners in nixpkgs, plus the arguments of **mkPython**.  
+**buildPythonPackage** and **buildPythonApplication** accept the same arguments like their equally named partners in nixpkgs, plus the arguments of **mkPython**. If name/version/requirements arguments are omitted, mach-nix attempts to detect them automatically. See [./examples.md](/examples.md).
+ 
 **mkPython** and **mkPythonShell** take exactly the following arguments:
 
 #### Required Arguments:
@@ -156,7 +156,7 @@ Providers can be disabled/enabled/preferred like in the following examples:
 }
  ```
 
-Mach-nix will always satisfy your **requirements.txt** fully with the configured providers or fail with a **ResolutionImpossible** error.
+Mach-nix will always satisfy the **requirements.txt** fully with the configured providers or fail with a **ResolutionImpossible** error.
 
 If a mach-nix build fails, Most of the times it can be resolved by just switching the provider of a package, which is simple and doesn't require writing a lot of nix code. For some more complex scenarios, checkout the [./examples.md](/examples.md).
 

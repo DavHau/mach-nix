@@ -1,71 +1,139 @@
 
 <!--ts-->
-  * [Basic Usage in Nix Expressions:](#basic-usage-in-nix-expressions)
+  * [Usage in Nix Expressions:](#usage-in-nix-expressions)
+     * [import mach-nix](#import-mach-nix)
      * [mkPython / mkPythonShell](#mkpython--mkpythonshell)
+        * [From a list of requirements](#from-a-list-of-requirements)
+        * [Mix arbitrary sources with requirements.](#mix-arbitrary-sources-with-requirements)
      * [buildPythonPackage / buildPythonApplication](#buildpythonpackage--buildpythonapplication)
-     * [buildPythonPackage from GitHub](#buildpythonpackage-from-github)
+        * [Build python package from its source code and autodetect requirements](#build-python-package-from-its-source-code-and-autodetect-requirements)
+        * [buildPythonPackage from GitHub](#buildpythonpackage-from-github)
+        * [buildPythonPackage from GitHub with extras](#buildpythonpackage-from-github-with-extras)
+        * [buildPythonPackage from GitHub and add missing requirements](#buildpythonpackage-from-github-and-add-missing-requirements)
+        * [buildPythonPackage from GitHub (reproducible source)](#buildpythonpackage-from-github-reproducible-source)
+        * [buildPythonPackage from GitHub (manual requirements)](#buildpythonpackage-from-github-manual-requirements)
   * [Examples for Tensorflow / PyTorch](#examples-for-tensorflow--pytorch)
      * [Tensorflow with SSE/AVX/FMA support](#tensorflow-with-sseavxfma-support)
      * [Tensorflow via wheel (newer versions, quicker builds)](#tensorflow-via-wheel-newer-versions-quicker-builds)
-     * [Recent PyTorch with nixpkgs dependencies, overlays, and custom python](#recent-pytorch-with-nixpkgs-dependencies-overlays-and-custom-python)
+     * [Recent PyTorch with nixpkgs dependencies, and custom python](#recent-pytorch-with-nixpkgs-dependencies-and-custom-python)
   * [Using overrides](#using-overrides)
      * [Fixing packages via overrides](#fixing-packages-via-overrides)
      * [Include poetry2nix overrides](#include-poetry2nix-overrides)
 
-<!-- Added by: grmpf, at: Sat 04 Jul 2020 12:18:42 PM UTC -->
+<!-- Added by: grmpf, at: Tue 25 Aug 2020 02:28:02 PM +07 -->
 
 <!--te-->
 
+## Usage in Nix Expressions:
 
-## Basic Usage in Nix Expressions:
-### mkPython / mkPythonShell
-build a python environment from a list of requirements
+### import mach-nix
 ```nix
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.2.2";
+    ref = "heads/refs/2.2.2";
   });
-in mach-nix.mkPython {
+in
+...
+```
+
+### mkPython / mkPythonShell
+#### From a list of requirements
+```nix
+mach-nix.mkPython {  # replace with mkPythonShell if shell is wanted
   requirements = builtins.readFile ./requirements.txt;
 }
 ```
 
-### buildPythonPackage / buildPythonApplication
-Build a python package from its source code and a list of requirements
+#### Mix requirements with packages from arbitrary sources.
+`extra_pkgs` accepts python packages built via `mach-nix.buildPythonPackage`. Alternatively, paths or URLs can be passed which are then automatically wrapped in a `mach-nix.buildPythonPackage` call.
 ```nix
-let
-  mach-nix = import (builtins.fetchGit {
-    url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.2.2";
-  });
-in mach-nix.buildPythonPackage {
-  pname = "my-package";
-  version = "1.0.0";
-  src = /project-path;
-  requirements = builtins.readFile /project-path/requirements.txt;
+mach-nix.mkPython {
+  requirements = builtins.readFile ./requirements.txt;
+  extra_pkgs = [
+      # very lazy
+      "https://github.com/psf/requests/tarball/master"
+      
+      # build package from local path
+      ./some/local/project
+    
+      # example with arguments
+      (mach-nix.buildPythonPackage {
+        src = "https://github.com/psf/requests/tarball/master";
+        extras = "socks";
+      })
+      
+      # example with reproducible source
+      (mach-nix.buildPythonPackage {
+        src = builtins.fetchGit {
+          url = "https://github.com/psf/requests/";
+          ref = "refs/tags/v2.24.0";
+          rev = "0797c61fd541f92f66e409dbf9515ca287af28d2";
+        };
+        extras = "socks";
+      })
+
+      # see more buildPythonPackage examples further down
+    ];
+}
+```
+alternatively if requirements are not needed, extra_pkgs can be passed directly to mkPython
+```nix
+mach-nix.mkPython [
+  "https://github.com/psf/requests/tarball/master"
+  ./some/local/project
+  (mach-nix.buildPythonPackage /some/path)
+]
+```
+
+### buildPythonPackage / buildPythonApplication
+Whenever `requirements` are not explicitly specified, they will be extracted automatically from teh packages setup.py/setup.cfg. The same goes for the `name` and `version`
+#### Build python package from its source code
+```nix
+mach-nix.buildPythonPackage /python-project-path
+```
+
+#### buildPythonPackage from GitHub
+```nix
+mach-nix.buildPythonPackage "https://github.com/psf/requests/tarball/master"
+```
+
+#### buildPythonPackage from GitHub with extras
+```nix
+mach-nix.buildPythonPackage {
+  src = "https://github.com/psf/requests/tarball/master";
+  extras = "socks";
 }
 ```
 
-### buildPythonPackage from GitHub
-Build a python package from its source code and a list of requirements
+#### buildPythonPackage from GitHub and add missing requirements
+use this in case autdetecting requirements failed
 ```nix
-let
-  mach-nix = import (builtins.fetchGit {
-    url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.2.2";
-  });
-in mach-nix.buildPythonPackage rec {
-  pname = "projectname";
-  version = "1.0.0";
+mach-nix.buildPythonPackage {
+  src = "https://github.com/psf/requests/tarball/master";
+  add_requirements = "pytest";
+}
+```
+
+#### buildPythonPackage from GitHub (reproducible source)
+```nix
+mach-nix.buildPythonPackage {
   src = builtins.fetchGit{
     url = "https://github.com/user/projectname";
     ref = "master";
     # rev = "put_commit_hash_here";
   };
-  doCheck = false;
-  doInstallCheck = false;
-  requirements = builtins.readFile "${src}/requirements.txt";
+}
+```
+
+#### buildPythonPackage from GitHub (manual requirements)
+Use this if automatic requirements extraction doesn't work.
+```nix
+mach-nix.buildPythonPackage {
+  src = "https://github.com/psf/requests/tarball/master";
+  requirements = ''
+    # list of requirements
+  '';
 }
 ```
 
@@ -74,12 +142,7 @@ in mach-nix.buildPythonPackage rec {
 ### Tensorflow with SSE/AVX/FMA support
 I have a complex set of requirements including tensorflow. I'd like to have tensorflow with the usual nix features enabled like SSE/AVX/FMA which I cannot get from pypi. Therefore I must take tensorflow from nixpkgs. For everything else I keep the default, which means wheels are preferred. This allows for quicker installation of dependencies.
 ```nix
-let
-  mach-nix = import (builtins.fetchGit {
-    url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.2.2";
-  });
-in mach-nix.mkPython {
+mach-nix.mkPython {
 
   requirements = ''
     # bunch of other requirements
@@ -97,12 +160,7 @@ This only works if the restrictions in `requirements.txt` allow for the tensorfl
 ### Tensorflow via wheel (newer versions, quicker builds)
 I'd like to install a more recent version of tensorflow which is not available from nixpkgs. Also I don't like long build times and therefore I want to install tensorflow via wheel. Usually most wheels work pretty well out of the box, but the tensorflow wheel has an issue which I need to fix with an override.
 ```nix
-let
-  mach-nix = import (builtins.fetchGit {
-    url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.2.2";
-  });
-in mach-nix.mkPython {
+mach-nix.mkPython {
 
   requirements = ''
     # bunch of other requirements
@@ -123,16 +181,10 @@ in mach-nix.mkPython {
 
 ```
 
-### Recent PyTorch with nixpkgs dependencies, overlays, and custom python
+### Recent PyTorch with nixpkgs dependencies, and custom python
 I'd like to use a recent version of Pytorch from wheel, but I'd like to build the rest of the requirements from sdist or nixpkgs. I want to use python 3.6.
 ```nix
-let
-  mach-nix = import (builtins.fetchGit {
-    url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.2.2";
-  });
-overlays = []; # some very useful overlays
-in mach-nix.mkPython rec {
+mach-nix.mkPython rec {
 
   requirements = ''
     # bunch of other requirements
@@ -156,14 +208,9 @@ in mach-nix.mkPython rec {
 See previous example for tensorflow wheel
 
 ### Include poetry2nix overrides
-I have a complex requirements.txt which includes `imagecodecs`. It is available via wheel, but I prefer to build everything from source. This package has complex build dependencies and is not available from nixpkgs. Luckily poetry2nix` overrides make it work. The peotry2nix overrides depend on nixpkgs-unstable.
+I have a complex requirements.txt which includes `imagecodecs`. It is available via wheel, but I prefer to build everything from source. This package has complex build dependencies and is not available from nixpkgs. Luckily poetry2nix` overrides make it work.
 ```nix
-let
-  mach-nix = import (builtins.fetchGit {
-    url = "https://github.com/DavHau/mach-nix/";
-    ref = "2.2.2";
-  });
-in mach-nix.mkPython rec {
+mach-nix.mkPython rec {
 
   requirements = ''
     # bunch of other requirements

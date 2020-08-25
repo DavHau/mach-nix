@@ -4,6 +4,11 @@ let
   python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = pkgs.fetchurl; }));
   mergeOverrides = with pkgs.lib; foldr composeExtensions (self: super: { });
   autoPatchelfHook = import ./mach_nix/nix/auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
+  concat_reqs = reqs_list:
+    let
+      concat = s1: s2: s1 + "\n" + s2;
+    in
+      builtins.foldl' concat "" reqs_list;
   extractMeta = python: src: extras:
     with builtins;
     let
@@ -20,11 +25,10 @@ let
         if hasAttr "install_requires" data then
           pkgs.lib.flatten (map (extra: data.extras_require."${extra}") extras)
         else [];
-      concat = s1: s2: s1 + "\n" + s2;
-      all_reqs = builtins.foldl' concat "" (setup_requires ++ install_requires ++ extras_require);
+      all_reqs = concat_reqs (setup_requires ++ install_requires ++ extras_require);
     in
       {
-        reqs = trace "${all_reqs}" all_reqs;
+        requirements = trace "\n automatically detected requirements of ${name} ${version}:${all_reqs}\n\n" all_reqs;
         inherit name version;
       };
   is_http_url = url:
@@ -76,8 +80,8 @@ rec {
   # equivalent to buildPythonApplication of nixpkgs
   buildPythonApplication = __buildPython "buildPythonApplication";
 
-  __buildPython = func: args:
-    if builtins.isString args then _buildPython func { src = args; } else _buildPython func args;
+  __buildPython = with builtins; func: args:
+    if isString args || isPath args then _buildPython func { src = args; } else _buildPython func args;
 
   _buildPython = func: args@{
       add_requirements ? "",  # add additional requirements to the packge
@@ -102,14 +106,14 @@ rec {
       meta = extractMeta python src extras;
       reqs =
         with builtins;
-        if requirements == null then
+        (if requirements == null then
           if builtins.hasAttr "format" args && args.format != "setuptools" then
             throw "Automatic dependency extraction is only available for 'setuptools' format."
                   " Please specify 'requirements' if setuptools is not used."
           else
-            meta.reqs
+            meta.requirements
         else
-          requirements;
+          requirements) + "\n" + add_requirements;
       pname =
         if hasAttr "name" args then null
         else if hasAttr "pname" args then args.pname
@@ -123,7 +127,7 @@ rec {
         inherit disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
         overrides = overrides_pre;
         python = py;
-        requirements = reqs + "\n" + add_requirements;
+        requirements = reqs;
       };
       py_final = python.override { packageOverrides = mergeOverrides (
         overrides_pre ++ [ result.overrides ] ++ overrides_post
@@ -137,14 +141,20 @@ rec {
       propagatedBuildInputs = result.select_pkgs py_final.pkgs;
       src = src;
       inherit doCheck pname version;
+      passthru = {
+        requirements = reqs;
+      };
     });
 
 
   # (High level API) generates a python environment with minimal user effort
-  mkPython =
+  mkPython = args: if builtins.isList args then _mkPython { extra_pkgs = args; } else _mkPython args;
+
+  _mkPython =
     {
-      requirements,  # content from a requirements.txt file
+      requirements ? "",  # content from a requirements.txt file
       disable_checks ? true,  # Disable tests wherever possible to decrease build time.
+      extra_pkgs ? [],
       overrides_pre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overrides_post ? [],  # list of pythonOverrides to apply after the machnix overrides
       pkgs ? nixpkgs,  # pass custom nixpkgs.
@@ -154,17 +164,25 @@ rec {
       python ? pkgs.python3,  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
       _provider_defaults ? with builtins; fromTOML (readFile ./mach_nix/provider_defaults.toml)
     }:
+    with builtins;
     let
+      _extra_pkgs = map (p: if isString p || isPath p then buildPythonPackage p else p) extra_pkgs;
+      extra_pkgs_reqs =
+        map (p:
+          if builtins.hasAttr "requirements" p then p.requirements
+          else throw "Packages passed via 'extra_pkgs' must be built via mach-nix.buildPythonPackage"
+        ) _extra_pkgs;
       py = python.override { packageOverrides = mergeOverrides overrides_pre; };
       result = machNix {
-        inherit requirements disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
+        inherit disable_checks providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
         overrides = overrides_pre;
         python = py;
+        requirements = concat_reqs ([requirements] ++ extra_pkgs_reqs);
       };
       py_final = python.override { packageOverrides = mergeOverrides (
         overrides_pre ++ [ result.overrides ] ++ overrides_post
       );};
     in
-      py_final.withPackages (ps: result.select_pkgs ps)
+      py_final.withPackages (ps: (result.select_pkgs ps) ++ _extra_pkgs)
     ;
 }
