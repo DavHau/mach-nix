@@ -4,23 +4,25 @@
      * [import mach-nix](#import-mach-nix)
      * [mkPython / mkPythonShell](#mkpython--mkpythonshell)
         * [From a list of requirements](#from-a-list-of-requirements)
-        * [Mix arbitrary sources with requirements.](#mix-arbitrary-sources-with-requirements)
+        * [Mix requirements with packages from arbitrary sources.](#mix-requirements-with-packages-from-arbitrary-sources)
      * [buildPythonPackage / buildPythonApplication](#buildpythonpackage--buildpythonapplication)
-        * [Build python package from its source code and autodetect requirements](#build-python-package-from-its-source-code-and-autodetect-requirements)
+        * [Build python package from its source code](#build-python-package-from-its-source-code)
         * [buildPythonPackage from GitHub](#buildpythonpackage-from-github)
         * [buildPythonPackage from GitHub with extras](#buildpythonpackage-from-github-with-extras)
         * [buildPythonPackage from GitHub and add missing requirements](#buildpythonpackage-from-github-and-add-missing-requirements)
-        * [buildPythonPackage from GitHub (reproducible source)](#buildpythonpackage-from-github-reproducible-source)
+        * [buildPythonPackage from GitHub (explicit source)](#buildpythonpackage-from-github-explicit-source)
         * [buildPythonPackage from GitHub (manual requirements)](#buildpythonpackage-from-github-manual-requirements)
   * [Examples for Tensorflow / PyTorch](#examples-for-tensorflow--pytorch)
      * [Tensorflow with SSE/AVX/FMA support](#tensorflow-with-sseavxfma-support)
      * [Tensorflow via wheel (newer versions, quicker builds)](#tensorflow-via-wheel-newer-versions-quicker-builds)
      * [Recent PyTorch with nixpkgs dependencies, and custom python](#recent-pytorch-with-nixpkgs-dependencies-and-custom-python)
+  * [Using '_' (simplified override system)](#using-_-simplified-override-system)
+     * [General usage](#general-usage)
+     * [Example: add missing build inputs](#example-add-missing-build-inputs)
   * [Using overrides](#using-overrides)
-     * [Fixing packages via overrides](#fixing-packages-via-overrides)
      * [Include poetry2nix overrides](#include-poetry2nix-overrides)
 
-<!-- Added by: grmpf, at: Tue 25 Aug 2020 02:28:02 PM +07 -->
+<!-- Added by: grmpf, at: Wed 26 Aug 2020 07:51:15 PM +07 -->
 
 <!--te-->
 
@@ -150,13 +152,7 @@ mach-nix.mkPython {
   # no need to specify provider settings since wheel is the default anyways
 
   # Fix the tensorflow wheel
-  overrides_post = [( pythonSelf: pythonSuper: {
-    tensorflow = pythonSuper.tensorflow.overridePythonAttrs ( oldAttrs: {
-      postInstall = ''
-        rm $out/bin/tensorboard
-      '';
-    });
-  })];
+  _.tensorflow.postInstall = "rm $out/bin/tensorboard";
 }
 
 ```
@@ -183,9 +179,9 @@ mach-nix.mkPython rec {
 }
 ```
 
-## Using 'Underscore' (simplified override system)
+## Using '_' (simplified override system)
 ### General usage
-```nix
+```
 with mach-nix.nixpkgs;
 mach-nix.mkPython {
 
@@ -202,7 +198,7 @@ mach-nix.mkPython {
 }
 ```
 ### Example: add missing build inputs
-For example the package web2ldap depends on another python package `ldap0` which is only available via sdist and the build fails because of missing non-python dependencies.
+For example the package web2ldap depends on another python package `ldap0` which fails to build because of missing dependencies.
 ```nix
 with mach-nix.nixpkgs;
 mach-nix.mkPython {
@@ -215,12 +211,7 @@ mach-nix.mkPython {
 
 ```
 
-
-
 ## Using overrides
-### Fixing packages via overrides
-See previous example for tensorflow wheel
-
 ### Include poetry2nix overrides
 I have a complex requirements.txt which includes `imagecodecs`. It is available via wheel, but I prefer to build everything from source. This package has complex build dependencies and is not available from nixpkgs. Luckily poetry2nix` overrides make it work.
 ```nix
