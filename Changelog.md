@@ -1,9 +1,11 @@
 # 2.3.0 (26 Aug 2020)
-new features for `mkPython` and `buildPythonPackage`, bug fixes, improved success rate.
+simplified override system, autodetect requirements, improved success rate
 
 ### Features
- - `buildPythonPackage` now automatically detects a packages requirements. Therefore the `requrements` argument becomes optional.
- - `buildPythonPackage` now automatically detects a packages name and version. Therefore those attributes become optional.
+ - Simplified generic override system via `_` (underscore) argument for `mkPython`.  
+   Example: `_.{package}.buildInputs.add = [...]`
+ - `buildPythonPackage` now automatically detects requirements. Therefore the `requrements` argument becomes optional.
+ - `buildPythonPackage` now automatically detects package `name` and `version`. Therefore those attributes become optional.
  - `buildPythonPackage` can now be called while only passing a tarball url or a path
  - `mkPython` allows to include python packages from arbitrary sources via new argument `extra_pkgs`
  - `mkPython` can now be called while only passing a list of tarball urls or paths

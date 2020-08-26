@@ -183,6 +183,40 @@ mach-nix.mkPython rec {
 }
 ```
 
+## Using 'Underscore' (simplified override system)
+### General usage
+```nix
+with mach-nix.nixpkgs;
+mach-nix.mkPython {
+
+  requirements = "some requirements";
+
+  _.{package}.buildInputs = [...];             # replace buildInputs
+  _.{package}.buildInputs.add = [...];         # add buildInputs
+  _.{package}.buildInputs.mod =                # modify buildInputs
+      oldInputs: filter (inp: ...) oldInputs; 
+
+  _.{package}.patches = [...];                 # replace patches
+  _.{package}.patches.add = [...];             # add patches
+  ...
+}
+```
+### Example: add missing build inputs
+For example the package web2ldap depends on another python package `ldap0` which is only available via sdist and the build fails because of missing non-python dependencies.
+```nix
+with mach-nix.nixpkgs;
+mach-nix.mkPython {
+
+  requirements = "web2ldap";
+
+  # add missing dependencies to ldap0
+  _.ldap0.buildInputs.add = [ openldap.dev cyrus_sasl.dev ];
+}
+
+```
+
+
+
 ## Using overrides
 ### Fixing packages via overrides
 See previous example for tensorflow wheel

@@ -128,6 +128,7 @@ Mach-nix can be fine tuned with additional arguments by importing it via `builti
  - **pypi_deps_db_sha256** (string): sha256 hash obtained via `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
  - **python** (set): select custom python version. To prevent compatibility issues, only take python packages from the nixpkgs version used by mach-nix. For example:  `mach-nix.nixpkgs.python36`
  - **_provider_defaults** (set): builtin provider defaults. Disable them by passing {}
+ - **_** (set): use underscore argument to easily modify arbitrary attributes of packages. For example to add built inputs use `_.{package}.builtInputs.add = [...]`. Or to remove patches use `_.{package}.patches = [...]`.
  
 #### Configure Providers
 **Providers** allow you to configure the origin for your packages on a granular basis.

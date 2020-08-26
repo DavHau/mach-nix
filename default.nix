@@ -162,10 +162,41 @@ rec {
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
       pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
       python ? pkgs.python3,  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
-      _provider_defaults ? with builtins; fromTOML (readFile ./mach_nix/provider_defaults.toml)
+      _provider_defaults ? with builtins; fromTOML (readFile ./mach_nix/provider_defaults.toml),
+      _ ? {}
     }:
     with builtins;
     let
+      extra_overrides = with pkgs.lib;
+        flatten (
+          mapAttrsToList (pkg: keys:
+            mapAttrsToList (key: val:
+              if isAttrs val && hasAttr "add" val then
+                pySelf: pySuper:
+                  let combine =
+                    if isList val.add then (a: b: a ++ b)
+                    else if isAttrs val.add then (a: b: a // b)
+                    else if isString val.add then (a: b: a + "\n" + b)
+                    else throw "_.${pkg}.${key}.add only accepts list or attrs or string.";
+                  in {
+                    "${pkg}" = pySuper."${pkg}".overrideAttrs (oa: {
+                      "${key}" = combine pySuper."${pkg}"."${key}" val.add;
+                    });
+                  }
+              else if isAttrs val && hasAttr "mod" val && isFunction val.mod then
+                pySelf: pySuper: {
+                  "${pkg}" = pySuper."${pkg}".overrideAttrs (oa: {
+                    "${key}" = val.mod pySuper."${pkg}"."${key}";
+                  });
+                }
+              else pySelf: pySuper: {
+                "${pkg}" = pySuper."${pkg}".overrideAttrs (oa: {
+                  "${key}" = val;
+                });
+              }
+            ) keys
+          ) _
+        );
       _extra_pkgs = map (p: if isString p || isPath p then buildPythonPackage p else p) extra_pkgs;
       extra_pkgs_reqs =
         map (p:
@@ -180,7 +211,7 @@ rec {
         requirements = concat_reqs ([requirements] ++ extra_pkgs_reqs);
       };
       py_final = python.override { packageOverrides = mergeOverrides (
-        overrides_pre ++ [ result.overrides ] ++ overrides_post
+        overrides_pre ++ [ result.overrides ] ++ overrides_post ++ extra_overrides
       );};
     in
       py_final.withPackages (ps: (result.select_pkgs ps) ++ _extra_pkgs)
