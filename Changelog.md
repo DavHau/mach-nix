@@ -1,3 +1,21 @@
+# 2.3.0 (26 Aug 2020)
+new features for `mkPython` and `buildPythonPackage`, bug fixes, improved success rate.
+
+### Features
+ - `buildPythonPackage` now automatically detects a packages requirements. Therefore the `requrements` argument becomes optional.
+ - `buildPythonPackage` now automatically detects a packages name and version. Therefore those attributes become optional.
+ - `buildPythonPackage` can now be called while only passing a tarball url or a path
+ - `mkPython` allows to include python packages from arbitrary sources via new argument `extra_pkgs`
+ - `mkPython` can now be called while only passing a list of tarball urls or paths
+
+### Fixes
+ - More bugs introduced by packages with dot in name
+ - Definitions from `overrides_pre` were sometimes disregarded due to wrong use of `with`-statements inside a recursive attrset.
+ - Fix installation of the mach-nix tool via pip. (requirements were missing)
+ - packages which use a non-normalized version triggered an evaluation error since mach-nix tried to reference their source via normalized version.
+ - wheels removed from pypi were not removed from the dependency graph which could result in environments failing to build
+ 
+
 # 2.2.2 (17 Aug 2020)
 
 ### Fixes
@@ -19,7 +37,7 @@ Handle circular dependencies, fix python 3.8 wheels, improve error message
 
 ### Features
  - Print more detailed info when the resolver raises a ResolutionImpossible error.
- - Warm on circular dependencies and fix them automatically.
+ - Warn on circular dependencies and fix them automatically.
 
 ### Fixes
  - Fix crash on circular dependencies.

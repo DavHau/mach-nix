@@ -54,11 +54,11 @@ Table of Contents
 You can either install mach-nix via pip or by using nix in case you already have the nix package manager installed.
 #### Installing via pip
 ```shell
-pip install git+git://github.com/DavHau/mach-nix@2.2.2
+pip install git+git://github.com/DavHau/mach-nix@2.3.0
 ```
 #### Installing via nix
 ```shell
-nix-env -if https://github.com/DavHau/mach-nix/tarball/2.2.2 -A mach-nix
+nix-env -if https://github.com/DavHau/mach-nix/tarball/2.3.0 -A mach-nix
 ```
 
 ---
@@ -90,7 +90,7 @@ You can call mach-nix directly from a nix expression
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "refs/tags/2.2.2";
+    ref = "refs/tags/2.3.0";
   });
 in
 mach-nix.mkPython {
@@ -119,6 +119,7 @@ Mach-nix can be fine tuned with additional arguments by importing it via `builti
 
 #### Optional Arguments:
  - **disable_checks** (bool): Disable tests wherever possible to decrease build time and failures due to nix incompatible tests
+ - **extra_pkgs** (list) Include packages which are not available from pypi. Can contain tarball-URLs, paths, or `mach-nix.buildPythonPackage` calls.
  - **overrides_pre** (list): list of pythonOverrides to apply before the machnix overrides. Use this to include additional packages which can then be selected inside the `requirements`
  - **overrides_post** (list): list of pythonOverrides to apply after the machnix overrides. Use this to fixup packages.
  - **pkgs** (set): pass custom nixpkgs (20.03 or higher is required for wheel support). Base it on `mach-nix.nixpkgs.path` to avoid incompatibilities.

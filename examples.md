@@ -31,7 +31,7 @@
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "heads/refs/2.2.2";
+    ref = "heads/refs/2.3.0";
   });
 in
 ...
