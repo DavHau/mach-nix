@@ -51,38 +51,18 @@ mach-nix.mkPython {  # replace with mkPythonShell if shell is wanted
 mach-nix.mkPython {
   requirements = builtins.readFile ./requirements.txt;
   extra_pkgs = [
-      # very lazy
-      "https://github.com/psf/requests/tarball/master"
-      
-      # build package from local path
-      ./some/local/project
-    
-      # example with arguments
-      (mach-nix.buildPythonPackage {
-        src = "https://github.com/psf/requests/tarball/master";
-        extras = "socks";
-      })
-      
-      # example with reproducible source
-      (mach-nix.buildPythonPackage {
-        src = builtins.fetchGit {
-          url = "https://github.com/psf/requests/";
-          ref = "refs/tags/v2.24.0";
-          rev = "0797c61fd541f92f66e409dbf9515ca287af28d2";
-        };
-        extras = "socks";
-      })
-
-      # see more buildPythonPackage examples further down
-    ];
+    "https://github.com/psf/requests/tarball/2a7832b5b06d"   # from tarball url
+    ./some/local/project                                     # from local path
+    mach-nix.buildPythonPackage { ... };                     # from package
+  ];
 }
 ```
 alternatively if requirements are not needed, extra_pkgs can be passed directly to mkPython
 ```nix
 mach-nix.mkPython [
-  "https://github.com/psf/requests/tarball/master"
-  ./some/local/project
-  (mach-nix.buildPythonPackage /some/path)
+  "https://github.com/psf/requests/tarball/2a7832b5b06d"   # from tarball url
+  ./some/local/project                                     # from local path
+  mach-nix.buildPythonPackage { ... };                     # from package
 ]
 ```
 
@@ -95,13 +75,13 @@ mach-nix.buildPythonPackage /python-project-path
 
 #### buildPythonPackage from GitHub
 ```nix
-mach-nix.buildPythonPackage "https://github.com/psf/requests/tarball/master"
+mach-nix.buildPythonPackage "https://github.com/psf/requests/tarball/2a7832b5b06d"
 ```
 
 #### buildPythonPackage from GitHub with extras
 ```nix
 mach-nix.buildPythonPackage {
-  src = "https://github.com/psf/requests/tarball/master";
+  src = "https://github.com/psf/requests/tarball/2a7832b5b06d";
   extras = "socks";
 }
 ```
@@ -110,12 +90,12 @@ mach-nix.buildPythonPackage {
 use this in case autdetecting requirements failed
 ```nix
 mach-nix.buildPythonPackage {
-  src = "https://github.com/psf/requests/tarball/master";
+  src = "https://github.com/psf/requests/tarball/2a7832b5b06d";
   add_requirements = "pytest";
 }
 ```
 
-#### buildPythonPackage from GitHub (reproducible source)
+#### buildPythonPackage from GitHub (explicit source)
 ```nix
 mach-nix.buildPythonPackage {
   src = builtins.fetchGit{
@@ -130,7 +110,7 @@ mach-nix.buildPythonPackage {
 Use this if automatic requirements extraction doesn't work.
 ```nix
 mach-nix.buildPythonPackage {
-  src = "https://github.com/psf/requests/tarball/master";
+  src = "https://github.com/psf/requests/tarball/2a7832b5b06d";
   requirements = ''
     # list of requirements
   '';
