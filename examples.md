@@ -69,7 +69,7 @@ mach-nix.mkPython [
 ```
 
 ### buildPythonPackage / buildPythonApplication
-Whenever `requirements` are not explicitly specified, they will be extracted automatically from teh packages setup.py/setup.cfg. The same goes for the `name` and `version`
+Whenever `requirements` are not explicitly specified, they will be extracted automatically from the packages setup.py/setup.cfg. The same goes for the `name` and `version`.
 #### Build python package from its source code
 ```nix
 mach-nix.buildPythonPackage /python-project-path
