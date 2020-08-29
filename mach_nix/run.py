@@ -6,6 +6,7 @@ import tempfile
 from argparse import ArgumentParser
 from os.path import realpath, dirname
 from textwrap import dedent
+from ast import literal_eval
 
 from mach_nix.ensure_nix import ensure_nix
 from mach_nix.versions import PyVer
@@ -13,15 +14,23 @@ from mach_nix.versions import PyVer
 
 pwd = dirname(realpath(__file__))
 
+### read nixpkgs json file for revision ref
+nixpkgs_json = f"""{pwd}/nix/NIXPKGS.json"""
+with open( nixpkgs_json, 'r') as f:
+    nixpkgs_ver_default = json.load(f)
 
 def gen(args, return_expr=False):
     with open(args.r) as f:
         requirements = f.read().strip()
     o_file = tempfile.mktemp()
     py_ver = PyVer(args.python)
+    nixpkgs = literal_eval(args.nixpkgs) if args.nixpkgs else nixpkgs_ver_default
+
     cmd = f'nix-build {pwd}/nix/call_mach.nix -o {o_file}' \
           f' --argstr requirements "{requirements}"' \
-          f' --argstr python_attr python{py_ver.digits()}'
+          f' --argstr python_attr python{py_ver.digits()}' \
+          f' --argstr nixpkgs_rev {nixpkgs["rev"]}' \
+          f' --argstr nixpkgs_sha {nixpkgs["sha256"]}'
     proc = sp.run(cmd, shell=True, stdout=sys.stderr)
     if proc.returncode:
         exit(1)
@@ -39,6 +48,9 @@ def gen(args, return_expr=False):
 
 def env(args):
     target_dir = args.directory
+    nixpkgs = literal_eval(args.nixpkgs) if args.nixpkgs else nixpkgs_ver_default
+    py_ver = PyVer(args.python)
+
     expr = gen(args, return_expr=True)
     machnix_file = f"{target_dir}/machnix.nix"
     shell_nix_file = f"{target_dir}/shell.nix"
@@ -46,15 +58,15 @@ def env(args):
     python_nix_file = f"{target_dir}/python.nix"
     python_nix_content = dedent(f"""
         let
-          result = import ./machnix.nix {{ inherit pkgs; }};
-          nixpkgs_commit = "{open(pwd + "/nix/NIXPKGS_COMMIT").read().strip()}";
-          nixpkgs_sha256 = "{open(pwd + "/nix/NIXPKGS_SHA256").read().strip()}";
+          result = import ./machnix.nix {{ inherit pkgs; }};;
+          nixpkgs_commit = "{nixpkgs["rev"]}";
+          nixpkgs_sha256 = "{nixpkgs["sha256"]}";
           pkgs = import (builtins.fetchTarball {{
             name = "nixpkgs";
             url = "https://github.com/nixos/nixpkgs/tarball/${{nixpkgs_commit}}";
             sha256 = nixpkgs_sha256;
           }}) {{ config = {{}}; overlays = []; }};
-          python = pkgs.python37;
+          python = pkgs.python{str(py_ver.digits())};
           manylinux1 = pkgs.pythonManylinuxPackages.manylinux1;
           overrides = result.overrides manylinux1 pkgs.autoPatchelfHook;
           py = pkgs.python37.override {{ packageOverrides = overrides; }};
@@ -94,6 +106,16 @@ def main():
             help='path to requirements.txt file',
             metavar='requirements.txt',
             required=True)),
+
+        (('--nixpkgs',), dict(
+            help=dedent(f'''\
+                    revision reference form nixpkgs  
+                    --nixpkgs {{ .. rev= .. , sha256= .. }} 
+
+                    (default: {str(nixpkgs_ver_default)})
+                    ''') ,
+            default= f"""{str(nixpkgs_ver_default)}""",
+            required=False,)),
     )
     parser = ArgumentParser()
     parser.add_argument('--version', '-V', help='show program version', action='store_true')
@@ -113,7 +135,9 @@ def main():
 
     if args.version:
         with open(f"{pwd}/VERSION") as f:
-            print(f"mach-nix: {f.read()}")
+            print(f"mach-nix: {f.read()}" ,
+            "\n" , "mach-nix.nixpkgs" , "revision", nixpkgs_ver_default["rev"],
+            "\n" , "mach-nix.nixpkgs" , "date    ", nixpkgs_ver_default["date"])
             exit(0)
 
     if args.command not in ('gen', 'env'):

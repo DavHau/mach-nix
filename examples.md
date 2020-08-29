@@ -240,3 +240,49 @@ mach-nix.mkPython rec {
   ];
 }
 ```
+
+## Mach-nix in nix context 
+### Starting point for a geospatial environment
+```nix
+let
+  mach-nix = import (builtins.fetchGit {
+     url = "https://github.com/DavHau/mach-nix/";
+     ref = "refs/tags/2.3.0";  
+  });
+
+  overlays = []; # some very useful overlays
+
+  Pkgs = import mach-nix.nixpkgs.path {config = { allowUnfree = true; }; };
+  py = Pkgs.python37Packages ;
+
+  py_env = mach-nix.mkPython rec { 
+    pkgs = Pkgs;
+    python = Pkgs.python37;
+    
+    #requirements = builtins.readFile ./requirements.txt;
+    requirements =  ''  
+        jupyterlab
+        geopandas
+        pyproj
+        pygeos
+        shapely>=1.7.0
+      '';
+
+    providers = {
+      shapely = "sdist,nixpkgs";
+    };
+    #overrides_post = []
+  };
+in 
+Pkgs.mkShell rec {
+  buildInputs = [
+    Pkgs.bash
+
+    ( (py_env).override( args:{ignoreCollisions = true; }) )
+  ] ;
+
+  shellHook = ''
+    jupyter lab --notebook-dir=~/
+        '';
+}
+```
