@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-nix-build all-test.nix
+nix-build all-tests.nix
