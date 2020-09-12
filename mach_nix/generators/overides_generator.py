@@ -60,6 +60,8 @@ class OverridesGenerator(ExpressionGenerator):
                     pkg.overridePythonAttrs
                 else
                     pkg.overrideAttrs;
+              get_passthru = python: pname:
+                if hasAttr "${{pname}}" python then python."${{pname}}".passthru else {{}};
             """
         return unindent(out, 12)
 
@@ -105,7 +107,8 @@ class OverridesGenerator(ExpressionGenerator):
             {nix_name} = python-self.buildPythonPackage {{
               pname = "{name}";
               version = "{ver}";
-              src = fetchPypi "{name}" "{ver}";"""
+              src = fetchPypi "{name}" "{ver}";
+              passthru = get_passthru python-super "{nix_name}";"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
@@ -119,11 +122,15 @@ class OverridesGenerator(ExpressionGenerator):
             out += """
               doCheck = false;
               doInstallCheck = false;"""
+        # inheriting passthru can lead to inf. recursion if nix has multiple attributes
+        #if name == nix_name:
+        out += f"""
+          passthru = get_passthru python-super "{nix_name}";"""
         out += """
             };\n"""
         return unindent(out, 8)
 
-    def _gen_wheel_buildPythonPackage(self, name, ver, circular_deps, prop_build_inputs_str, fname):
+    def _gen_wheel_buildPythonPackage(self, name, ver, circular_deps, nix_name, prop_build_inputs_str, fname):
         manylinux = "manylinux1 ++ " if 'manylinux' in fname else ''
 
         # dontStrip added due to this bug - https://github.com/pypa/manylinux/issues/119
@@ -135,7 +142,8 @@ class OverridesGenerator(ExpressionGenerator):
               format = "wheel";
               doCheck = false;
               doInstallCheck = false;
-              dontStrip = true;"""
+              dontStrip = true;
+              passthru = get_passthru python-super "{nix_name}";"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
@@ -214,7 +222,9 @@ class OverridesGenerator(ExpressionGenerator):
                 out += self._gen_wheel_buildPythonPackage(
                     pkg.name,
                     pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver),
-                    pkg.removed_circular_deps, prop_build_inputs_str,
+                    pkg.removed_circular_deps,
+                    self._get_ref_name(pkg.name, pkg.ver),
+                    prop_build_inputs_str,
                     pkg.provider_info.wheel_fname)
                 if self.nixpkgs.exists(pkg.name):
                     out += self._unify_nixpkgs_keys(pkg.name)
