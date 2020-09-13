@@ -108,7 +108,8 @@ class OverridesGenerator(ExpressionGenerator):
               pname = "{name}";
               version = "{ver}";
               src = fetchPypi "{name}" "{ver}";
-              passthru = get_passthru python-super "{nix_name}";"""
+              passthru = get_passthru python-super "{nix_name}";
+              passthru.provider = "sdist";"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
@@ -122,10 +123,6 @@ class OverridesGenerator(ExpressionGenerator):
             out += """
               doCheck = false;
               doInstallCheck = false;"""
-        # inheriting passthru can lead to inf. recursion if nix has multiple attributes
-        #if name == nix_name:
-        out += f"""
-          passthru = get_passthru python-super "{nix_name}";"""
         out += """
             };\n"""
         return unindent(out, 8)
@@ -143,7 +140,8 @@ class OverridesGenerator(ExpressionGenerator):
               doCheck = false;
               doInstallCheck = false;
               dontStrip = true;
-              passthru = get_passthru python-super "{nix_name}";"""
+              passthru = get_passthru python-super "{nix_name}";
+              passthru.provider = "wheel";"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
