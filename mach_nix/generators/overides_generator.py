@@ -105,7 +105,8 @@ class OverridesGenerator(ExpressionGenerator):
             {nix_name} = python-self.buildPythonPackage {{
               pname = "{name}";
               version = "{ver}";
-              src = fetchPypi "{name}" "{ver}";"""
+              src = fetchPypi "{name}" "{ver}";
+              passthru.provider = "sdist";"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
@@ -135,7 +136,8 @@ class OverridesGenerator(ExpressionGenerator):
               format = "wheel";
               doCheck = false;
               doInstallCheck = false;
-              dontStrip = true;"""
+              dontStrip = true;
+              passthru.provider = "wheel";"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""

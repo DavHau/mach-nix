@@ -1,3 +1,4 @@
+with builtins;
 let
   pkgs = import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; };
   python = import ./mach_nix/nix/python.nix { inherit pkgs; };
@@ -37,6 +38,16 @@ let
   get_src = src:
     with builtins;
     if isString src && is_http_url src then (fetchTarball src) else src;
+  combine = val1: val2:
+    if isList val2 then val1 ++ val2
+    else if isAttrs val2 then val1 // val2
+    else if isString val2 then val1 + val2
+    else throw "_.${pkg}.${key}.add only accepts list or attrs or string.";
+  meets_cond = oa: condition:
+    let
+      provider = if hasAttr "provider" oa then oa.provider else "nixpkgs";
+    in
+    condition { prov = provider; ver = oa.version; pyver = oa.pythonModule.version; };
   simple_overrides = args: with pkgs.lib;
     flatten (
       mapAttrsToList (pkg: keys:
@@ -56,7 +67,7 @@ let
           else if isAttrs val && hasAttr "mod" val && isFunction val.mod then
             pySelf: pySuper: {
               "${pkg}" = pySuper."${pkg}".overrideAttrs (oa: {
-                "${key}" = val.mod pySuper."${pkg}"."${key}";
+                "${key}" = val.mod oa."${key}";
               });
             }
           else pySelf: pySuper: {
@@ -67,6 +78,31 @@ let
         ) keys
       ) args
     );
+  fixes_to_overrides = fixes: with pkgs.lib;
+    flatten (flatten (
+      mapAttrsToList (pkg: p_fixes:
+        mapAttrsToList (fix: keys: pySelf: pySuper:
+          let cond = if hasAttr "_cond" keys then keys._cond else ({prov, ver, pyver}: true); in
+          if ! hasAttr "${pkg}" pySuper then {} else
+          {
+            "${pkg}" = pySuper."${pkg}".overrideAttrs (oa:
+              mapAttrs (key: val:
+                if ! meets_cond oa cond then
+                  oa."${key}"
+                else trace "\napplying fix '${fix}' for ${pkg}:${oa.version}\n" (
+                  if isAttrs val && hasAttr "add" val then
+                    combine oa."${key}" val.add
+                  else if isAttrs val && hasAttr "mod" val && isFunction val.mod then
+                    val.mod oa."${key}"
+                  else
+                    val
+                )
+              ) (filterAttrs (k: v: k != "_cond") keys)
+            );
+          }
+        ) p_fixes
+      ) fixes
+    ));
 in
 rec {
   # the mach-nix cmdline tool derivation
@@ -194,8 +230,9 @@ rec {
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
       pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
       python ? pkgs.python3,  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
+      _ ? {},  # simplified overrides
       _provider_defaults ? with builtins; fromTOML (readFile ./mach_nix/provider_defaults.toml),
-      _ ? {}  # simplified overrides
+      _fixes ? import ./mach_nix/fixes.nix {pkgs = pkgs;}
     }:
     with builtins;
     with pkgs.lib;
@@ -230,6 +267,7 @@ rec {
       py_final = python.override { packageOverrides = mergeOverrides (
         overrides_pre ++ overrides_pre_extra
         ++ [ result.overrides ]
+        ++ (fixes_to_overrides _fixes)
         ++ overrides_post_extra ++ overrides_post
         ++ overrides_simple_extra ++ (simple_overrides _)
       );};
