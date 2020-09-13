@@ -108,8 +108,7 @@ class OverridesGenerator(ExpressionGenerator):
               pname = "{name}";
               version = "{ver}";
               src = fetchPypi "{name}" "{ver}";
-              passthru = get_passthru python-super "{nix_name}";
-              passthru.provider = "sdist";"""
+              passthru = (get_passthru python-super "{nix_name}") // {{ provider = "sdist"; }};"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
@@ -140,8 +139,7 @@ class OverridesGenerator(ExpressionGenerator):
               doCheck = false;
               doInstallCheck = false;
               dontStrip = true;
-              passthru = get_passthru python-super "{nix_name}";
-              passthru.provider = "wheel";"""
+              passthru = (get_passthru python-super "{nix_name}") // {{ provider = "wheel"; }};"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
