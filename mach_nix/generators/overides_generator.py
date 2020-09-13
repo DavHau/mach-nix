@@ -61,7 +61,11 @@ class OverridesGenerator(ExpressionGenerator):
                 else
                     pkg.overrideAttrs;
               get_passthru = python: pname:
-                if hasAttr "${{pname}}" python then python."${{pname}}".passthru else {{}};
+                if hasAttr "${{pname}}" python then 
+                  let result = (tryEval python."${{pname}}".passthru); in
+                  if result.success then result.value
+                  else {{}}
+                else {{}};
             """
         return unindent(out, 12)
 
@@ -79,7 +83,7 @@ class OverridesGenerator(ExpressionGenerator):
 
     def _gen_overrideAttrs(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str, keep_src=False):
         out = f"""
-            {nix_name} = override python-super.{nix_name} ( oldAttrs: {{
+            "{nix_name}" = override python-super.{nix_name} ( oldAttrs: {{
               pname = "{name}";
               version = "{ver}";"""
         if not keep_src:
@@ -104,7 +108,7 @@ class OverridesGenerator(ExpressionGenerator):
 
     def _gen_builPythonPackage(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str):
         out = f"""
-            {nix_name} = python-self.buildPythonPackage {{
+            "{nix_name}" = python-self.buildPythonPackage {{
               pname = "{name}";
               version = "{ver}";
               src = fetchPypi "{name}" "{ver}";
