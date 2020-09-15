@@ -135,7 +135,7 @@ class OverridesGenerator(ExpressionGenerator):
 
         # dontStrip added due to this bug - https://github.com/pypa/manylinux/issues/119
         out = f"""
-            "{name}" = python-self.buildPythonPackage {{
+            "{nix_name}" = python-self.buildPythonPackage {{
               pname = "{name}";
               version = "{ver}";
               src = fetchPypiWheel "{name}" "{ver}" "{fname}";
@@ -157,15 +157,6 @@ class OverridesGenerator(ExpressionGenerator):
         out += """
             };\n"""
         return unindent(out, 8)
-
-    def _unify_nixpkgs_keys(self, name, main_key=None):
-        other_names = set(
-            p.nix_key for p in self.nixpkgs.get_all_candidates(name) if p.nix_key not in (name, main_key)
-        )
-        out = ''
-        for key in sorted(other_names):
-            out += f"""    {key} = python-self."{name}";\n"""
-        return out
 
     def _gen_overrides(self, pkgs: Dict[str, ResolvedPkg], overrides_keys):
         pkg_names_str = "".join(
@@ -208,7 +199,6 @@ class OverridesGenerator(ExpressionGenerator):
                         pkg.removed_circular_deps,
                         nix_name, build_inputs_str,
                         prop_build_inputs_str)
-                    out += self._unify_nixpkgs_keys(pkg.name, main_key=nix_name)
                 else:
                     out += self._gen_builPythonPackage(
                         pkg.name,
@@ -226,15 +216,12 @@ class OverridesGenerator(ExpressionGenerator):
                     self._get_ref_name(pkg.name, pkg.ver),
                     prop_build_inputs_str,
                     pkg.provider_info.wheel_fname)
-                if self.nixpkgs.exists(pkg.name):
-                    out += self._unify_nixpkgs_keys(pkg.name)
             # NIXPKGS
             elif isinstance(pkg.provider_info.provider, NixpkgsDependencyProvider):
                 nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
                 out += self._gen_overrideAttrs(
                     pkg.name, pkg.ver, pkg.removed_circular_deps, nix_name, build_inputs_str, prop_build_inputs_str,
                     keep_src=True)
-                out += self._unify_nixpkgs_keys(pkg.name, main_key=nix_name)
         end_overlay_section = f"""
                 }};
           """
