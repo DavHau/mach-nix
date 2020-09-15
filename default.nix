@@ -23,7 +23,7 @@ let
       name = if hasAttr "name" data then data.name else null;
       version = if hasAttr "version" data then data.version else null;
       extras_require =
-        if hasAttr "install_requires" data then
+        if hasAttr "extras_require" data then
           pkgs.lib.flatten (map (extra: data.extras_require."${extra}") extras)
         else [];
       all_reqs = concat_reqs (setup_requires ++ install_requires ++ extras_require);
