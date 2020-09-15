@@ -187,9 +187,8 @@ class CombinedDependencyProvider(DependencyProviderBase):
                 f"\nIf the package's initial release date predates the release date of mach-nix, " \
                 f"either upgrade mach-nix itself or manually specify 'pypi_deps_db_commit' and\n" \
                 f"'pypi_deps_db_sha256 for a newer commit of https://github.com/DavHau/pypi-deps-db/commits/master\n" \
-                f"If it still doesn't work, there was probably a problem while extracting dependency information " \
-                f"by the crawler maintaining the database.\n" \
-                f"Please open an issue here: https://github.com/DavHau/pypi-crawlers/issues/new\n"
+                f"If it still doesn't work, there was probably a problem while crawling pypi.\n" \
+                f"Please open an issue at: https://github.com/DavHau/mach-nix/issues/new\n"
         print(error_text, file=sys.stderr)
         exit(1)
 

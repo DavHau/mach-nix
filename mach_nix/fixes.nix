@@ -40,18 +40,24 @@ in
 # }                                                                    #
 ########################################################################
 
-### _cond ###
-#  possible arguments:
-#   - prov  (provider of the package)
-#   - ver   (version of the package)
-#   - pyver (python version used)
-#
+### _cond ####################################
+#  possible arguments:                       #
+#   - prov  (provider of the package)        #
+#   - ver   (version of the package)         #
+#   - pyver (python version used)            #
+##############################################
 
 rec {
 
   ldap0 = {
     add-inputs = {
       buildInputs.add = with pkgs; [ openldap.dev cyrus_sasl.dev ];
+    };
+  };
+
+  orange3 = {
+    skipFixup = {
+      dontFixup = true;
     };
   };
 
