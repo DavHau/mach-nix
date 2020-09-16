@@ -169,6 +169,10 @@ rec {
     }:
     with builtins;
     let
+      python_arg = python;
+    in
+    let
+      python = if isString python_arg then pkgs."${python_arg}" else python_arg;
       src = get_src pass_args.src;
       # Extract dependencies automatically if 'requirements' is unset
       meta = extractMeta python src extras;
@@ -238,6 +242,10 @@ rec {
     with builtins;
     with pkgs.lib;
     let
+      python_arg = python;
+    in
+    let
+      python = if isString python_arg then pkgs."${python_arg}" else python_arg;
       _extra_pkgs = map (p:
         if isString p || isPath p then
           _buildPython "buildPythonPackage" {
