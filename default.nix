@@ -157,6 +157,7 @@ rec {
       doCheck ? ! disable_checks,
       overrides_pre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overrides_post ? [],  # list of pythonOverrides to apply after the machnix overrides
+      passthru ? {},
       pkgs ? nixpkgs,  # pass custom nixpkgs.
       providers ? {},  # define provider preferences
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
@@ -208,7 +209,7 @@ rec {
       propagatedBuildInputs = result.select_pkgs py_final.pkgs;
       src = src;
       inherit doCheck pname version;
-      passthru = {
+      passthru = passthru // {
         requirements = reqs;
         inherit overrides_pre overrides_post _;
       };
