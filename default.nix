@@ -10,28 +10,41 @@ let
       concat = s1: s2: s1 + "\n" + s2;
     in
       builtins.foldl' concat "" reqs_list;
-  extractMeta = python: src: extras:
-    with builtins;
+  extract = python: src: fail_msg:
     let
-      file = (builtins.readFile "${(import ./lib/extractor).extract_from_src {
-        py = python;
-        src = src;
-      }}/python.json");
-      data = fromJSON file;
+      file_path = "${(import ./lib/extractor).extract_from_src {
+          py = python;
+          src = src;
+        }}/python.json";
+    in
+      if pathExists file_path then fromJSON (readFile file_path) else throw fail_msg;
+  extractRequirements = python: src: name: extras:
+     with pkgs.lib;
+    let
+      data = extract python src ''
+        Automatic requirements extraction failed for ${name}.
+        Please manually specify 'requirements' '';
       setup_requires = if hasAttr "setup_requires" data then data.setup_requires else [];
       install_requires = if hasAttr "install_requires" data then data.install_requires else [];
-      name = if hasAttr "name" data then data.name else null;
-      version = if hasAttr "version" data then data.version else null;
       extras_require =
         if hasAttr "extras_require" data then
           pkgs.lib.flatten (map (extra: data.extras_require."${extra}") extras)
         else [];
       all_reqs = concat_reqs (setup_requires ++ install_requires ++ extras_require);
+      msg = "\n automatically detected requirements of ${name} ${version}:${all_reqs}\n\n";
     in
-      {
-        requirements = trace "\n automatically detected requirements of ${name} ${version}:${all_reqs}\n\n" all_reqs;
-        inherit name version;
-      };
+      trace msg all_reqs;
+  extractMeta = python: src: attr:
+    with pkgs.lib;
+    let
+      error_msg = ''
+        Automatic extraction of '${attr}' from python package source ${src} failed.
+        Please manually specify '${attr}' '';
+      data = extract python src error_msg;
+      result = if hasAttr attr data then data."${attr}" else throw error_msg;
+      msg = "\n automatically detected ${attr}: '${result}'";
+    in
+      trace msg result;
   is_http_url = url:
     with builtins;
     if (substring 0 8 url) == "https://" || (substring 0 7 url) == "http://" then true else false;
@@ -175,25 +188,27 @@ rec {
       python = if isString python_arg then pkgs."${python_arg}" else python_arg;
       src = get_src pass_args.src;
       # Extract dependencies automatically if 'requirements' is unset
-      meta = extractMeta python src extras;
+      meta_name = extractMeta python src "name";
+      meta_version = extractMeta python src "version";
+      pname =
+        if hasAttr "name" args then null
+        else if hasAttr "pname" args then args.pname
+        else meta_name;
+      version =
+        if hasAttr "name" args then null
+        else if hasAttr "version" args then args.version
+        else meta_version;
+      meta_reqs = extractRequirements python src (if isNull pname then args.name else "${pname}:${version}") extras;
       reqs =
         (if requirements == null then
           if builtins.hasAttr "format" args && args.format != "setuptools" then
             throw "Automatic dependency extraction is only available for 'setuptools' format."
                   " Please specify 'requirements' if setuptools is not used."
           else
-            meta.requirements
+            meta_reqs
         else
           requirements)
         + "\n" + add_requirements;
-      pname =
-        if hasAttr "name" args then null
-        else if hasAttr "pname" args then args.pname
-        else meta.name;
-      version =
-        if hasAttr "name" args then null
-        else if hasAttr "version" args then args.version
-        else meta.version;
       py = python.override { packageOverrides = mergeOverrides overrides_pre; };
       result = machNix {
         inherit disable_checks pkgs providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
