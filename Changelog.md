@@ -1,3 +1,24 @@
+# 2.4.0 (20 Sep 2020)
+Global conditional overrides, simple overrides for buildPythonPackage, improved metadata extraction, fix wheel selection
+
+### Features
+ - **Global conditional overrides**: Similar to the overrides from poetry2nix, this allows users to upstream their 'fixes' for python packages. Though, a special format is used here which is optimized for human readability and allows to define a condition for each fix. Therefore fixes are applied on a granular basis depending on the metadata of each package like its `version`, `python version`, or `provider`. This format is designed in a way, so it could easily be reused by projects other than mach-nix. Please contribute your fixes to [./mach_nix/fixes.nix](https://github.com/DavHau/mach-nix/blob/master/mach_nix/fixes.nix)
+ - Simplified overrides are now also available for buildPythonPackage (underscore argument)
+ - Inherit passthru from nixpkgs: Reduces risk of missing attributes like `numpy.blas`.
+ - Allow passing a string to the `python` argument of mkPython: Values like, for example, `"python38"` are now accepted in which case `pkgs.python38` will be used. The intention is to reduce the risk of accidentally mixing multiple nixpkgs versions.
+ - Improved error handling while extracting metadata from python sources in buildPythonPackage.
+ 
+### Fixes
+ - Selecting `extras` when using `buildPythonPackage` didn't have any effect
+ - The `passthru` argument for `buildPythonPackage` was ignored
+ - The `propagatedBuildInputs` argument for `buildPythonPackage` was ignored
+ - Wheels with multiple python versions in their filename like `PyQt5-...-cp35.cp36.cp37.cp38-...whl` were not selected correctly.
+ 
+### Package Fixes:
+  - tensorflow: collision related to tensorboard
+  - orange3: broken .so file caused by fixupPhase (probably due to shrinking)
+  - ldap0: add misssing build inputs.
+
 # 2.3.0 (26 Aug 2020)
 simplified override system, autodetect requirements, improved success rate
 
