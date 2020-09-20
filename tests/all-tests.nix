@@ -5,4 +5,7 @@ map (file: import file ) [
   ./test_extras.nix
   ./test_lazy_usage.nix
   ./test_py38_cp38_wheel.nix
+  ./test_pymc3.nix
+  ./test_underscore_override.nix
+  ./test_underscore_override_extra.nix
 ]

@@ -18,7 +18,7 @@ let
         }}/python.json";
     in
       if pathExists file_path then fromJSON (readFile file_path) else throw fail_msg;
-  extractRequirements = python: src: name: extras:
+  extract_requirements = python: src: name: extras:
      with pkgs.lib;
     let
       data = extract python src ''
@@ -34,7 +34,7 @@ let
       msg = "\n automatically detected requirements of ${name} ${version}:${all_reqs}\n\n";
     in
       trace msg all_reqs;
-  extractMeta = python: src: attr:
+  extract_meta = python: src: attr:
     with pkgs.lib;
     let
       error_msg = ''
@@ -51,46 +51,29 @@ let
   get_src = src:
     with builtins;
     if isString src && is_http_url src then (fetchTarball src) else src;
-  combine = val1: val2:
+  combine = pname: key: val1: val2:
     if isList val2 then val1 ++ val2
     else if isAttrs val2 then val1 // val2
     else if isString val2 then val1 + val2
-    else throw "_.${pkg}.${key}.add only accepts list or attrs or string.";
+    else throw "_.${pname}.${key}.add only accepts list or attrs or string.";
   meets_cond = oa: condition:
     let
       provider = if hasAttr "provider" oa.passthru then oa.passthru.provider else "nixpkgs";
     in
       condition { prov = provider; ver = oa.version; pyver = oa.pythonModule.version; };
   simple_overrides = args: with pkgs.lib;
-    flatten (
-      mapAttrsToList (pkg: keys:
-        mapAttrsToList (key: val:
+    flatten ( mapAttrsToList (pkg: keys: pySelf: pySuper: {
+      "${pkg}" = pySuper."${pkg}".overrideAttrs (oa:
+        mapAttrs (key: val:
           if isAttrs val && hasAttr "add" val then
-            pySelf: pySuper:
-              let combine =
-                if isList val.add then (a: b: a ++ b)
-                else if isAttrs val.add then (a: b: a // b)
-                else if isString val.add then (a: b: a + b)
-                else throw "_.${pkg}.${key}.add only accepts list or attrs or string.";
-              in {
-                "${pkg}" = pySuper."${pkg}".overrideAttrs (oa: {
-                  "${key}" = combine oa."${key}" val.add;
-                });
-              }
+            combine pkg key oa."${key}" val.add
           else if isAttrs val && hasAttr "mod" val && isFunction val.mod then
-            pySelf: pySuper: {
-              "${pkg}" = pySuper."${pkg}".overrideAttrs (oa: {
-                "${key}" = val.mod oa."${key}";
-              });
-            }
-          else pySelf: pySuper: {
-            "${pkg}" = pySuper."${pkg}".overrideAttrs (oa: {
-              "${key}" = val;
-            });
-          }
+            val.mod oa."${key}"
+          else
+            val
         ) keys
-      ) args
-    );
+      );
+    }) args);
   fixes_to_overrides = fixes: with pkgs.lib;
     flatten (flatten (
       mapAttrsToList (pkg: p_fixes:
@@ -102,7 +85,7 @@ let
               mapAttrs (key: val:
                 trace "\napplying fix '${fix}' for ${pkg}:${oa.version}\n" (
                   if isAttrs val && hasAttr "add" val then
-                    combine oa."${key}" val.add
+                    combine pkg key oa."${key}" val.add
                   else if isAttrs val && hasAttr "mod" val && isFunction val.mod then
                     val.mod oa."${key}"
                   else
@@ -186,8 +169,8 @@ rec {
       python = if isString python_arg then pkgs."${python_arg}" else python_arg;
       src = get_src pass_args.src;
       # Extract dependencies automatically if 'requirements' is unset
-      meta_name = extractMeta python src "name";
-      meta_version = extractMeta python src "version";
+      meta_name = extract_meta python src "name";
+      meta_version = extract_meta python src "version";
       pname =
         if hasAttr "name" args then null
         else if hasAttr "pname" args then args.pname
@@ -196,7 +179,7 @@ rec {
         if hasAttr "name" args then null
         else if hasAttr "version" args then args.version
         else meta_version;
-      meta_reqs = extractRequirements python src (if isNull pname then args.name else "${pname}:${version}") extras;
+      meta_reqs = extract_requirements python src (if isNull pname then args.name else "${pname}:${version}") extras;
       reqs =
         (if requirements == null then
           if builtins.hasAttr "format" args && args.format != "setuptools" then
@@ -267,6 +250,8 @@ rec {
           }
         else p
       ) extra_pkgs;
+      extra_pkgs_attrs = foldl' (a: b: a // b) {} (map (p: { p.pname = p; }) _extra_pkgs);
+      extra_pkgs_as_overrides = [ (pySelf: pySuper: extra_pkgs_attrs) ];
       extra_pkgs_reqs =
         map (p:
           if hasAttr "requirements" p then p.requirements
@@ -282,18 +267,22 @@ rec {
       py = python.override { packageOverrides = mergeOverrides overrides_pre; };
       result = machNix {
         inherit disable_checks pkgs providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
-        overrides = overrides_pre;
+        overrides = overrides_pre ++ overrides_pre_extra ++ extra_pkgs_as_overrides;
         python = py;
         requirements = concat_reqs ([requirements] ++ extra_pkgs_reqs);
       };
       py_final = python.override { packageOverrides = mergeOverrides (
         overrides_pre ++ overrides_pre_extra
+        ++ extra_pkgs_as_overrides
         ++ [ result.overrides ]
         ++ (fixes_to_overrides _fixes)
         ++ overrides_post_extra ++ overrides_post
         ++ overrides_simple_extra ++ (simple_overrides _)
       );};
     in
-      py_final.withPackages (ps: (result.select_pkgs ps) ++ _extra_pkgs)
+      py_final.withPackages (ps:
+        (result.select_pkgs ps)
+        ++ (attrValues (filterAttrs (pname: p: hasAttr pname extra_pkgs_attrs) ps))
+      )
     ;
 }
