@@ -58,9 +58,9 @@ let
     else throw "_.${pkg}.${key}.add only accepts list or attrs or string.";
   meets_cond = oa: condition:
     let
-      provider = if hasAttr "provider" oa then oa.provider else "nixpkgs";
+      provider = if hasAttr "provider" oa.passthru then oa.passthru.provider else "nixpkgs";
     in
-    condition { prov = provider; ver = oa.version; pyver = oa.pythonModule.version; };
+      condition { prov = provider; ver = oa.version; pyver = oa.pythonModule.version; };
   simple_overrides = args: with pkgs.lib;
     flatten (
       mapAttrsToList (pkg: keys:
@@ -100,9 +100,7 @@ let
           {
             "${pkg}" = pySuper."${pkg}".overrideAttrs (oa:
               mapAttrs (key: val:
-                if ! meets_cond oa cond then
-                  oa."${key}"
-                else trace "\napplying fix '${fix}' for ${pkg}:${oa.version}\n" (
+                trace "\napplying fix '${fix}' for ${pkg}:${oa.version}\n" (
                   if isAttrs val && hasAttr "add" val then
                     combine oa."${key}" val.add
                   else if isAttrs val && hasAttr "mod" val && isFunction val.mod then
@@ -110,7 +108,7 @@ let
                   else
                     val
                 )
-              ) (filterAttrs (k: v: k != "_cond") keys)
+              ) (filterAttrs (k: v: k != "_cond" && meets_cond oa cond) keys)
             );
           }
         ) p_fixes

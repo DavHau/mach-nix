@@ -22,9 +22,12 @@ let
   '';
 in
 
+
+### Put Fixes here
+rec {
+
 ###  FORMAT  ###########################################################
-# rec {                                                                #
-#   ...                                                                #
+#                                                                      #
 #   package-to-fix = {                                                 #
 #     name-of-the-fix = {                                              #
 #       # optionally limit the fix to a condtion                       #
@@ -36,8 +39,7 @@ in
 #       key-to-override.mod = old_val: ...;   # to modify value        #
 #     };                                                               #
 #   };                                                                 #
-#   ...                                                                #
-# }                                                                    #
+#                                                                      #
 ########################################################################
 
 ### _cond ####################################
@@ -46,8 +48,6 @@ in
 #   - ver   (version of the package)         #
 #   - pyver (python version used)            #
 ##############################################
-
-rec {
 
   ldap0 = {
     add-inputs = {
