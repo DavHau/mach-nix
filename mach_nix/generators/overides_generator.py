@@ -81,11 +81,14 @@ class OverridesGenerator(ExpressionGenerator):
             name(b) for b in sorted(prop_build_inputs_local | prop_build_inputs_nixpkgs))
         return prop_build_inputs_str
 
-    def _gen_overrideAttrs(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str, keep_src=False):
+    def _gen_overrideAttrs(
+            self, name, ver, circular_deps, nix_name, provider, build_inputs_str, prop_build_inputs_str,
+            keep_src=False):
         out = f"""
             "{nix_name}" = override python-super.{nix_name} ( oldAttrs: {{
               pname = "{name}";
-              version = "{ver}";"""
+              version = "{ver}";
+              passthru = (get_passthru python-super "{nix_name}") // {{ provider = "{provider}"; }};"""
         if not keep_src:
             out += f"""
               src = fetchPypi "{name}" "{ver}";"""
@@ -197,7 +200,9 @@ class OverridesGenerator(ExpressionGenerator):
                         pkg.name,
                         pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver),
                         pkg.removed_circular_deps,
-                        nix_name, build_inputs_str,
+                        nix_name,
+                        'sdist',
+                        build_inputs_str,
                         prop_build_inputs_str)
                 else:
                     out += self._gen_builPythonPackage(
@@ -220,7 +225,13 @@ class OverridesGenerator(ExpressionGenerator):
             elif isinstance(pkg.provider_info.provider, NixpkgsDependencyProvider):
                 nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
                 out += self._gen_overrideAttrs(
-                    pkg.name, pkg.ver, pkg.removed_circular_deps, nix_name, build_inputs_str, prop_build_inputs_str,
+                    pkg.name,
+                    pkg.ver,
+                    pkg.removed_circular_deps,
+                    nix_name,
+                    'nixpkgs',
+                    build_inputs_str,
+                    prop_build_inputs_str,
                     keep_src=True)
         end_overlay_section = f"""
                 }};
