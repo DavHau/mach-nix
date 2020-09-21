@@ -4,7 +4,7 @@ in
 mach-nix.mkPython {
   extra_pkgs = [
     (mach-nix.buildPythonPackage {
-      src = "https://www.web2ldap.de/download/web2ldap-1.5.96.tar.gz";
+      src = "https://gitlab.com/ae-dir/web2ldap/-/archive/v1.5.97/web2ldap-v1.5.97.tar.gz";
       _.ldap0.buildInputs = with mach-nix.nixpkgs; [ openldap.dev cyrus_sasl.dev ];
       _.ldap0.src = builtins.fetchGit {
         url = "https://gitlab.com/ae-dir/python-ldap0";

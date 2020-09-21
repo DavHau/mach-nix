@@ -159,6 +159,7 @@ rec {
       python ? pkgs.python3,  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
       _provider_defaults ? with builtins; fromTOML (readFile ./mach_nix/provider_defaults.toml),
       _ ? {},  # simplified overrides
+      _fixes ? import ./mach_nix/fixes.nix {pkgs = pkgs;},
       ...
     }:
     with builtins;
@@ -198,7 +199,7 @@ rec {
         requirements = reqs;
       };
       py_final = python.override { packageOverrides = mergeOverrides (
-        overrides_pre ++ [ result.overrides ] ++ overrides_post ++ (simple_overrides _)
+        overrides_pre ++ [ result.overrides ] ++ (fixes_to_overrides _fixes) ++ overrides_post ++ (simple_overrides _)
       );};
       pass_args = removeAttrs args (builtins.attrNames ({
         inherit add_requirements disable_checks overrides_pre overrides_post pkgs providers
