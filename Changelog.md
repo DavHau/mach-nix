@@ -1,3 +1,17 @@
+# 2.4.1 (21 Sep 2020)
+bugfixes
+
+### Fixes
+ - `extra_pkgs` was broken: Packages didn't end up in final environment
+ - null value error when inheriting passthru for disabled packages
+ - Wrong provider detected for `sdist` packages in fixes.nix
+ - overrides from fixes.nix didn't apply for `buildPythonPackage`
+  
+### Package Fixes
+ - pip: allow from `sdist` provider
+ - pip: remove `reproducible.patch` for versions < 20.0
+
+
 # 2.4.0 (20 Sep 2020)
 Global conditional overrides, simple overrides for buildPythonPackage, improved metadata extraction, fix wheel selection
 
