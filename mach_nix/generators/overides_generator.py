@@ -62,9 +62,13 @@ class OverridesGenerator(ExpressionGenerator):
                     pkg.overrideAttrs;
               get_passthru = python: pname:
                 if hasAttr "${{pname}}" python then 
-                  let result = (tryEval python."${{pname}}".passthru); in
-                  if result.success then result.value
-                  else {{}}
+                  let result = (tryEval 
+                    (if isNull python."${{pname}}" then
+                      {{}}
+                    else
+                      python."${{pname}}".passthru)); 
+                  in
+                    if result.success then result.value else {{}}
                 else {{}};
             """
         return unindent(out, 12)
