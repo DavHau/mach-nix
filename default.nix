@@ -253,7 +253,7 @@ rec {
           }
         else p
       ) extra_pkgs;
-      extra_pkgs_attrs = foldl' (a: b: a // b) {} (map (p: { p.pname = p; }) _extra_pkgs);
+      extra_pkgs_attrs = foldl' (a: b: a // b) {} (map (p: { "${p.pname}" = p; }) _extra_pkgs);
       extra_pkgs_as_overrides = [ (pySelf: pySuper: extra_pkgs_attrs) ];
       extra_pkgs_reqs =
         map (p:
@@ -285,7 +285,7 @@ rec {
     in
       py_final.withPackages (ps:
         (result.select_pkgs ps)
-        ++ (attrValues (filterAttrs (pname: p: hasAttr pname extra_pkgs_attrs) ps))
+        ++ (map (name: ps."${name}") (attrNames extra_pkgs_attrs))
       )
     ;
 }
