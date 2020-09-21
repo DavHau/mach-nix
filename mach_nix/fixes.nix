@@ -61,6 +61,13 @@ rec {
     };
   };
 
+  pip = {
+    remove-reproducible-patch = {
+      _cond = { prov, ver, ... }: prov == "sdist" && comp_ver ver "<" "20.0";
+      patches.mod = oldPatches: filter (patch: ! hasSuffix "reproducible.patch" patch) oldPatches;
+    };
+  };
+
   tensorflow = {
     rm-tensorboard = {
       _cond = {prov, ... }: prov != "nixpkgs";
