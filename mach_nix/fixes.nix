@@ -26,21 +26,22 @@ in
 ### Put Fixes here
 rec {
 
-###  FORMAT  ###########################################################
-#                                                                      #
-#   package-to-fix = {                                                 #
-#     name-of-the-fix = {                                              #
-#       # optionally limit the fix to a condtion                       #
-#       _cond = {prov, ver, ... }: some boolean expression;            #
-#                                                                      #
-#       # define overrides                                             #
-#       key-to-override = ...;                # to replace value       #
-#       key-to-override.add = ...;            # to append value        #
-#       key-to-override.mod = old_val: ...;   # to modify value        #
-#     };                                                               #
-#   };                                                                 #
-#                                                                      #
-########################################################################
+###  FORMAT  ############################################################################
+#                                                                                       #
+#   package-to-fix = {                                                                  #
+#     name-of-the-fix = {                                                               #
+#       # optionally limit the fix to a condtion                                        #
+#       _cond = {prov, ver, ... }: some boolean expression;                             #
+#                                                                                       #
+#       # define overrides                                                              #
+#       key-to-override = ...;                                 # replace                #
+#       key-to-override.add = ...;                             # append                 #
+#       key-to-override.mod = oldVal: ...;                     # modify                 #
+#       key-to-override.mod = pySelf: oldAttrs: oldVal: ...;   # modify (more args)     #
+#     };                                                                                #
+#   };                                                                                  #
+#                                                                                       #
+#########################################################################################
 
 ### _cond ####################################
 #  possible arguments:                       #
@@ -65,6 +66,20 @@ rec {
     remove-reproducible-patch = {
       _cond = { prov, ver, ... }: prov == "sdist" && comp_ver ver "<" "20.0";
       patches.mod = oldPatches: filter (patch: ! hasSuffix "reproducible.patch" patch) oldPatches;
+    };
+  };
+
+  pyqt5 = {
+    fix-build-inputs = {
+      # fix mach-nix induced problem: mach-nix removes all previous python inputs from propagatedBuildInputs
+      _cond = {prov, ... }: prov == "nixpkgs";
+      propagatedBuildInputs.mod = pySelf: oldAttrs: oldVal:
+        (filter (p: p.pname != "pyqt5-sip") oldVal) ++ [ pySelf.sip pySelf.dbus-python ];
+    };
+    fix-wheel-inputs = {
+      _cond = {prov, ... }: prov == "wheel";
+      buildInputs.mod = pySelf: oldAttrs: oldVal:
+        oldVal ++ pkgs.python3Packages.pyqt5.buildInputs ++ [ pkgs.kerberos pySelf.sip ];
     };
   };
 
