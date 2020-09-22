@@ -32,17 +32,27 @@ class NixpkgsIndex(UserDict):
             pname_key = pname.replace('_', '-').lower()
             if pname_key not in self.data:
                 self.data[pname_key] = {}
-            self.data[pname_key][version] = nix_key
+            if version not in self.data[pname_key]:
+                self.data[pname_key][version] = []
+            self.data[pname_key][version].append(nix_key)
         super(NixpkgsIndex, self).__init__(self.data, **kwargs)
 
     def has_multiple_candidates(self, name):
-        return len(self.data[name]) > 1
+        count = 0
+        for nix_keys in self.data[name].values():
+            count += len(nix_keys)
+            if count > 1:
+                return True
+        return False
 
     def get_all_candidates(self, name) -> List[NixpkgsPyPkg]:
-        return [NixpkgsPyPkg(nix_key, parse(ver)) for ver, nix_key in self.data[name].items()]
+        result = []
+        for ver, nix_keys in self.data[name].items():
+            result += [NixpkgsPyPkg(nix_key, parse(ver)) for nix_key in nix_keys]
+        return result
 
     def get_highest_ver(self, pkgs: List[NixpkgsPyPkg]):
-        return max(pkgs, key=lambda p: p.ver)
+        return max(pkgs, key=lambda p: (p.ver, -len(p.nix_key)))
 
     @staticmethod
     def is_same_ver(ver1, ver2, ver_idx):
