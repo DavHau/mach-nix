@@ -68,7 +68,12 @@ let
           if isAttrs val && hasAttr "add" val then
             combine pkg key oa."${key}" val.add
           else if isAttrs val && hasAttr "mod" val && isFunction val.mod then
-            val.mod oa."${key}"
+            let result = val.mod oa."${key}"; in
+              # if the mod function wants more argument, call with more arguments (alternative style)
+              if ! isFunction result then
+                result
+              else
+                val.mod pySelf oa oa."${key}"
           else
             val
         ) keys
@@ -83,11 +88,16 @@ let
           {
             "${pkg}" = pySuper."${pkg}".overrideAttrs (oa:
               mapAttrs (key: val:
-                trace "\napplying fix '${fix}' for ${pkg}:${oa.version}\n" (
+                trace "\napplying fix '${fix}' (${key}) for ${pkg}:${oa.version}\n" (
                   if isAttrs val && hasAttr "add" val then
                     combine pkg key oa."${key}" val.add
                   else if isAttrs val && hasAttr "mod" val && isFunction val.mod then
-                    val.mod oa."${key}"
+                    let result = val.mod oa."${key}"; in
+                      # if the mod function wants more argument, call with more arguments (alternative style)
+                      if ! isFunction result then
+                        result
+                      else
+                          val.mod pySelf oa oa."${key}"
                   else
                     val
                 )
