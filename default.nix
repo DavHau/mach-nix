@@ -280,18 +280,25 @@ rec {
         python = py;
         requirements = concat_reqs ([requirements] ++ extra_pkgs_reqs);
       };
-      py_final = python.override { packageOverrides = mergeOverrides (
+      all_overrides = mergeOverrides (
         overrides_pre ++ overrides_pre_extra
         ++ extra_pkgs_as_overrides
         ++ [ result.overrides ]
         ++ (fixes_to_overrides _fixes)
         ++ overrides_post_extra ++ overrides_post
         ++ overrides_simple_extra ++ (simple_overrides _)
-      );};
-    in
-      py_final.withPackages (ps:
+      );
+      py_final = python.override { packageOverrides = all_overrides;};
+      py_final_with_pkgs = py_final.withPackages (ps: trace (toString (result.select_pkgs ps))
         (result.select_pkgs ps)
         ++ (map (name: ps."${name}") (attrNames extra_pkgs_attrs))
-      )
+      );
+    in
+      py_final_with_pkgs.overrideAttrs (oa: {
+        passthru = oa.passthru // {
+          machNix.overrides = all_overrides;
+          machNix.selectPkgs = result.select_pkgs;
+        };
+      })
     ;
 }
