@@ -180,17 +180,13 @@ rec {
       python = if isString python_arg then pkgs."${python_arg}" else python_arg;
       src = get_src pass_args.src;
       # Extract dependencies automatically if 'requirements' is unset
-      meta_name = extract_meta python src "name";
-      meta_version = extract_meta python src "version";
       pname =
-        if hasAttr "name" args then null
-        else if hasAttr "pname" args then args.pname
-        else meta_name;
+        if hasAttr "pname" args then args.pname
+        else extract_meta python src "name";
       version =
-        if hasAttr "name" args then null
-        else if hasAttr "version" args then args.version
-        else meta_version;
-      meta_reqs = extract_requirements python src (if isNull pname then args.name else "${pname}:${version}") extras;
+        if hasAttr "version" args then args.version
+        else extract_meta python src "version";
+      meta_reqs = extract_requirements python src "${pname}:${version}" extras;
       reqs =
         (if requirements == null then
           if builtins.hasAttr "format" args && args.format != "setuptools" then
