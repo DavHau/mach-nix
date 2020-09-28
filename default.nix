@@ -289,15 +289,15 @@ rec {
         ++ overrides_simple_extra ++ (simple_overrides _)
       );
       py_final = python.override { packageOverrides = all_overrides;};
-      py_final_with_pkgs = py_final.withPackages (ps: trace (toString (result.select_pkgs ps))
+      select_pkgs = ps:
         (result.select_pkgs ps)
-        ++ (map (name: ps."${name}") (attrNames extra_pkgs_attrs))
-      );
+        ++ (map (name: ps."${name}") (attrNames extra_pkgs_attrs));
+      py_final_with_pkgs = py_final.withPackages (ps: select_pkgs ps);
     in
       py_final_with_pkgs.overrideAttrs (oa: {
         passthru = oa.passthru // {
           machNix.overrides = all_overrides;
-          machNix.selectPkgs = result.select_pkgs;
+          machNix.selectPkgs = select_pkgs;
         };
       })
     ;
