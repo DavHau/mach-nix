@@ -295,9 +295,21 @@ rec {
       py_final_with_pkgs = py_final.withPackages (ps: select_pkgs ps);
     in
       py_final_with_pkgs.overrideAttrs (oa: {
-        passthru = oa.passthru // {
-          machNix.overrides = all_overrides;
-          machNix.selectPkgs = select_pkgs;
+        passthru = oa.passthru // rec {
+          selectPkgs = select_pkgs;
+          pythonOverrides = all_overrides;
+          overlay = self: super:
+            let
+              major = elemAt (splitString "." python.version) 0;
+              minor = elemAt (splitString "." python.version) 1;
+              py_attr_name = "python${major}${minor}";
+            in
+              {
+                "${py_attr_name}" = super."${py_attr_name}".override {
+                  packageOverrides = pythonOverrides;
+                };
+              };
+          nixpkgs = import pkgs.path { config = pkgs.config; overlays = pkgs.overlays ++ [ overlay ]; };
         };
       })
     ;
