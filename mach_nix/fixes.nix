@@ -50,23 +50,22 @@ rec {
 #   - pyver (python version used)            #
 ##############################################
 
-  ldap0 = {
-    add-inputs = {
-      buildInputs.add = with pkgs; [ openldap.dev cyrus_sasl.dev ];
-    };
+  ldap0.add-inputs = {
+    buildInputs.add = with pkgs; [ openldap.dev cyrus_sasl.dev ];
   };
 
-  orange3 = {
-    skipFixup = {
-      dontFixup = true;
-    };
+  mariadb.add-mariadb-connector-c = {
+    _cond = { prov, ... }: trace "cdsacdsac\ncdsdca\n" prov != "nixpkgs";
+    MARIADB_CONFIG = "${pkgs.mariadb-connector-c}/bin/mariadb_config";
   };
 
-  pip = {
-    remove-reproducible-patch = {
-      _cond = { prov, ver, ... }: prov == "sdist" && comp_ver ver "<" "20.0";
-      patches.mod = oldPatches: filter (patch: ! hasSuffix "reproducible.patch" patch) oldPatches;
-    };
+  orange3.skipFixup = {
+    dontFixup = true;
+  };
+
+  pip.remove-reproducible-patch = {
+    _cond = { prov, ver, ... }: prov == "sdist" && comp_ver ver "<" "20.0";
+    patches.mod = oldPatches: filter (patch: ! hasSuffix "reproducible.patch" patch) oldPatches;
   };
 
   pyqt5 = {
@@ -83,11 +82,9 @@ rec {
     };
   };
 
-  tensorflow = {
-    rm-tensorboard = {
-      _cond = {prov, ... }: prov != "nixpkgs";
-      postInstall = "rm $out/bin/tensorboard";
-    };
+  tensorflow.rm-tensorboard = {
+    _cond = {prov, ... }: prov != "nixpkgs";
+    postInstall = "rm $out/bin/tensorboard";
   };
 
   tensorflow-gpu = tensorflow;
