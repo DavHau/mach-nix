@@ -5,6 +5,7 @@ let
   python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = pkgs.fetchurl; }));
   mergeOverrides = with pkgs.lib; foldr composeExtensions (self: super: { });
   autoPatchelfHook = import ./mach_nix/nix/auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
+  pypiFetcher = (import ./mach_nix/nix/deps-db-and-fetcher.nix { lib = pkgs.lib; }).pypi_fetcher;
   concat_reqs = reqs_list:
     let
       concat = s1: s2: s1 + "\n" + s2;
@@ -34,15 +35,15 @@ let
       msg = "\n automatically detected requirements of ${name} ${version}:${all_reqs}\n\n";
     in
       trace msg all_reqs;
-  extract_meta = python: src: attr:
+  extract_meta = python: src: attr: for_attr:
     with pkgs.lib;
     let
       error_msg = ''
-        Automatic extraction of '${attr}' from python package source ${src} failed.
-        Please manually specify '${attr}' '';
+        Automatic extraction of '${for_attr}' from python package source ${src} failed.
+        Please manually specify '${for_attr}' '';
       data = extract python src error_msg;
       result = if hasAttr attr data then data."${attr}" else throw error_msg;
-      msg = "\n automatically detected ${attr}: '${result}'";
+      msg = "\n automatically detected ${for_attr}: '${result}'";
     in
       trace msg result;
   is_http_url = url:
@@ -121,8 +122,11 @@ rec {
 
   inherit mergeOverrides;
 
-  # User might want to access it to choose python version
+  # provide mach-nix' nixpkgs to user
   nixpkgs = pkgs;
+
+  # provide pypi fetcher to user
+  inherit (pypiFetcher ) fetchPypiSdist fetchPypiWheel;
 
   # call this to generate a nix expression which contains the python overrides
   machNixFile = args: import ./mach_nix/nix/mach.nix args;
@@ -182,10 +186,10 @@ rec {
       # Extract dependencies automatically if 'requirements' is unset
       pname =
         if hasAttr "pname" args then args.pname
-        else extract_meta python src "name";
+        else extract_meta python src "name" "pname";
       version =
         if hasAttr "version" args then args.version
-        else extract_meta python src "version";
+        else extract_meta python src "version" "version";
       meta_reqs = extract_requirements python src "${pname}:${version}" extras;
       reqs =
         (if requirements == null then
@@ -252,12 +256,13 @@ rec {
     let
       python = if isString python_arg then pkgs."${python_arg}" else python_arg;
       _extra_pkgs = map (p:
-        if isString p || isPath p then
+        if isAttrs p && hasAttrByPath ["passthru" "_"] p then
+          p
+        else
           _buildPython "buildPythonPackage" {
             src = p;
             inherit disable_checks pkgs providers pypi_deps_db_commit pypi_deps_db_sha256 python _provider_defaults;
           }
-        else p
       ) extra_pkgs;
       extra_pkgs_attrs = foldl' (a: b: a // b) {} (map (p: { "${p.pname}" = p; }) _extra_pkgs);
       extra_pkgs_as_overrides = [ (pySelf: pySuper: extra_pkgs_attrs) ];

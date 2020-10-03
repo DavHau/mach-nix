@@ -3,11 +3,17 @@
 </p>
 
 ## mach-nix - Create highly reproducible python environments
-Mach-nix makes it easy to create and share reproducible python environments. Existing tools for python package management often either do not achieve reproducibility, are difficult to use, or require additional virtualization layers to make them reliable. Mach-nix aims to solve these problems by providing a simple way to use nix, a revolutionary build system which is known to achieve great reproducibility and portability besides [many other advantages](https://nixos.org/features.html). 
+Mach-nix makes it easy to create and share reproducible python environments or packages. Existing tools for python package management often either do not achieve reproducibility, are difficult to use, or require additional virtualization layers to make them reliable. Mach-nix aims to solve these problems by providing a simple way to use nix, a revolutionary build system which is known to achieve great reproducibility and portability besides [many other advantages](https://nixos.org/features.html). 
 
 ## Who is this meant for?
  - Anyone who has no idea about nix but wants to maintain python environments for their projects which are reliable and easy to reproduce.
  - Anyone who is already working with nix but wants to reduce the effort needed to create nix expressions for their python projects.
+
+## Other benefits of mach-nix
+ - Hardware optimizations, like for example SSE/AVX/FMA for tensorflow, are available without the need to manually mess with their build system. (see [nixpkgs provider](#configure-providers))
+ - Cross platform support (tested only aarch64)
+ - Private packages or packages from other sources can easily be included.
+ - Build time parameters and dependencies of complex python packages can be tweaked without needing to setup any build environment. It requires some knowledge about nix, though. For examples, see [override system](/examples.md/#using-_-simplified-override-system).
 
 
 ## Donate
@@ -22,8 +28,9 @@ Table of Contents
 <!--ts-->
   * [mach-nix - Create highly reproducible python environments](#mach-nix---create-highly-reproducible-python-environments)
   * [Who is this meant for?](#who-is-this-meant-for)
+  * [Other benefits of mach-nix](#other-benefits-of-mach-nix)
   * [Donate](#donate)
-   * [Table of Contents](#table-of-contents)
+  * [Table of Contents](#table-of-contents)
   * [Usage from cmdline](#usage-from-cmdline)
      * [Installation](#installation)
         * [Installing via pip](#installing-via-pip)
@@ -44,7 +51,7 @@ Table of Contents
   * [Limitations](#limitations)
   * [Alternative / Similar Software:](#alternative--similar-software)
 
-<!-- Added by: grmpf, at: Sat 04 Jul 2020 12:03:37 PM UTC -->
+<!-- Added by: grmpf, at: Sat 03 Oct 2020 05:03:43 PM +07 -->
 
 <!--te-->
 
@@ -134,7 +141,7 @@ Mach-nix can be fine tuned with additional arguments by importing it via `builti
 **Providers** allow you to configure the origin for your packages on a granular basis.
 
 The following 3 providers are available since version 2.0.0:
-  1. **nixpkgs**: Provides packages directly from nixpkgs without modifying their sources. Has only a few versions available, but has a high success rate and all the nix features, like `cudaSupport` for tensorflow for example.
+  1. **nixpkgs**: Provides packages directly from nixpkgs without modifying their sources. Has only a few versions available, but has a high success rate and all the nix supported features, like `SSE/AVX/FMA` for tensorflow for example.
   2. **sdist**: Provides all package versions available from pypi which support setuptools and builds them via nixpkgs overlays wherever possible to resolve external dependencies. It still supports the nixpkgs specific features no matter which package version is selected. But chances are higher for a build to fail than with the **nixpkgs** provider.
   3. **wheel**: Provides all linux compatible wheel releases from pypi. Wheels can contain binaries. Mach-nix autopatches them to work on nix. Wheels are super quick to install and work quite reliable. Therefore this provider is preferred by default.
 

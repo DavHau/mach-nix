@@ -26,11 +26,6 @@ let
   };
   pypi_fetcher_commit = builtins.readFile "${pypi_deps_db_src}/PYPI_FETCHER_COMMIT";
   pypi_fetcher_sha256 = builtins.readFile "${pypi_deps_db_src}/PYPI_FETCHER_SHA256";
-  pypi_fetcher_src = builtins.fetchTarball {
-    name = "nix-pypi-fetcher-src";
-    url = "https://github.com/DavHau/nix-pypi-fetcher/tarball/${pypi_fetcher_commit}";
-    sha256 = "${pypi_fetcher_sha256}";
-  };
   providers_json = builtins.toJSON ( _provider_defaults // providers);
   mach_nix_file = pkgs.runCommand "mach_nix_file"
     { buildInputs = [ src builder_python pypi_deps_db_src];
