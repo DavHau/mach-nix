@@ -159,7 +159,10 @@ rec {
   buildPythonApplication = __buildPython "buildPythonApplication";
 
   __buildPython = with builtins; func: args:
-    if isString args || isPath args then _buildPython func { src = args; } else _buildPython func args;
+    if isString args || isPath args || pkgs.lib.isDerivation args then
+      _buildPython func { src = args; }
+    else
+      _buildPython func args;
 
   _buildPython = func: args@{
       add_requirements ? "",  # add additional requirements to the packge
