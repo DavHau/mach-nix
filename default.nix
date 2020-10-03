@@ -34,15 +34,15 @@ let
       msg = "\n automatically detected requirements of ${name} ${version}:${all_reqs}\n\n";
     in
       trace msg all_reqs;
-  extract_meta = python: src: attr:
+  extract_meta = python: src: attr: for_attr:
     with pkgs.lib;
     let
       error_msg = ''
-        Automatic extraction of '${attr}' from python package source ${src} failed.
-        Please manually specify '${attr}' '';
+        Automatic extraction of '${for_attr}' from python package source ${src} failed.
+        Please manually specify '${for_attr}' '';
       data = extract python src error_msg;
       result = if hasAttr attr data then data."${attr}" else throw error_msg;
-      msg = "\n automatically detected ${attr}: '${result}'";
+      msg = "\n automatically detected ${for_attr}: '${result}'";
     in
       trace msg result;
   is_http_url = url:
@@ -182,10 +182,10 @@ rec {
       # Extract dependencies automatically if 'requirements' is unset
       pname =
         if hasAttr "pname" args then args.pname
-        else extract_meta python src "name";
+        else extract_meta python src "name" "pname";
       version =
         if hasAttr "version" args then args.version
-        else extract_meta python src "version";
+        else extract_meta python src "version" "version";
       meta_reqs = extract_requirements python src "${pname}:${version}" extras;
       reqs =
         (if requirements == null then
