@@ -1,6 +1,9 @@
+{
+  pkgs ? import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; },
+  ...
+}:
 with builtins;
 let
-  pkgs = import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; };
   python = import ./mach_nix/nix/python.nix { inherit pkgs; };
   python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = pkgs.fetchurl; }));
   mergeOverrides = with pkgs.lib; foldr composeExtensions (self: super: { });
