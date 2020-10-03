@@ -113,6 +113,7 @@ let
     # Tells our modified python builtins to dump setup attributes instead of doing an actual installation
     dump_setup_attrs = "y";
     PYTHONIOENCODING = "utf8";  # My gut feeling is that encoding issues might decrease by this
+    LANG = "C.utf8";
     installPhase = script;
   };
 in
