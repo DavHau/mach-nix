@@ -55,7 +55,7 @@ rec {
   };
 
   mariadb.add-mariadb-connector-c = {
-    _cond = { prov, ... }: trace "cdsacdsac\ncdsdca\n" prov != "nixpkgs";
+    _cond = { prov, ... }: prov != "nixpkgs";
     MARIADB_CONFIG = "${pkgs.mariadb-connector-c}/bin/mariadb_config";
   };
 
