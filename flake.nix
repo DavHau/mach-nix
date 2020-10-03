@@ -1,21 +1,30 @@
 {
 
-    description = "Create highly reproducible python environments";
+  description = "Create highly reproducible python environments";
 
-    inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs.flake-utils.url = "github:numtide/flake-utils";
 
-    outputs = { self, nixpkgs, flake-utils }: {
+  inputs.nixpkgs-stable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-        packages.mach-nix = import ./default.nix;
+  outputs = { self, nixpkgs, flake-utils, ... }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+      in
+      {
+        devShell = import ./shell.nix {
+          inherit pkgs;
+        };
+        packages =
+          { mach-nix = import ./default.nix {inherit pkgs;}; };
+          # generate python packages for all known pypi sources here
+          # // builtins.foldl' (a: b: a // b) {} ;
 
-        defaultPackage = self.packages.mach-nix.mach-nix;
+        defaultPackage = self.packages."${system}".mach-nix.mach-nix;
 
         apps.mach-nix = flake-utils.lib.mkApp { drv = self.packages.mach-nix.mach-nix; };
-        defaultApp = self.apps.mach-nix;
-
-        mkPython = self.packages.mach-nix.mkPython;
-        mkPythonShell = self.packages.mach-nix.mkPythonShell;
-        
-    };
+        defaultApp = { type = "app"; program = "${self.defaultPackage."${system}"}/bin/mach-nix"; };
+      }
+  );
 }
 
