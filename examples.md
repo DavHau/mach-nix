@@ -47,7 +47,7 @@ mach-nix.mkPython {  # replace with mkPythonShell if shell is wanted
 }
 ```
 
-#### Mix requirements with packages from arbitrary sources.
+#### Include packages from arbitrary sources.
 `extra_pkgs` accepts python packages built via `mach-nix.buildPythonPackage`. Alternatively, paths or URLs can be passed which are then automatically wrapped in a `mach-nix.buildPythonPackage` call.
 ```nix
 mach-nix.mkPython {
@@ -59,7 +59,7 @@ mach-nix.mkPython {
   ];
 }
 ```
-alternatively if requirements are not needed, extra_pkgs can be passed directly to mkPython
+Alternatively, if requirements are not needed, extra_pkgs can be passed directly to mkPython
 ```nix
 mach-nix.mkPython [
   "https://github.com/psf/requests/tarball/2a7832b5b06d"   # from tarball url
@@ -69,6 +69,7 @@ mach-nix.mkPython [
 ```
 
 ### buildPythonPackage / buildPythonApplication
+These functions can be used to manually build individual python modules or applications. Those can either be used directly, or fed as `extra_pkgs` of `mkPython`.
 Whenever `requirements` are not explicitly specified, they will be extracted automatically from the packages setup.py/setup.cfg. The same goes for the `name` and `version`.
 #### Build python package from its source code
 ```nix
@@ -88,8 +89,8 @@ mach-nix.buildPythonPackage {
 }
 ```
 
-#### buildPythonPackage from GitHub and add missing requirements
-use this in case autdetecting requirements failed
+#### buildPythonPackage from GitHub and add requirements
+Use `add_requirements` in case the auto detected requirements are imcomplete
 ```nix
 mach-nix.buildPythonPackage {
   src = "https://github.com/psf/requests/tarball/2a7832b5b06d";
@@ -109,7 +110,7 @@ mach-nix.buildPythonPackage {
 ```
 
 #### buildPythonPackage from GitHub (manual requirements)
-Use this if automatic requirements extraction doesn't work.
+Use this if automatic requirements extraction doesn't work at all.
 ```nix
 mach-nix.buildPythonPackage {
   src = "https://github.com/psf/requests/tarball/2a7832b5b06d";
@@ -122,6 +123,8 @@ mach-nix.buildPythonPackage {
 ## Examples for Tensorflow / PyTorch
 
 ### Tensorflow with SSE/AVX/FMA support
+Tensorflow from pypi does not provide any hardware optimization support. To get a SSE/AVX/FMA enabled version, it just needs to be taken from `nixpkgs`.
+
 I have a complex set of requirements including tensorflow. I'd like to have tensorflow with the usual nix features enabled like SSE/AVX/FMA which I cannot get from pypi. Therefore I must take tensorflow from nixpkgs. For everything else I keep the default, which means wheels are preferred. This allows for quicker installation of dependencies.
 ```nix
 mach-nix.mkPython {
