@@ -52,6 +52,10 @@ let
   get_src = src:
     with builtins;
     if isString src && is_http_url src then (fetchTarball src) else src;
+  get_py_ver = python: with pkgs.lib; {
+    major = elemAt (splitString "." python.version) 0;
+    minor = elemAt (splitString "." python.version) 1;
+  };
   combine = pname: key: val1: val2:
     if isList val2 then val1 ++ val2
     else if isAttrs val2 then val1 // val2
@@ -255,9 +259,21 @@ rec {
     in
     let
       python = if isString python_arg then pkgs."${python_arg}" else python_arg;
+      pyver = get_py_ver python;
       _extra_pkgs = map (p:
+        # check if element is a package built via mach-nix
         if isAttrs p && hasAttrByPath ["passthru" "_"] p then
-          p
+          let
+            pkg_pyver = get_py_ver p.pythonModule;
+          in
+            if pkg_pyver != pyver then
+              throw ''
+                ${p.pname} from 'extra_pkgs' is built with python ${p.pythonModule.version},
+                but the environment is based on python ${pyver.major}.${pyver.minor}.
+                Please build ${p.pname} with 'python = "python${pyver.major}${pyver.minor}"'.
+              ''
+            else
+              p
         else
           _buildPython "buildPythonPackage" {
             src = p;
@@ -305,9 +321,7 @@ rec {
           pythonOverrides = all_overrides;
           overlay = self: super:
             let
-              major = elemAt (splitString "." python.version) 0;
-              minor = elemAt (splitString "." python.version) 1;
-              py_attr_name = "python${major}${minor}";
+              py_attr_name = "python${pyver.major}${pyver.minor}";
             in
               {
                 "${py_attr_name}" = super."${py_attr_name}".override {
