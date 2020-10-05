@@ -123,6 +123,8 @@ def extract_requirements(job: PackageJob):
                         error=error,
                     ))
                 else:
+                    del data['name']
+                    del data['version']
                     results.append(dict(
                         name=job.name,
                         version=job.version,
