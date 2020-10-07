@@ -1,4 +1,7 @@
-map (file: import file ) [
+let
+  mach-nix = import ../. {};
+in
+map (file: import file { inherit mach-nix; }) [
   ./test_circular_deps.nix
   ./test_dot_in_name.nix
   ./test_extra_pkgs.nix
