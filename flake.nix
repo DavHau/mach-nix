@@ -15,10 +15,11 @@
         devShell = import ./shell.nix {
           inherit pkgs;
         };
-        packages =
-          { mach-nix = import ./default.nix {inherit pkgs;}; };
-          # generate python packages for all known pypi sources here
-          # // builtins.foldl' (a: b: a // b) {} ;
+        packages = rec {
+          mach-nix = import ./default.nix {inherit pkgs;};
+          "with" = mach-nix."with";
+          shellWith = mach-nix.shellWith;
+        };
 
         defaultPackage = self.packages."${system}".mach-nix.mach-nix;
 

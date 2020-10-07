@@ -92,19 +92,15 @@ class OverridesGenerator(ExpressionGenerator):
             "{nix_name}" = override python-super.{nix_name} ( oldAttrs: {{
               pname = "{name}";
               version = "{ver}";
-              passthru = (get_passthru python-super "{nix_name}") // {{ provider = "{provider}"; }};"""
+              passthru = (get_passthru python-super "{nix_name}") // {{ provider = "{provider}"; }};
+              buildInputs = with python-self; (filter_deps oldAttrs "buildInputs") ++ [ {build_inputs_str} ];
+              propagatedBuildInputs = with python-self; (filter_deps oldAttrs "propagatedBuildInputs") ++ [ {prop_build_inputs_str} ];"""
         if not keep_src:
             out += f"""
               src = fetchPypi "{name}" "{ver}";"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
-        if build_inputs_str:
-            out += f"""
-              buildInputs = with python-self; (filter_deps oldAttrs "buildInputs") ++ [ {build_inputs_str} ];"""
-        if prop_build_inputs_str:
-            out += f"""
-              propagatedBuildInputs = with python-self; (filter_deps oldAttrs "propagatedBuildInputs") ++ [ {prop_build_inputs_str} ];"""
         if self.disable_checks:
             out += """
               doCheck = false;
