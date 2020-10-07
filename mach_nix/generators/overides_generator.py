@@ -37,6 +37,7 @@ class OverridesGenerator(ExpressionGenerator):
 
     def _gen_imports(self):
         out = f"""
+            {{ pkgs, ... }}:
             with builtins;
             let
               pypi_fetcher_src = builtins.fetchTarball {{
@@ -45,8 +46,9 @@ class OverridesGenerator(ExpressionGenerator):
                 # Hash obtained using `nix-prefetch-url --unpack <url>`
                 sha256 = "{self.pypi_fetcher_sha256}";
               }};
-              fetchPypi = (import pypi_fetcher_src).fetchPypi;
-              fetchPypiWheel = (import pypi_fetcher_src).fetchPypiWheel;
+              pypiFetcher = import pypi_fetcher_src {{ inherit pkgs; }};
+              fetchPypi = pypiFetcher.fetchPypi;
+              fetchPypiWheel = pypiFetcher.fetchPypiWheel;
               try_get = obj: name:
                 if hasAttr name obj
                 then obj."${{name}}"

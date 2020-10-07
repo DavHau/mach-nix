@@ -17,8 +17,7 @@ let
     url = "https://github.com/DavHau/nix-pypi-fetcher/tarball/${pypi_fetcher_commit}";
     sha256 = "${pypi_fetcher_sha256}";
   };
-  pypi_fetcher = import ./pypi-fetcher.nix {
-    fetcherSrc = pypi_fetcher_src;
+  pypi_fetcher = import pypi_fetcher_src {
     inherit pkgs;
   };
 in

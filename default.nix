@@ -146,7 +146,7 @@ rec {
   # Returns `overrides` and `select_pkgs` which satisfy your requirements
   machNix = args:
     let
-      result = import "${machNixFile (removeAttrs args [ "pkgs" ])}/share/mach_nix_file.nix";
+      result = import "${machNixFile args}/share/mach_nix_file.nix" { pkgs = args.pkgs; };
       manylinux =
         if args.pkgs.stdenv.hostPlatform.system == "x86_64-darwin" then
           []

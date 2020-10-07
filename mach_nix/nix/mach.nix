@@ -1,6 +1,7 @@
 {
   requirements,  # content from a requirements.txt file
   python,  # python from nixpkgs as base for overlay
+  pkgs,
   disable_checks ? true,  # disable tests wherever possible
   overrides ? [],
   providers ? {},  # re-order to change provider priority or remove providers
@@ -10,7 +11,6 @@
   _provider_defaults ? with builtins; fromTOML (readFile ../provider_defaults.toml)
 }:
 let
-  pkgs = import (import ./nixpkgs-src.nix) { config = {}; overlays = []; };
   nixpkgs_json = import ./nixpkgs-json.nix {
     inherit overrides pkgs python;
     mergeOverrides = with pkgs.lib; foldr composeExtensions (self: super: { });

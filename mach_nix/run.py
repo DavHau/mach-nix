@@ -46,7 +46,7 @@ def env(args):
     python_nix_file = f"{target_dir}/python.nix"
     python_nix_content = dedent(f"""
         let
-          result = import ./machnix.nix;
+          result = import ./machnix.nix {{ inherit pkgs; }};
           nixpkgs_commit = "{open(pwd + "/nix/NIXPKGS_COMMIT").read().strip()}";
           nixpkgs_sha256 = "{open(pwd + "/nix/NIXPKGS_SHA256").read().strip()}";
           pkgs = import (builtins.fetchTarball {{
