@@ -9,6 +9,7 @@ let
   mergeOverrides = with pkgs.lib; foldr composeExtensions (self: super: { });
   autoPatchelfHook = import ./mach_nix/nix/auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
   pypiFetcher = (import ./mach_nix/nix/deps-db-and-fetcher.nix { lib = pkgs.lib; }).pypi_fetcher;
+  withDot = mkPython: import ./mach_nix/nix/withDot.nix { inherit mkPython pkgs pypiFetcher; };
   concat_reqs = reqs_list:
     let
       concat = s1: s2: s1 + "\n" + s2;
@@ -134,6 +135,10 @@ rec {
 
   # provide pypi fetcher to user
   inherit (pypiFetcher ) fetchPypiSdist fetchPypiWheel;
+
+  # expose dot interface
+  "with" = (withDot mkPython)."with";
+  shellWith = (withDot mkPython).shellWith;
 
   # call this to generate a nix expression which contains the python overrides
   machNixFile = args: import ./mach_nix/nix/mach.nix args;
