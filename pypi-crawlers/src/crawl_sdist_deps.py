@@ -15,6 +15,7 @@ from db import db, Package, init_db
 
 @dataclass
 class PackageJob:
+    bucket: str
     name: str
     version: str
     url: Union[None, str]
@@ -80,7 +81,7 @@ def format_log(log: str):
 def extract_requirements(job: PackageJob):
     py_versions = ('python27', 'python35', 'python36', 'python37', 'python38')
     try:
-        print(f"processing package nr. {job.idx}  -  {job.name}:{job.version}")
+        print(f"Bucket {job.bucket} - Job {job.idx} - {job.name}:{job.version}")
         store = os.environ.get('STORE', None)
         with TemporaryDirectory() as tempdir:
             out_dir = f"{tempdir}/json"
@@ -123,8 +124,9 @@ def extract_requirements(job: PackageJob):
                         error=error,
                     ))
                 else:
-                    del data['name']
-                    del data['version']
+                    for k in ('name', 'version'):
+                        if k in data:
+                            del data[k]
                     results.append(dict(
                         name=job.name,
                         version=job.version,
@@ -152,6 +154,7 @@ def get_jobs(pypi_fetcher_dir, bucket, processed, amount=1000):
             release = release_types['sdist']
             if len(jobs) <= amount:
                 jobs.append(PackageJob(
+                    bucket,
                     pkg_name,
                     ver,
                     f"https://files.pythonhosted.org/packages/source/{pkg_name[0]}/{pkg_name}/{release[1]}",
