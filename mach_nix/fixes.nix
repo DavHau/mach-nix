@@ -50,6 +50,13 @@ rec {
 #   - pyver (python version used)            #
 ##############################################
 
+  httpx.remove-patches = {
+    _cond = { prov, ver, ... }:
+      prov != "nixpkgs" &&
+      comp_ver ver "!=" pkgs.python3Packages.httpx.version;
+    patches = [];
+  };
+
   ldap0.add-inputs = {
     buildInputs.add = with pkgs; [ openldap.dev cyrus_sasl.dev ];
   };
