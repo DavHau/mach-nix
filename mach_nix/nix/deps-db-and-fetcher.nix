@@ -1,7 +1,7 @@
 {
-  lib
+  pkgs
 }:
-with lib;
+with pkgs.lib;
 let
   pypi_deps_db_commit = builtins.readFile ./PYPI_DEPS_DB_COMMIT;
   pypi_deps_db_sha256 = builtins.readFile ./PYPI_DEPS_DB_SHA256;
@@ -17,6 +17,9 @@ let
     url = "https://github.com/DavHau/nix-pypi-fetcher/tarball/${pypi_fetcher_commit}";
     sha256 = "${pypi_fetcher_sha256}";
   };
-  pypi_fetcher = import pypi_fetcher_src;
+  pypi_fetcher = import ./pypi-fetcher.nix {
+    fetcherSrc = pypi_fetcher_src;
+    inherit pkgs;
+  };
 in
 { inherit pypi_deps_db_src pypi_fetcher_src pypi_fetcher; }
