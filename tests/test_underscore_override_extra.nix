@@ -1,6 +1,4 @@
-let
-  mach-nix = import ../.;
-in
+{ mach-nix, ... }:
 mach-nix.mkPython {
   extra_pkgs = [
     (mach-nix.buildPythonPackage {

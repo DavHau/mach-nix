@@ -1,6 +1,5 @@
-let
-  mach-nix = import ../.;
-in mach-nix.mkPython {
+{ mach-nix, ... }:
+mach-nix.mkPython {
   requirements = ''
     numba==0.50.1
   '';
