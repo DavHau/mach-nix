@@ -1,8 +1,11 @@
 with import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; };
+let
+  python = python37;
+  machnixDeps = (lib.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = fetchurl; }));
+in
 mkShell {
   buildInputs = [
-    (import ./mach_nix/nix/python.nix { inherit pkgs; })
-    python37Packages.twine
+    (python.withPackages ( ps: with ps; machnixDeps ++ [ pytest_6 twine ] ))
   ];
   shellHook = ''
     export PYTHONPATH=$(pwd)/
