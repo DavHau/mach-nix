@@ -119,12 +119,9 @@ def parse_args(parser: ArgumentParser, nixpkgs_ver_default):
             required=True)),
 
         (('--nixpkgs',), dict(
-            help=dedent(f'''\
-                        revision reference form nixpkgs  
-                        --nixpkgs {{ .. rev= .. , sha256= .. }} 
-
-                        (default: {str(nixpkgs_ver_default)})
-                        '''),
+            help=dedent(
+                f'''select nixpkgs revision. Can be a branch name or tag or revision
+                    or json with keys: rev, sha256.'''),
             default=f"""{str(nixpkgs_ver_default)}""",
             required=False, )),
     )
