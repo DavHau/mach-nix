@@ -1,11 +1,11 @@
-{ requirements, python_attr }:
+{ requirements, python_attr , nixpkgs_rev , nixpkgs_sha }:
 let
-  nixpkgs_src = builtins.fetchTarball {
+  nixpkgs = builtins.fetchTarball { 
     name = "nixpkgs";
-    url = "https://github.com/nixos/nixpkgs/tarball/${builtins.readFile ./NIXPKGS_COMMIT}";
-    sha256 = "${builtins.readFile ./NIXPKGS_SHA256}";
+    url = "https://github.com/nixos/nixpkgs/tarball/${nixpkgs_rev}";
+    sha256 = "${nixpkgs_sha}";
   };
-  pkgs = import nixpkgs_src { config = {}; overlays = []; };
+  pkgs = import nixpkgs { config = {}; overlays = []; };
   python = pkgs."${python_attr}";
 in
 

@@ -72,6 +72,7 @@ nix-env -if https://github.com/DavHau/mach-nix/tarball/2.4.1 -A mach-nix
 ### Build a virtualenv-style python environment from a requirements.txt
 ```bash
 mach-nix env ./env -r requirements.txt
+# mach-nix env -r ./requirements.txt -p 3.7 --nixpkgs '{ "rev": "c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38", "sha256": "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v", }' "./env"
 ```
 This will generate the python environment into `./env`. To activate it, execute:
 ```bash
@@ -84,6 +85,7 @@ and use `nix-shell` to activate it.
 ### Generate a nix expression from a requirements.txt
 ```bash
 mach-nix gen -r requirements.txt
+# mach-nix gen -r ./requirements.txt -p 3.7 --nixpkgs '{ "rev": "31827921288763999b5ae1386ac03a1a1c7f69e1", "sha256": "158x72ci07rkz7pfz70yg77gxsqk45hn1a37qd458g64mjw45klq", }'
 ```
 ...to print out the nix expression which defines a python derivation (optionally use `-o` to define an `output file`)
 

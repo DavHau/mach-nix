@@ -6,6 +6,7 @@ in
 mkShell {
   buildInputs = [
     (python.withPackages ( ps: with ps; machnixDeps ++ [ pytest_6 twine ] ))
+    nix-prefetch-git
   ];
   shellHook = ''
     export PYTHONPATH=$(pwd)/
