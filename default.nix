@@ -10,7 +10,7 @@ let
   mergeOverrides = with pkgs.lib; foldr composeExtensions (self: super: { });
   autoPatchelfHook = import ./mach_nix/nix/auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
   pypiFetcher = (import ./mach_nix/nix/deps-db-and-fetcher.nix { inherit pkgs; }).pypi_fetcher;
-  withDot = mkPython: import ./mach_nix/nix/withDot.nix { inherit mkPython pkgs pypiFetcher; };
+  withDot = mkPython: import ./mach_nix/nix/withDot.nix { inherit mkPython pypiFetcher; };
   concat_reqs = reqs_list:
     let
       concat = s1: s2: s1 + "\n" + s2;
@@ -136,7 +136,8 @@ rec {
   nixpkgs = pkgs;
 
   # provide pypi fetcher to user
-  inherit (pypiFetcher ) fetchPypiSdist fetchPypiWheel;
+  fetchPypiSdist = pypiFetcher.fetchPypiSdist;
+  fetchPypiWheel = pypiFetcher.fetchPypiSdist;
 
   # expose dot interface
   "with" = (withDot mkPython)."with";

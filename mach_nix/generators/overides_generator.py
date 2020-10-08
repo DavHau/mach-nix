@@ -53,7 +53,7 @@ class OverridesGenerator(ExpressionGenerator):
                 isAttrs pkg && hasAttr "pythonModule" pkg;
               replace_deps = oldAttrs: inputs_type: self:
                 map (pypkg: 
-                  if self ? "${{pypkg.pname}}" && pypkg != self."${{pypkg.pname}}" then
+                  if pypkg ? pname && self ? "${{pypkg.pname}}" && pypkg != self."${{pypkg.pname}}" then
                     trace "Updated inherited nixpkgs dep ${{pypkg.pname}} from ${{pypkg.version}} to ${{self."${{pypkg.pname}}".version}}"
                     self."${{pypkg.pname}}"
                   else

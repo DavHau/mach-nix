@@ -1,11 +1,10 @@
-{ mkPython, pkgs, pypiFetcher, ... }:
+{ mkPython, pypiFetcher, ... }:
 with builtins;
 let
   names = pypiFetcher.allNames;
   gen = shell: selected:
     let
       machnix = mkPython {
-        inherit pkgs;
         python = "python38";
         requirements = foldl' (a: b: a + "\n" + b) "" selected;
       };
