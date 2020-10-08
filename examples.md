@@ -1,34 +1,37 @@
+This page contains basic and advanced examples for using mach-nix inside a nix expression
+
 
 <!--ts-->
-  * [Usage in Nix Expressions:](#usage-in-nix-expressions)
-     * [import mach-nix](#import-mach-nix)
-     * [mkPython / mkPythonShell](#mkpython--mkpythonshell)
-        * [From a list of requirements](#from-a-list-of-requirements)
-        * [Mix requirements with packages from arbitrary sources.](#mix-requirements-with-packages-from-arbitrary-sources)
-     * [buildPythonPackage / buildPythonApplication](#buildpythonpackage--buildpythonapplication)
-        * [Build python package from its source code](#build-python-package-from-its-source-code)
-        * [buildPythonPackage from GitHub](#buildpythonpackage-from-github)
-        * [buildPythonPackage from GitHub with extras](#buildpythonpackage-from-github-with-extras)
-        * [buildPythonPackage from GitHub and add missing requirements](#buildpythonpackage-from-github-and-add-missing-requirements)
-        * [buildPythonPackage from GitHub (explicit source)](#buildpythonpackage-from-github-explicit-source)
-        * [buildPythonPackage from GitHub (manual requirements)](#buildpythonpackage-from-github-manual-requirements)
-  * [Examples for Tensorflow / PyTorch](#examples-for-tensorflow--pytorch)
-     * [Tensorflow with SSE/AVX/FMA support](#tensorflow-with-sseavxfma-support)
-     * [Tensorflow via wheel (newer versions, quicker builds)](#tensorflow-via-wheel-newer-versions-quicker-builds)
-     * [Recent PyTorch with nixpkgs dependencies, and custom python](#recent-pytorch-with-nixpkgs-dependencies-and-custom-python)
-  * [Using '_' (simplified override system)](#using-_-simplified-override-system)
+ * [Import mach-nix](#import-mach-nix)
+ * [mkPython / mkPythonShell](#mkpython--mkpythonshell)
+    * [From a list of requirements](#from-a-list-of-requirements)
+    * [Include packages from arbitrary sources.](#include-packages-from-arbitrary-sources)
+ * [buildPythonPackage / buildPythonApplication](#buildpythonpackage--buildpythonapplication)
+    * [Build python package from its source code](#build-python-package-from-its-source-code)
+    * [buildPythonPackage from GitHub](#buildpythonpackage-from-github)
+    * [buildPythonPackage from GitHub with extras](#buildpythonpackage-from-github-with-extras)
+    * [buildPythonPackage from GitHub and add requirements](#buildpythonpackage-from-github-and-add-requirements)
+    * [buildPythonPackage from GitHub (explicit source)](#buildpythonpackage-from-github-explicit-source)
+    * [buildPythonPackage from GitHub (manual requirements)](#buildpythonpackage-from-github-manual-requirements)
+  * [Simplified overrides ('_' argument)](#simplified-overrides-_-argument)
      * [General usage](#general-usage)
      * [Example: add missing build inputs](#example-add-missing-build-inputs)
-  * [Using overrides](#using-overrides)
+  * [Overrides (overrides_pre / overrides_post)](#overrides-overrides_pre--overrides_post)
      * [Include poetry2nix overrides](#include-poetry2nix-overrides)
+  * [Tensorflow](#tensorflow)
+     * [Tensorflow with SSE/AVX/FMA support](#tensorflow-with-sseavxfma-support)
+     * [Tensorflow via wheel (newer versions, quicker builds)](#tensorflow-via-wheel-newer-versions-quicker-builds)
+  * [PyTorch](#pytorch)
+     * [Recent PyTorch with nixpkgs dependencies, and custom python](#recent-pytorch-with-nixpkgs-dependencies-and-custom-python)
+  * [JupyterLab](#jupyterlab)
+     * [Starting point for a geospatial environment](#starting-point-for-a-geospatial-environment)
 
-<!-- Added by: grmpf, at: Wed 26 Aug 2020 07:51:15 PM +07 -->
+<!-- Added by: grmpf, at: Thu 08 Oct 2020 02:34:19 PM +07 -->
 
 <!--te-->
 
-## Usage in Nix Expressions:
-
-### import mach-nix
+### Import mach-nix
+(every mach-nix expression should begin like this)
 ```nix
 let
   mach-nix = import (builtins.fetchGit {
@@ -120,7 +123,67 @@ mach-nix.buildPythonPackage {
 }
 ```
 
-## Examples for Tensorflow / PyTorch
+
+## Simplified overrides ('_' argument)
+### General usage
+```
+with mach-nix.nixpkgs;
+mach-nix.mkPython {
+
+  requirements = "some requirements";
+
+  _.{package}.buildInputs = [...];             # replace buildInputs
+  _.{package}.buildInputs.add = [...];         # add buildInputs
+  _.{package}.buildInputs.mod =                # modify buildInputs
+      oldInputs: filter (inp: ...) oldInputs; 
+
+  _.{package}.patches = [...];                 # replace patches
+  _.{package}.patches.add = [...];             # add patches
+  ...
+}
+```
+### Example: add missing build inputs
+For example the package web2ldap depends on another python package `ldap0` which fails to build because of missing dependencies.
+```nix
+with mach-nix.nixpkgs;
+mach-nix.mkPython {
+
+  requirements = "web2ldap";
+
+  # add missing dependencies to ldap0
+  _.ldap0.buildInputs.add = [ openldap.dev cyrus_sasl.dev ];
+}
+
+```
+
+## Overrides (overrides_pre / overrides_post)
+### Include poetry2nix overrides
+I have a complex requirements.txt which includes `imagecodecs`. It is available via wheel, but I prefer to build everything from source. This package has complex build dependencies and is not available from nixpkgs. Luckily poetry2nix` overrides make it work.
+```nix
+mach-nix.mkPython rec {
+
+  requirements = ''
+    # bunch of other requirements
+    imagecodecs
+  '';
+
+  providers = {
+    _default = "sdist";
+  };
+
+  # Import overrides from poetry2nix
+  # Caution! Use poetry2nix overrides only in `overrides_post`, not `overrides_pre`.
+  overrides_post = [
+    (
+      import (builtins.fetchurl {
+        url = "https://raw.githubusercontent.com/nix-community/poetry2nix/1cfaa4084d651d73af137866622e3d0699851008/overrides.nix";
+      }) { pkgs = mach-nix.nixpkgs; }
+    )
+  ];
+}
+```
+
+## Tensorflow
 
 ### Tensorflow with SSE/AVX/FMA support
 Tensorflow from pypi does not provide any hardware optimization support. To get a SSE/AVX/FMA enabled version, it just needs to be taken from `nixpkgs`.
@@ -159,6 +222,7 @@ mach-nix.mkPython {
 }
 
 ```
+## PyTorch
 
 ### Recent PyTorch with nixpkgs dependencies, and custom python
 I'd like to use a recent version of Pytorch from wheel, but I'd like to build the rest of the requirements from sdist or nixpkgs. I want to use python 3.6.
@@ -182,74 +246,11 @@ mach-nix.mkPython rec {
 }
 ```
 
-## Using '_' (simplified override system)
-### General usage
-```
-with mach-nix.nixpkgs;
-mach-nix.mkPython {
+## JupyterLab
 
-  requirements = "some requirements";
-
-  _.{package}.buildInputs = [...];             # replace buildInputs
-  _.{package}.buildInputs.add = [...];         # add buildInputs
-  _.{package}.buildInputs.mod =                # modify buildInputs
-      oldInputs: filter (inp: ...) oldInputs; 
-
-  _.{package}.patches = [...];                 # replace patches
-  _.{package}.patches.add = [...];             # add patches
-  ...
-}
-```
-### Example: add missing build inputs
-For example the package web2ldap depends on another python package `ldap0` which fails to build because of missing dependencies.
-```nix
-with mach-nix.nixpkgs;
-mach-nix.mkPython {
-
-  requirements = "web2ldap";
-
-  # add missing dependencies to ldap0
-  _.ldap0.buildInputs.add = [ openldap.dev cyrus_sasl.dev ];
-}
-
-```
-
-## Using overrides
-### Include poetry2nix overrides
-I have a complex requirements.txt which includes `imagecodecs`. It is available via wheel, but I prefer to build everything from source. This package has complex build dependencies and is not available from nixpkgs. Luckily poetry2nix` overrides make it work.
-```nix
-mach-nix.mkPython rec {
-
-  requirements = ''
-    # bunch of other requirements
-    imagecodecs
-  '';
-
-  providers = {
-    _default = "sdist";
-  };
-
-  # Import overrides from poetry2nix
-  # Caution! Use poetry2nix overrides only in `overrides_post`, not `overrides_pre`.
-  overrides_post = [
-    (
-      import (builtins.fetchurl {
-        url = "https://raw.githubusercontent.com/nix-community/poetry2nix/1cfaa4084d651d73af137866622e3d0699851008/overrides.nix";
-      }) { pkgs = mach-nix.nixpkgs; }
-    )
-  ];
-}
-```
-
-## Mach-nix in nix context 
 ### Starting point for a geospatial environment
 ```nix
 let
-  mach-nix = import (builtins.fetchGit {
-     url = "https://github.com/DavHau/mach-nix/";
-     ref = "refs/tags/2.3.0";  
-  });
-
   overlays = []; # some very useful overlays
 
   Pkgs = import mach-nix.nixpkgs.path {config = { allowUnfree = true; }; };
@@ -257,7 +258,7 @@ let
 
   py_env = mach-nix.mkPython rec { 
     pkgs = Pkgs;
-    python = Pkgs.python37;
+    python = "python37";
     
     #requirements = builtins.readFile ./requirements.txt;
     requirements =  ''  
@@ -271,14 +272,11 @@ let
     providers = {
       shapely = "sdist,nixpkgs";
     };
-    #overrides_post = []
   };
 in 
 Pkgs.mkShell rec {
   buildInputs = [
     Pkgs.bash
-
-    ( (py_env).override( args:{ignoreCollisions = true; }) )
   ] ;
 
   shellHook = ''
