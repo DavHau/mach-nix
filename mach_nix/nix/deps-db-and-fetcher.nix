@@ -1,10 +1,10 @@
 {
-  pkgs
+  pkgs,
+  pypi_deps_db_commit ? (builtins.fromJSON (builtins.readFile ./PYPI_DEPS_DB.json)).rev,
+  pypi_deps_db_sha256 ? (builtins.fromJSON (builtins.readFile ./PYPI_DEPS_DB.json)).sha256,
 }:
 with pkgs.lib;
 let
-  pypi_deps_db_commit = builtins.readFile ./PYPI_DEPS_DB_COMMIT;
-  pypi_deps_db_sha256 = builtins.readFile ./PYPI_DEPS_DB_SHA256;
   pypi_deps_db_src = fetchTarball {
     name = "pypi-deps-db-src";
     url = "https://github.com/DavHau/pypi-deps-db/tarball/${pypi_deps_db_commit}";
@@ -21,4 +21,11 @@ let
     inherit pkgs;
   };
 in
-{ inherit pypi_deps_db_src pypi_fetcher_src pypi_fetcher; }
+{ inherit
+  pypi_deps_db_src
+  pypi_fetcher_src
+
+  pypi_fetcher_commit
+  pypi_fetcher_sha256
+
+  pypi_fetcher; }

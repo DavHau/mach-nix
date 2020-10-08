@@ -1,5 +1,5 @@
 let 
-    nixpkgs_rev = builtins.fromJSON(builtins.readFile ./NIXPKGS.json);
+    nixpkgs_rev = builtins.fromJSON (builtins.readFile ./NIXPKGS.json);
 in
 builtins.fetchTarball {
     name = "nixpkgs";
