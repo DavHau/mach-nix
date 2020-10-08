@@ -25,8 +25,10 @@ This page contains basic and advanced examples for using mach-nix inside a nix e
      * [Recent PyTorch with nixpkgs dependencies, and custom python](#recent-pytorch-with-nixpkgs-dependencies-and-custom-python)
   * [JupyterLab](#jupyterlab)
      * [Starting point for a geospatial environment](#starting-point-for-a-geospatial-environment)
+  * [Docker](#docker)
+     * [JupyterLab Docker Image](#jupyterlab-docker-image)
 
-<!-- Added by: grmpf, at: Thu 08 Oct 2020 02:34:19 PM +07 -->
+<!-- Added by: grmpf, at: Thu 08 Oct 2020 11:39:10 PM +07 -->
 
 <!--te-->
 
@@ -250,37 +252,65 @@ mach-nix.mkPython rec {
 
 ### Starting point for a geospatial environment
 ```nix
+with mach-nix.nixpkgs;
 let
-  overlays = []; # some very useful overlays
-
-  Pkgs = import mach-nix.nixpkgs.path {config = { allowUnfree = true; }; };
-  py = Pkgs.python37Packages ;
-
-  py_env = mach-nix.mkPython rec { 
-    pkgs = Pkgs;
+  pyEnv = mach-nix.mkPython rec {
     python = "python37";
-    
-    #requirements = builtins.readFile ./requirements.txt;
-    requirements =  ''  
+    requirements =  ''
         jupyterlab
         geopandas
         pyproj
         pygeos
         shapely>=1.7.0
       '';
-
     providers = {
       shapely = "sdist,nixpkgs";
     };
   };
-in 
-Pkgs.mkShell rec {
+in
+mkShell rec {
   buildInputs = [
-    Pkgs.bash
+    bash
+    pyEnv
   ] ;
 
   shellHook = ''
     jupyter lab --notebook-dir=~/
-        '';
+  '';
 }
+```
+
+## Docker
+For every python environment a docker image is available via the `dockerImage` attribute of the `mkPython` result
+### JupyterLab Docker Image
+Assuming the following expression under `./jupyter-docker.nix`:
+```nix
+with mach-nix.nixpkgs;
+let
+  pyEnv = mach-nix.mkPython rec {
+    python = "python37";
+    requirements =  ''
+        jupyterlab
+        # add packages here
+      '';
+  };
+in
+# The following overrides a call to nixpkgs.dockerTools.buildImage.
+# See more buildImage examples here: https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/docker/examples.nix
+pyEnv.dockerImage.override (oa: {
+  name = "jupyterlab";
+  config.Cmd = [ "jupyter" "lab" "--notebook-dir=/mnt" "--allow-root" "--ip=0.0.0.0" ];
+})
+```
+Execute the build like:
+```
+nix-build ./jupyter-docker.nix -o ./docker-image
+```
+Afterwards, load the docker image:
+```
+docker load < ./docker-image
+```
+Start the jupyterlab container:
+```
+docker run --rm -it -p 8888:8888 -v $HOME:/mnt jupyterlab
 ```

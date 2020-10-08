@@ -194,7 +194,7 @@ rec {
     }:
     with builtins;
     let
-      python_arg = python;
+      python_arg = if isString python then python else throw '''python' must be a string. Example: "python38"'';
     in
     let
       python = pkgs."${python_arg}";
@@ -266,7 +266,7 @@ rec {
     with builtins;
     with pkgs.lib;
     let
-      python_arg = python;
+      python_arg = if isString python then python else throw '''python' must be a string. Example: "python38"'';
     in
     let
       python = pkgs."${python_arg}";
@@ -325,8 +325,8 @@ rec {
         (result.select_pkgs ps)
         ++ (map (name: ps."${name}") (attrNames extra_pkgs_attrs));
       py_final_with_pkgs = py_final.withPackages (ps: select_pkgs ps);
-    in
-      py_final_with_pkgs.overrideAttrs (oa: {
+    in let
+      self = py_final_with_pkgs.overrideAttrs (oa: {
         passthru = oa.passthru // rec {
           selectPkgs = select_pkgs;
           pythonOverrides = all_overrides;
@@ -340,7 +340,23 @@ rec {
                 };
               };
           nixpkgs = import pkgs.path { config = pkgs.config; overlays = pkgs.overlays ++ [ overlay ]; };
+          dockerImage = makeOverridable
+            (args: pkgs.dockerTools.buildLayeredImage args)
+            {
+              name = "mach-nix-python";
+              tag = "latest";
+              contents = [
+                pkgs.busybox
+                self
+              ];
+              config = {
+                Cmd = [ "${self}/bin/python" ];
+                Env = {
+                  python = "${self}";
+                };
+              };
+            };
         };
-      })
-    ;
+      });
+    in self;
 }
