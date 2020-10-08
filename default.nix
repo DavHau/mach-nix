@@ -1,5 +1,6 @@
+let nixpkgsSrc = import ./mach_nix/nix/nixpkgs-src.nix; in
 {
-  pkgs ? import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; },
+  pkgs ? import nixpkgsSrc { config = {}; overlays = []; },
   ...
 }:
 with builtins;
@@ -131,6 +132,7 @@ rec {
   inherit mergeOverrides;
 
   # provide mach-nix' nixpkgs to user
+  inherit nixpkgsSrc;
   nixpkgs = pkgs;
 
   # provide pypi fetcher to user
@@ -181,11 +183,10 @@ rec {
       overrides_pre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overrides_post ? [],  # list of pythonOverrides to apply after the machnix overrides
       passthru ? {},
-      pkgs ? nixpkgs,  # pass custom nixpkgs.
       providers ? {},  # define provider preferences
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
       pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
-      python ? pkgs.python3,  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
+      python ? "python3",  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
       _provider_defaults ? with builtins; fromTOML (readFile ./mach_nix/provider_defaults.toml),
       _ ? {},  # simplified overrides
       _fixes ? import ./mach_nix/fixes.nix {pkgs = pkgs;},
@@ -196,7 +197,7 @@ rec {
       python_arg = python;
     in
     let
-      python = if isString python_arg then pkgs."${python_arg}" else python_arg;
+      python = pkgs."${python_arg}";
       src = get_src pass_args.src;
       # Extract dependencies automatically if 'requirements' is unset
       pname =
@@ -254,11 +255,10 @@ rec {
       extra_pkgs ? [],
       overrides_pre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overrides_post ? [],  # list of pythonOverrides to apply after the machnix overrides
-      pkgs ? nixpkgs,  # pass custom nixpkgs.
       providers ? {},  # define provider preferences
       pypi_deps_db_commit ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_COMMIT,  # python dependency DB version
       pypi_deps_db_sha256 ? builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB_SHA256,
-      python ? pkgs.python3,  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
+      python ? "python3",  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
       _ ? {},  # simplified overrides
       _provider_defaults ? with builtins; fromTOML (readFile ./mach_nix/provider_defaults.toml),
       _fixes ? import ./mach_nix/fixes.nix {pkgs = pkgs;}
@@ -269,7 +269,7 @@ rec {
       python_arg = python;
     in
     let
-      python = if isString python_arg then pkgs."${python_arg}" else python_arg;
+      python = pkgs."${python_arg}";
       pyver = get_py_ver python;
       _extra_pkgs = map (p:
         # check if element is a package built via mach-nix
