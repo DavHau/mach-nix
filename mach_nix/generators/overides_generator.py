@@ -49,14 +49,16 @@ class OverridesGenerator(ExpressionGenerator):
               pypiFetcher = import pypi_fetcher_src {{ inherit pkgs; }};
               fetchPypi = pypiFetcher.fetchPypi;
               fetchPypiWheel = pypiFetcher.fetchPypiWheel;
-              try_get = obj: name:
-                if hasAttr name obj
-                then obj."${{name}}"
-                else [];
               is_py_module = pkg:
                 isAttrs pkg && hasAttr "pythonModule" pkg;
-              filter_deps = oldAttrs: inputs_type:
-                filter (pkg: ! is_py_module pkg) (try_get oldAttrs inputs_type);
+              replace_deps = oldAttrs: inputs_type: self:
+                map (pypkg: 
+                  if self ? "${{pypkg.pname}}" && pypkg != self."${{pypkg.pname}}" then
+                    trace "Updated inherited nixpkgs dep ${{pypkg.pname}} from ${{pypkg.version}} to ${{self."${{pypkg.pname}}".version}}"
+                    self."${{pypkg.pname}}"
+                  else
+                    pypkg
+                ) (oldAttrs."${{inputs_type}}" or []);
               override = pkg:
                 if hasAttr "overridePythonAttrs" pkg then
                     pkg.overridePythonAttrs
@@ -95,8 +97,8 @@ class OverridesGenerator(ExpressionGenerator):
               pname = "{name}";
               version = "{ver}";
               passthru = (get_passthru python-super "{nix_name}") // {{ provider = "{provider}"; }};
-              buildInputs = with python-self; (filter_deps oldAttrs "buildInputs") ++ [ {build_inputs_str} ];
-              propagatedBuildInputs = with python-self; (filter_deps oldAttrs "propagatedBuildInputs") ++ [ {prop_build_inputs_str} ];"""
+              buildInputs = with python-self; (replace_deps oldAttrs "buildInputs" self) ++ [ {build_inputs_str} ];
+              propagatedBuildInputs = with python-self; (replace_deps oldAttrs "propagatedBuildInputs" self) ++ [ {prop_build_inputs_str} ];"""
         if not keep_src:
             out += f"""
               src = fetchPypi "{name}" "{ver}";"""
@@ -171,7 +173,7 @@ class OverridesGenerator(ExpressionGenerator):
             select_pkgs = ps: [
               {pkg_names_str.strip()}
             ];
-            overrides = manylinux1: autoPatchelfHook: python-self: python-super: {{
+            overrides = manylinux1: autoPatchelfHook: python-self: python-super: let self = {{
           """
         out = unindent(out, 10)
         for pkg in pkgs.values():
@@ -236,7 +238,7 @@ class OverridesGenerator(ExpressionGenerator):
                     prop_build_inputs_str,
                     keep_src=True)
         end_overlay_section = f"""
-                }};
+                }}; in self;
           """
         return out + unindent(end_overlay_section, 14)
 
