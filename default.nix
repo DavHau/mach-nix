@@ -27,11 +27,12 @@ let
   extract_requirements = python: src: name: extras:
      with pkgs.lib;
     let
+      ensureList = requires: if isString requires then [requires] else requires;
       data = extract python src ''
         Automatic requirements extraction failed for ${name}.
         Please manually specify 'requirements' '';
-      setup_requires = if hasAttr "setup_requires" data then data.setup_requires else [];
-      install_requires = if hasAttr "install_requires" data then data.install_requires else [];
+      setup_requires = if hasAttr "setup_requires" data then ensureList data.setup_requires else [];
+      install_requires = if hasAttr "install_requires" data then ensureList data.install_requires else [];
       extras_require =
         if hasAttr "extras_require" data then
           pkgs.lib.flatten (map (extra: data.extras_require."${extra}") extras)
