@@ -198,16 +198,16 @@ rec {
       python_arg = if isString python then python else throw '''python' must be a string. Example: "python38"'';
     in
     let
-      python = pkgs."${python_arg}";
+      python_pkg = pkgs."${python_arg}";
       src = get_src pass_args.src;
       # Extract dependencies automatically if 'requirements' is unset
       pname =
         if hasAttr "pname" args then args.pname
-        else extract_meta python src "name" "pname";
+        else extract_meta python_pkg src "name" "pname";
       version =
         if hasAttr "version" args then args.version
-        else extract_meta python src "version" "version";
-      meta_reqs = extract_requirements python src "${pname}:${version}" extras;
+        else extract_meta python_pkg src "version" "version";
+      meta_reqs = extract_requirements python_pkg src "${pname}:${version}" extras;
       reqs =
         (if requirements == null then
           if builtins.hasAttr "format" args && args.format != "setuptools" then
@@ -218,14 +218,14 @@ rec {
         else
           requirements)
         + "\n" + add_requirements;
-      py = python.override { packageOverrides = mergeOverrides overrides_pre; };
+      py = python_pkg.override { packageOverrides = mergeOverrides overrides_pre; };
       result = machNix {
         inherit disable_checks pkgs providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
         overrides = overrides_pre;
         python = py;
         requirements = reqs;
       };
-      py_final = python.override { packageOverrides = mergeOverrides (
+      py_final = python_pkg.override { packageOverrides = mergeOverrides (
         overrides_pre ++ [ result.overrides ] ++ (fixes_to_overrides _fixes) ++ overrides_post ++ (simple_overrides _)
       );};
       pass_args = removeAttrs args (builtins.attrNames ({
@@ -270,8 +270,8 @@ rec {
       python_arg = if isString python then python else throw '''python' must be a string. Example: "python38"'';
     in
     let
-      python = pkgs."${python_arg}";
-      pyver = get_py_ver python;
+      python_pkg = pkgs."${python_arg}";
+      pyver = get_py_ver python_pkg;
       _extra_pkgs = map (p:
         # check if element is a package built via mach-nix
         if isAttrs p && hasAttrByPath ["passthru" "_"] p then
@@ -306,7 +306,7 @@ rec {
       );
       overrides_pre_extra = flatten (map (p: p.passthru.overrides_pre) _extra_pkgs);
       overrides_post_extra = flatten (map (p: p.passthru.overrides_post) _extra_pkgs);
-      py = python.override { packageOverrides = mergeOverrides overrides_pre; };
+      py = python_pkg.override { packageOverrides = mergeOverrides overrides_pre; };
       result = machNix {
         inherit disable_checks pkgs providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
         overrides = overrides_pre ++ overrides_pre_extra ++ extra_pkgs_as_overrides;
@@ -321,7 +321,7 @@ rec {
         ++ overrides_post_extra ++ overrides_post
         ++ overrides_simple_extra ++ (simple_overrides _)
       );
-      py_final = python.override { packageOverrides = all_overrides;};
+      py_final = python_pkg.override { packageOverrides = all_overrides;};
       select_pkgs = ps:
         (result.select_pkgs ps)
         ++ (map (name: ps."${name}") (attrNames extra_pkgs_attrs));
