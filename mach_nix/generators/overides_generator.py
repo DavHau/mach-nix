@@ -64,16 +64,20 @@ class OverridesGenerator(ExpressionGenerator):
                     pkg.overridePythonAttrs
                 else
                     pkg.overrideAttrs;
-              get_passthru = python: pname:
-                if hasAttr "${{pname}}" python then 
-                  let result = (tryEval 
-                    (if isNull python."${{pname}}" then
-                      {{}}
-                    else
-                      python."${{pname}}".passthru)); 
-                  in
-                    if result.success then result.value else {{}}
-                else {{}};
+              get_passthru = python: pypi_name: nix_name:
+                # if pypi_name is in nixpkgs, we must pick it, otherwise risk infinite recursion.
+                let
+                  pname = if hasAttr "${{pypi_name}}" python then pypi_name else nix_name;
+                in
+                  if hasAttr "${{pname}}" python then 
+                    let result = (tryEval 
+                      (if isNull python."${{pname}}" then
+                        {{}}
+                      else
+                        python."${{pname}}".passthru)); 
+                    in
+                      if result.success then result.value else {{}}
+                  else {{}};
             """
         return unindent(out, 12)
 
@@ -93,10 +97,10 @@ class OverridesGenerator(ExpressionGenerator):
             self, name, ver, circular_deps, nix_name, provider, build_inputs_str, prop_build_inputs_str,
             keep_src=False):
         out = f"""
-            "{nix_name}" = override python-super.{nix_name} ( oldAttrs: {{
+            "{name}" = override python-super.{nix_name} ( oldAttrs: {{
               pname = "{name}";
               version = "{ver}";
-              passthru = (get_passthru python-super "{nix_name}") // {{ provider = "{provider}"; }};
+              passthru = (get_passthru python-super "{name}" "{nix_name}") // {{ provider = "{provider}"; }};
               buildInputs = with python-self; (replace_deps oldAttrs "buildInputs" self) ++ [ {build_inputs_str} ];
               propagatedBuildInputs = with python-self; (replace_deps oldAttrs "propagatedBuildInputs" self) ++ [ {prop_build_inputs_str} ];"""
         if not keep_src:
@@ -115,11 +119,11 @@ class OverridesGenerator(ExpressionGenerator):
 
     def _gen_builPythonPackage(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str):
         out = f"""
-            "{nix_name}" = python-self.buildPythonPackage {{
+            "{name}" = python-self.buildPythonPackage {{
               pname = "{name}";
               version = "{ver}";
               src = fetchPypi "{name}" "{ver}";
-              passthru = (get_passthru python-super "{nix_name}") // {{ provider = "sdist"; }};"""
+              passthru = (get_passthru python-super "{name}" "{nix_name}") // {{ provider = "sdist"; }};"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
@@ -142,7 +146,7 @@ class OverridesGenerator(ExpressionGenerator):
 
         # dontStrip added due to this bug - https://github.com/pypa/manylinux/issues/119
         out = f"""
-            "{nix_name}" = python-self.buildPythonPackage {{
+            "{name}" = python-self.buildPythonPackage {{
               pname = "{name}";
               version = "{ver}";
               src = fetchPypiWheel "{name}" "{ver}" "{fname}";
@@ -150,7 +154,7 @@ class OverridesGenerator(ExpressionGenerator):
               doCheck = false;
               doInstallCheck = false;
               dontStrip = true;
-              passthru = (get_passthru python-super "{nix_name}") // {{ provider = "wheel"; }};"""
+              passthru = (get_passthru python-super "{name}" "{nix_name}") // {{ provider = "wheel"; }};"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
@@ -167,7 +171,7 @@ class OverridesGenerator(ExpressionGenerator):
 
     def _gen_overrides(self, pkgs: Dict[str, ResolvedPkg], overrides_keys):
         pkg_names_str = "".join(
-            (f"ps.\"{self._get_ref_name(name, pkgs[name].ver)}\"\n{' ' * 14}"
+            (f"ps.\"{name}\"\n{' ' * 14}"
              for (name, pkg) in pkgs.items() if pkg.is_root))
         out = f"""
             select_pkgs = ps: [

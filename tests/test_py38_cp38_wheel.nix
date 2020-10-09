@@ -4,5 +4,5 @@ mach-nix.mkPython {
     numba==0.50.1
   '';
   providers = { numba = "wheel"; };
-  python = mach-nix.nixpkgs.python38;
+  python = "python38";
 }
