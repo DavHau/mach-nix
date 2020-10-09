@@ -10,15 +10,16 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        mach-nix-default = import ./default.nix {inherit pkgs;};
       in
       {
         devShell = import ./shell.nix {
           inherit pkgs;
         };
         packages = rec {
-          mach-nix = import ./default.nix {inherit pkgs;};
-          "with" = mach-nix."with";
-          shellWith = mach-nix.shellWith;
+          mach-nix = mach-nix-default.mach-nix;
+          "with" = mach-nix-default."with";
+          shellWith = mach-nix-default.shellWith;
         };
 
         defaultPackage = self.packages."${system}".mach-nix.mach-nix;

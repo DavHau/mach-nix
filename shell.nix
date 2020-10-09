@@ -1,4 +1,8 @@
-with import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; };
+{
+  pkgs ? import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; },
+  ...
+}:
+with pkgs;
 let
   python = python37;
   machnixDeps = (lib.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = fetchurl; }));
