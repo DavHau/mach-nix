@@ -27,8 +27,9 @@ This page contains basic and advanced examples for using mach-nix inside a nix e
      * [Starting point for a geospatial environment](#starting-point-for-a-geospatial-environment)
   * [Docker](#docker)
      * [JupyterLab Docker Image](#jupyterlab-docker-image)
+  * [Raspberry PI / aarch64 SD Image](#raspberry-pi--aarch64-sd-image)
 
-<!-- Added by: grmpf, at: Thu 08 Oct 2020 11:39:10 PM +07 -->
+<!-- Added by: grmpf, at: Sat 10 Oct 2020 02:10:11 PM +07 -->
 
 <!--te-->
 
@@ -313,4 +314,48 @@ docker load < ./docker-image
 Start the jupyterlab container:
 ```
 docker run --rm -it -p 8888:8888 -v $HOME:/mnt jupyterlab
+```
+
+
+## Raspberry PI / aarch64 SD Image
+This example builds an aarch64 sd image via emulator. For this to work, binfmt support for aarch64 must be installed first. (On NixOS simply set `boot.binfmt.emulatedSystems = [ "aarch64-linux" ]`)  
+For the SD-image, create a configuration.nix file which adds the mach-nix tool and some default python packages to the system environment.  
+**configuration.nix**:
+```nix
+{ config, lib, pkgs, ... }:
+
+let
+  machNix = import (builtins.fetchGit {
+    url = "https://github.com/DavHau/mach-nix/";
+  }) { inherit pkgs; };
+
+  defaultPythonEnv = machNix.mkPython {
+    requirements = ''
+      cryptography
+    '';
+    providers.cffi = "nixpkgs";
+  };
+
+in {
+  imports = [
+    <nixpkgs/nixos/modules/installer/cd-dvd/sd-image-aarch64.nix>
+  ];
+  environment.systemPackages = [ defaultPythonEnv machNix.mach-nix ];
+  sdImage.compressImage = false;  # speeds up the build
+}
+```
+with the following **default.nix**:
+```nix
+with import <nixpkgs/nixos> {
+  system = "aarch64-linux";
+};
+config.system.build.sdImage
+```
+Execute:
+```bash
+NIXOS_CONFIG=$PWD/configuration.nix nix build -f default.nix
+```
+Or to select a specific channel:
+```bash
+NIXOS_CONFIG=$PWD/configuration.nix nix build -f default.nix -I nixpkgs=channel:nixos-20.03
 ```
