@@ -22,6 +22,10 @@ let
       });
   };
 
+  nameMap = {
+    pytorch = "torch";
+  };
+
   py = python.override { packageOverrides = mergeOverrides ( overrides ++ [ fetchPypiPnamePassthruOverride ] ); };
 in
 
@@ -46,7 +50,8 @@ let
         if hasAttrByPath ["${attrname}" "src" "pname"] python.pkgs then
           python.pkgs."${attrname}".src.pname
         else if hasAttrByPath ["${attrname}" "pname"] python.pkgs then
-          python.pkgs."${attrname}".pname
+          let pname = python.pkgs."${attrname}".pname; in
+            if nameMap ? "${pname}" then nameMap."${pname}" else pname
           else ""
       );
     in
