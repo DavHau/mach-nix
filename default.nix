@@ -56,6 +56,8 @@ let
     in
       trace msg result;
 
+  is_src = input: ! input ? passthru;
+
   is_http_url = url:
     with builtins;
     if (substring 0 8 url) == "https://" || (substring 0 7 url) == "http://" then true else false;
@@ -259,9 +261,15 @@ let
     let
       python_pkg = pkgs."${python_arg}";
       pyver = get_py_ver python_pkg;
-      _extra_pkgs = map (p:
+      # and separate pkgs into groups
+      extra_pkgs_python = map (p:
         # check if element is a package built via mach-nix
-        if isAttrs p && hasAttrByPath ["passthru" "_"] p then
+        if p ? pythomModule && ! p ? passthru._ then
+          throw ''
+            python packages from nixpkgs cannot be passed via `extra_pkgs`.
+            Instead, add the package's name to your `requirements` and set `providers.{package} = "nixpkgs"`
+          ''
+        else if p ? passthru._ then
           let
             pkg_pyver = get_py_ver p.pythonModule;
           in
@@ -273,48 +281,68 @@ let
               ''
             else
               p
+        # translate sources to python packages
         else
           _buildPython "buildPythonPackage" {
             src = p;
             inherit disable_checks pkgs providers pypi_deps_db_commit pypi_deps_db_sha256 python _provider_defaults;
           }
-      ) extra_pkgs;
-      extra_pkgs_attrs = foldl' (a: b: a // b) {} (map (p: { "${p.pname}" = p; }) _extra_pkgs);
-      extra_pkgs_as_overrides = [ (pySelf: pySuper: extra_pkgs_attrs) ];
-      extra_pkgs_reqs =
+      ) (filter (p: is_src p || p ? pythonModule) extra_pkgs);
+      extra_pkgs_r = filter (p: p ? rCommand) extra_pkgs;
+      extra_pkgs_other = filter (p: ! (p ? rCommand || p ? pythonModule || is_src p)) extra_pkgs;
+
+      # gather requirements of exra pkgs
+      extra_pkgs_py_reqs =
         map (p:
           if hasAttr "requirements" p then p.requirements
           else throw "Packages passed via 'extra_pkgs' must be built via mach-nix.buildPythonPackage"
-        ) _extra_pkgs;
+        ) extra_pkgs_python;
+      extra_pkgs_r_reqs = if extra_pkgs_r == [] then "" else "rpy2";
+
+      # gather overrides necessary by extra_pkgs
+      extra_pkgs_python_attrs = foldl' (a: b: a // b) {} (map (p: { "${p.pname}" = p; }) extra_pkgs_python);
+      extra_pkgs_py_overrides = [ (pySelf: pySuper: extra_pkgs_python_attrs) ];
+      extra_pkgs_r_overrides = simple_overrides {
+        rpy2.buildInputs.add = extra_pkgs_r;
+      };
       overrides_simple_extra = flatten (
         (map simple_overrides (
-          map (p: if hasAttr "_" p then p._ else {}) _extra_pkgs
+          map (p: if hasAttr "_" p then p._ else {}) extra_pkgs_python
         ))
       );
-      overrides_pre_extra = flatten (map (p: p.passthru.overrides_pre) _extra_pkgs);
-      overrides_post_extra = flatten (map (p: p.passthru.overrides_post) _extra_pkgs);
+      overrides_pre_extra = flatten (map (p: p.passthru.overrides_pre) extra_pkgs_python);
+      overrides_post_extra = flatten (map (p: p.passthru.overrides_post) extra_pkgs_python);
+
       py = python_pkg.override { packageOverrides = mergeOverrides overrides_pre; };
       result = compileOverrides {
         inherit disable_checks pkgs providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
-        overrides = overrides_pre ++ overrides_pre_extra ++ extra_pkgs_as_overrides;
+        overrides = overrides_pre ++ overrides_pre_extra ++ extra_pkgs_py_overrides;
         python = py;
-        requirements = concat_reqs ([requirements] ++ extra_pkgs_reqs);
+        requirements = concat_reqs ([requirements] ++ extra_pkgs_py_reqs ++ [extra_pkgs_r_reqs]);
       };
       all_overrides = mergeOverrides (
         overrides_pre ++ overrides_pre_extra
-        ++ extra_pkgs_as_overrides
+        ++ extra_pkgs_py_overrides
         ++ [ result.overrides ]
         ++ (fixes_to_overrides _fixes)
         ++ overrides_post_extra ++ overrides_post
+        ++ extra_pkgs_r_overrides
         ++ overrides_simple_extra ++ (simple_overrides _)
       );
       py_final = python_pkg.override { packageOverrides = all_overrides;};
       select_pkgs = ps:
         (result.select_pkgs ps)
-        ++ (map (name: ps."${name}") (attrNames extra_pkgs_attrs));
+        ++ (map (name: ps."${name}") (attrNames extra_pkgs_python_attrs));
       py_final_with_pkgs = py_final.withPackages (ps: select_pkgs ps);
+      final_env = pkgs.buildEnv {
+        name = "mach-nix-python-env";
+        paths = [
+          py_final_with_pkgs
+          extra_pkgs_other
+        ];
+      };
     in let
-      self = py_final_with_pkgs.overrideAttrs (oa: {
+      self = final_env.overrideAttrs (oa: {
         passthru = oa.passthru // rec {
           selectPkgs = select_pkgs;
           pythonOverrides = all_overrides;
@@ -362,7 +390,7 @@ rec {
 
   # the main functions
   mkPython = args: mkPythonBase "mkPython" args;
-  mkPythonShell = args: (mkPythonBase "mkPythonShell" args).env;
+  mkPythonShell = args: pkgs.mkShell { buildInputs = (mkPythonBase "mkPythonShell" args) ;};
   mkDockerImage = args: (mkPythonBase "mkDockerImage" args).dockerImage;
   mkOverlay = args: (mkPythonBase "mkOverlay" args).overlay;
   mkNixpkgs = args: (mkPythonBase "mkNixpkgs" args).nixpkgs;
@@ -386,6 +414,9 @@ rec {
   # expose mach-nix' nixpkgs
   # those are equivalent to the pkgs passed by the user
   nixpkgs = pkgs;
+
+  # expose R packages
+  rPackages = pkgs.rPackages;
 
   # this might beuseful for someone
   inherit mergeOverrides;
