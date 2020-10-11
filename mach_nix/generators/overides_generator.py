@@ -1,3 +1,4 @@
+import json
 from typing import Dict, List
 
 from mach_nix.data.providers import WheelDependencyProvider, SdistDependencyProvider, NixpkgsDependencyProvider
@@ -78,6 +79,24 @@ class OverridesGenerator(ExpressionGenerator):
                     in
                       if result.success then result.value else {{}}
                   else {{}};
+              tests_on_off = enabled: pySelf: pySuper:
+                let
+                  mod = {{
+                    doCheck = enabled;
+                    doInstallCheck = enabled;
+                  }};
+                in
+                {{
+                  buildPythonPackage = args: pySuper.buildPythonPackage ( args // {{
+                    doCheck = enabled;
+                    doInstallCheck = enabled;
+                  }} );
+                  buildPythonApplication = args: pySuper.buildPythonPackage ( args // {{
+                    doCheck = enabled;
+                    doInstallCheck = enabled;
+                  }} );
+                }};
+              merge_with_tests = enabled: pkgs.lib.composeExtensions (tests_on_off enabled);
             """
         return unindent(out, 12)
 
@@ -109,10 +128,6 @@ class OverridesGenerator(ExpressionGenerator):
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
-        if self.disable_checks:
-            out += """
-              doCheck = false;
-              doInstallCheck = false;"""
         out += """
             });\n"""
         return unindent(out, 8)
@@ -133,10 +148,6 @@ class OverridesGenerator(ExpressionGenerator):
         if prop_build_inputs_str.strip():
             out += f"""
               propagatedBuildInputs = with python-self; [ {prop_build_inputs_str} ];"""
-        if self.disable_checks:
-            out += """
-              doCheck = false;
-              doInstallCheck = false;"""
         out += """
             };\n"""
         return unindent(out, 8)
@@ -151,8 +162,6 @@ class OverridesGenerator(ExpressionGenerator):
               version = "{ver}";
               src = fetchPypiWheel "{name}" "{ver}" "{fname}";
               format = "wheel";
-              doCheck = false;
-              doInstallCheck = false;
               dontStrip = true;
               passthru = (get_passthru python-super "{name}" "{nix_name}") // {{ provider = "wheel"; }};"""
         if circular_deps:
@@ -173,11 +182,12 @@ class OverridesGenerator(ExpressionGenerator):
         pkg_names_str = "".join(
             (f"ps.\"{name}\"\n{' ' * 14}"
              for (name, pkg) in pkgs.items() if pkg.is_root))
+        check = json.dumps(not self.disable_checks)
         out = f"""
             select_pkgs = ps: [
               {pkg_names_str.strip()}
             ];
-            overrides = manylinux1: autoPatchelfHook: python-self: python-super: let self = {{
+            overrides = manylinux1: autoPatchelfHook: merge_with_tests {check} (python-self: python-super: let self = {{
           """
         out = unindent(out, 10)
         for pkg in pkgs.values():
@@ -238,7 +248,7 @@ class OverridesGenerator(ExpressionGenerator):
                     prop_build_inputs_str,
                     keep_src=True)
         end_overlay_section = f"""
-                }}; in self;
+                }}; in self);
           """
         return out + unindent(end_overlay_section, 14)
 

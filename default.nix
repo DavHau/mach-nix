@@ -7,7 +7,7 @@ with builtins;
 let
   python = import ./mach_nix/nix/python.nix { inherit pkgs; };
   python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = pkgs.fetchurl; }));
-  mergeOverrides = with pkgs.lib; foldr composeExtensions (self: super: { });
+  mergeOverrides = with pkgs.lib; foldl composeExtensions (self: super: { });
   autoPatchelfHook = import ./mach_nix/nix/auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
   pypiFetcher = (import ./mach_nix/nix/deps-db-and-fetcher.nix { inherit pkgs; }).pypi_fetcher;
   withDot = mkPython: import ./mach_nix/nix/withDot.nix { inherit mkPython pypiFetcher; };
