@@ -11,11 +11,13 @@ let
   autoPatchelfHook = import ./mach_nix/nix/auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
   pypiFetcher = (import ./mach_nix/nix/deps-db-and-fetcher.nix { inherit pkgs; }).pypi_fetcher;
   withDot = mkPython: import ./mach_nix/nix/withDot.nix { inherit mkPython pypiFetcher; };
+
   concat_reqs = reqs_list:
     let
       concat = s1: s2: s1 + "\n" + s2;
     in
       builtins.foldl' concat "" reqs_list;
+
   extract = python: src: fail_msg:
     let
       file_path = "${(import ./lib/extractor).extract_from_src {
@@ -24,6 +26,7 @@ let
         }}/python.json";
     in
       if pathExists file_path then fromJSON (readFile file_path) else throw fail_msg;
+
   extract_requirements = python: src: name: extras:
      with pkgs.lib;
     let
@@ -40,6 +43,7 @@ let
       msg = "\n automatically detected requirements of ${name} ${version}:${all_reqs}\n\n";
     in
       trace msg all_reqs;
+
   extract_meta = python: src: attr: for_attr:
     with pkgs.lib;
     let
@@ -51,26 +55,32 @@ let
       msg = "\n automatically detected ${for_attr}: '${result}'";
     in
       trace msg result;
+
   is_http_url = url:
     with builtins;
     if (substring 0 8 url) == "https://" || (substring 0 7 url) == "http://" then true else false;
+
   get_src = src:
     with builtins;
     if isString src && is_http_url src then (fetchTarball src) else src;
+
   get_py_ver = python: with pkgs.lib; {
     major = elemAt (splitString "." python.version) 0;
     minor = elemAt (splitString "." python.version) 1;
   };
+
   combine = pname: key: val1: val2:
     if isList val2 then val1 ++ val2
     else if isAttrs val2 then val1 // val2
     else if isString val2 then val1 + val2
     else throw "_.${pname}.${key}.add only accepts list or attrs or string.";
+
   meets_cond = oa: condition:
     let
       provider = if hasAttr "provider" oa.passthru then oa.passthru.provider else "nixpkgs";
     in
       condition { prov = provider; ver = oa.version; pyver = oa.pythonModule.version; };
+
   simple_overrides = args: with pkgs.lib;
     flatten ( mapAttrsToList (pkg: keys: pySelf: pySuper: {
       "${pkg}" = pySuper."${pkg}".overrideAttrs (oa:
@@ -89,6 +99,7 @@ let
         ) keys
       );
     }) args);
+
   fixes_to_overrides = fixes: with pkgs.lib;
     flatten (flatten (
       mapAttrsToList (pkg: p_fixes:
@@ -117,39 +128,14 @@ let
         ) p_fixes
       ) fixes
     ));
-in
-rec {
-  # the mach-nix cmdline tool derivation
-  mach-nix = python.pkgs.buildPythonPackage rec {
-    pname = "mach-nix";
-    version = builtins.readFile ./mach_nix/VERSION;
-    name = "${pname}-${version}";
-    src = ./.;
-    propagatedBuildInputs = python_deps;
-    doCheck = false;
-  };
 
-  inherit mergeOverrides;
-
-  # provide mach-nix' nixpkgs to user
-  inherit nixpkgsSrc;
-  nixpkgs = pkgs;
-
-  # provide pypi fetcher to user
-  fetchPypiSdist = pypiFetcher.fetchPypiSdist;
-  fetchPypiWheel = pypiFetcher.fetchPypiSdist;
-
-  # expose dot interface
-  "with" = (withDot mkPython)."with";
-  shellWith = (withDot mkPython).shellWith;
-
-  # call this to generate a nix expression which contains the python overrides
-  machNixFile = args: import ./mach_nix/nix/mach.nix args;
+  # call this to generate a nix expression which contains the mach-nix overrides
+  compileExpression = args: import ./mach_nix/nix/mach.nix args;
 
   # Returns `overrides` and `select_pkgs` which satisfy your requirements
-  machNix = args:
+  compileOverrides = args:
     let
-      result = import "${machNixFile args}/share/mach_nix_file.nix" { pkgs = args.pkgs; };
+      result = import "${compileExpression args}/share/mach_nix_file.nix" { pkgs = args.pkgs; };
       manylinux =
         if args.pkgs.stdenv.hostPlatform.system == "x86_64-darwin" then
           []
@@ -159,25 +145,15 @@ rec {
       overrides = result.overrides manylinux autoPatchelfHook;
       select_pkgs = result.select_pkgs;
     };
-
-  # call this to use the python environment with nix-shell
-  mkPythonShell = args: (mkPython args).env;
-
-  # equivalent to buildPythonPackage of nixpkgs
-  buildPythonPackage = __buildPython "buildPythonPackage";
-
-  # equivalent to buildPythonApplication of nixpkgs
-  buildPythonApplication = __buildPython "buildPythonApplication";
-
-  __buildPython = with builtins; func: args:
-    if args ? pkgs then
-      throw "${func} does not accept 'pkgs' anymore. 'pkgs' need to be specified when importing mach-nix"
-    else if args ? extra_pkgs then
-      throw "'extra_pkgs' cannot be passed to ${func}. Please pass it to a mkPython call."
-    else if isString args || isPath args || pkgs.lib.isDerivation args then
-      _buildPython func { src = args; }
-    else
-      _buildPython func args;
+    __buildPython = with builtins; func: args:
+  if args ? pkgs then
+    throw "${func} does not accept 'pkgs' anymore. 'pkgs' need to be specified when importing mach-nix"
+  else if args ? extra_pkgs then
+    throw "'extra_pkgs' cannot be passed to ${func}. Please pass it to a mkPython call."
+  else if isString args || isPath args || pkgs.lib.isDerivation args then
+    _buildPython func { src = args; }
+  else
+    _buildPython func args;
 
   _buildPython = func: args@{
       add_requirements ? "",  # add additional requirements to the packge
@@ -223,7 +199,7 @@ rec {
           requirements)
         + "\n" + add_requirements;
       py = python_pkg.override { packageOverrides = mergeOverrides overrides_pre; };
-      result = machNix {
+      result = compileOverrides {
         inherit disable_checks pkgs providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
         overrides = overrides_pre;
         python = py;
@@ -251,15 +227,15 @@ rec {
 
 
   # (High level API) generates a python environment with minimal user effort
-  mkPython = args:
+  mkPythonBase = caller: args:
     if args ? pkgs then
-      throw "mkPython does not accept 'pkgs' anymore. 'pkgs' need to be specified when importing mach-nix"
+      throw "${caller} does not accept 'pkgs' anymore. 'pkgs' need to be specified when importing mach-nix"
     else if builtins.isList args then
-      _mkPython { extra_pkgs = args; }
+      _mkPythonBase { extra_pkgs = args; }
     else
-      _mkPython args;
+      _mkPythonBase args;
 
-  _mkPython =
+  _mkPythonBase =
     {
       requirements ? "",  # content from a requirements.txt file
       disable_checks ? true,  # Disable tests wherever possible to decrease build time.
@@ -317,7 +293,7 @@ rec {
       overrides_pre_extra = flatten (map (p: p.passthru.overrides_pre) _extra_pkgs);
       overrides_post_extra = flatten (map (p: p.passthru.overrides_post) _extra_pkgs);
       py = python_pkg.override { packageOverrides = mergeOverrides overrides_pre; };
-      result = machNix {
+      result = compileOverrides {
         inherit disable_checks pkgs providers pypi_deps_db_commit pypi_deps_db_sha256 _provider_defaults;
         overrides = overrides_pre ++ overrides_pre_extra ++ extra_pkgs_as_overrides;
         python = py;
@@ -342,7 +318,6 @@ rec {
           selectPkgs = select_pkgs;
           pythonOverrides = all_overrides;
           python = py_final;
-          pkgs = py_final.pkgs;
           overlay = self: super:
             let
               py_attr_name = "python${pyver.major}${pyver.minor}";
@@ -372,4 +347,45 @@ rec {
         };
       });
     in self;
+in
+rec {
+  # the mach-nix cmdline tool derivation
+  mach-nix = python.pkgs.buildPythonPackage rec {
+    pname = "mach-nix";
+    version = builtins.readFile ./mach_nix/VERSION;
+    name = "${pname}-${version}";
+    src = ./.;
+    propagatedBuildInputs = python_deps;
+    doCheck = false;
+  };
+
+  # the main functions
+  mkPython = args: mkPythonBase "mkPython" args;
+  mkPythonShell = args: (mkPythonBase "mkPythonShell" args).env;
+  mkDockerImage = args: (mkPythonBase "mkDockerImage" args).dockerImage;
+  mkOverlay = args: (mkPythonBase "mkOverlay" args).overlay;
+  mkNixpkgs = args: (mkPythonBase "mkNixpkgs" args).nixpkgs;
+  mkPythonOverrides = args: (mkPythonBase "mkPythonOverrides" args).pythonOverrides;
+
+  # equivalent to buildPythonPackage of nixpkgs
+  buildPythonPackage = __buildPython "buildPythonPackage";
+
+  # equivalent to buildPythonApplication of nixpkgs
+  buildPythonApplication = __buildPython "buildPythonApplication";
+
+  # provide pypi fetcher to user
+  fetchPypiSdist = pypiFetcher.fetchPypiSdist;
+  fetchPypiWheel = pypiFetcher.fetchPypiWheel;
+
+  # expose dot interface for flakes cmdline
+  "with" = (withDot (mkPythonBase "'.with'"))."with";
+  shellWith = (withDot (mkPythonBase "'.shellWith'")).shellWith;
+  dockrImageWith = (withDot (mkPythonBase "'.shellWith'")).shellWith;
+
+  # expose mach-nix' nixpkgs
+  # those are equivalent to the pkgs passed by the user
+  nixpkgs = pkgs;
+
+  # this might beuseful for someone
+  inherit mergeOverrides;
 }
