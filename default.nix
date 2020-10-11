@@ -172,6 +172,8 @@ rec {
   __buildPython = with builtins; func: args:
     if args ? pkgs then
       throw "${func} does not accept 'pkgs' anymore. 'pkgs' need to be specified when importing mach-nix"
+    else if args ? extra_pkgs then
+      throw "'extra_pkgs' cannot be passed to ${func}. Please pass it to a mkPython call."
     else if isString args || isPath args || pkgs.lib.isDerivation args then
       _buildPython func { src = args; }
     else

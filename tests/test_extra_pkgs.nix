@@ -4,9 +4,9 @@ mach-nix.mkPython {
     aiohttp
   '';
   extra_pkgs = [
-    "https://github.com/psf/requests/tarball/master"
+    "https://github.com/psf/requests/tarball/v2.24.0"
     (mach-nix.buildPythonPackage {
-      src = "https://github.com/django/django/tarball/master";
+      src = "https://github.com/django/django/tarball/3.1";
       add_requirements = "pytest";
     })
   ];
