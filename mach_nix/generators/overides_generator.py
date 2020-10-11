@@ -184,14 +184,10 @@ class OverridesGenerator(ExpressionGenerator):
             if pkg.name not in overrides_keys:
                 continue
             overlays_required = True
-            # get correct build input names
-            _build_inputs = [self._get_ref_name(b, pkgs[b].ver) for b in pkg.build_inputs]
-            build_inputs_local = {b for b in _build_inputs if b in overrides_keys}
-            build_inputs_nixpkgs = set(_build_inputs) - build_inputs_local
-            # get correct propagated build input names
-            _prop_build_inputs = [self._get_ref_name(b, pkgs[b].ver) for b in pkg.prop_build_inputs]
-            prop_build_inputs_local = {b for b in _prop_build_inputs if b in overrides_keys}
-            prop_build_inputs_nixpkgs = set(_prop_build_inputs) - prop_build_inputs_local
+            build_inputs_local = {b for b in pkg.build_inputs if b in overrides_keys}
+            build_inputs_nixpkgs = set(pkg.build_inputs) - build_inputs_local
+            prop_build_inputs_local = {b for b in pkg.prop_build_inputs if b in overrides_keys}
+            prop_build_inputs_nixpkgs = set(pkg.prop_build_inputs) - prop_build_inputs_local
             # convert build inputs to string
             build_inputs_str = self._gen_build_inputs(build_inputs_local, build_inputs_nixpkgs, ).strip()
             # convert prop build inputs to string
