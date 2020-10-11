@@ -1,4 +1,8 @@
-{ mach-nix, ... }:
+{
+  mach-nix ? import ../. {},
+  ...
+}:
+with builtins;
 mach-nix.mkPython {
   extra_pkgs = [
     (mach-nix.buildPythonPackage {

@@ -1,4 +1,8 @@
-{ mach-nix, ... }:
+{
+  mach-nix ? import ../. {},
+  ...
+}:
+with builtins;
 mach-nix.mkPython [
   "https://github.com/psf/requests/tarball/v2.24.0"
   (mach-nix.buildPythonPackage {

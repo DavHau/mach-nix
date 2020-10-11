@@ -1,4 +1,8 @@
-{ mach-nix, ... }:
+{
+  mach-nix ? import ../. {},
+  ...
+}:
+with builtins;
 mach-nix.mkPython {
   requirements = "ldap0";
   _.ldap0.buildInputs = with mach-nix.nixpkgs; [ openldap.dev cyrus_sasl.dev ];
