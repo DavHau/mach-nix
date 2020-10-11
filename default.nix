@@ -339,6 +339,8 @@ rec {
         passthru = oa.passthru // rec {
           selectPkgs = select_pkgs;
           pythonOverrides = all_overrides;
+          python = py_final;
+          pkgs = py_final.pkgs;
           overlay = self: super:
             let
               py_attr_name = "python${pyver.major}${pyver.minor}";
