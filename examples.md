@@ -27,9 +27,10 @@ This page contains basic and advanced examples for using mach-nix inside a nix e
      * [Starting point for a geospatial environment](#starting-point-for-a-geospatial-environment)
   * [Docker](#docker)
      * [JupyterLab Docker Image](#jupyterlab-docker-image)
+  * [R and Python](#r-and-python)
   * [Raspberry PI / aarch64 SD Image](#raspberry-pi--aarch64-sd-image)
 
-<!-- Added by: grmpf, at: Sat 10 Oct 2020 02:10:11 PM +07 -->
+<!-- Added by: grmpf, at: Mon 12 Oct 2020 01:25:02 AM +07 -->
 
 <!--te-->
 
@@ -161,7 +162,8 @@ mach-nix.mkPython {
 
 ## Overrides (overrides_pre / overrides_post)
 ### Include poetry2nix overrides
-I have a complex requirements.txt which includes `imagecodecs`. It is available via wheel, but I prefer to build everything from source. This package has complex build dependencies and is not available from nixpkgs. Luckily poetry2nix` overrides make it work.
+`imagecodecs` is available via wheel, but if one wants to build it from source, dependencies will be missing since there is no nixpkgs candidate available.
+poetry2nix luckily maintains overrides for this package. They can be included into the mach-nix build like this.
 ```nix
 mach-nix.mkPython rec {
 
@@ -189,9 +191,8 @@ mach-nix.mkPython rec {
 ## Tensorflow
 
 ### Tensorflow with SSE/AVX/FMA support
-Tensorflow from pypi does not provide any hardware optimization support. To get a SSE/AVX/FMA enabled version, it just needs to be taken from `nixpkgs`.
+Tensorflow from pypi does not provide any hardware optimization support. To get a SSE/AVX/FMA enabled version, set the provider for tensorflow to `nixpkgs`.
 
-I have a complex set of requirements including tensorflow. I'd like to have tensorflow with the usual nix features enabled like SSE/AVX/FMA which I cannot get from pypi. Therefore I must take tensorflow from nixpkgs. For everything else I keep the default, which means wheels are preferred. This allows for quicker installation of dependencies.
 ```nix
 mach-nix.mkPython {
 
@@ -200,16 +201,14 @@ mach-nix.mkPython {
     tensorflow
   '';
 
-  providers = {
-    # force tensorflow to be taken from nixpkgs
-    tensorflow = "nixpkgs"; 
-  };
+  # force tensorflow to be taken from nixpkgs
+  providers.tensorflow = "nixpkgs"; 
 }
 ```
 This only works if the restrictions in `requirements.txt` allow for the tensorflow version from nixpkgs.
 
 ### Tensorflow via wheel (newer versions, quicker builds)
-I'd like to install a more recent version of tensorflow which is not available from nixpkgs. Also I don't like long build times and therefore I want to install tensorflow via wheel. Usually most wheels work pretty well out of the box, but the tensorflow wheel has an issue which I need to fix with an override.
+Install recent tensorflow via wheel
 ```nix
 mach-nix.mkPython {
 
@@ -217,18 +216,14 @@ mach-nix.mkPython {
     # bunch of other requirements
     tensorflow == 2.2.0rc4
   '';
-
   # no need to specify provider settings since wheel is the default anyways
-
-  # Fix the tensorflow wheel
-  _.tensorflow.postInstall = "rm $out/bin/tensorboard";
 }
 
 ```
 ## PyTorch
 
 ### Recent PyTorch with nixpkgs dependencies, and custom python
-I'd like to use a recent version of Pytorch from wheel, but I'd like to build the rest of the requirements from sdist or nixpkgs. I want to use python 3.6.
+Recent pytorch version, Build dependencies from source
 ```nix
 mach-nix.mkPython rec {
 
@@ -314,6 +309,23 @@ docker load < ./docker-image
 Start the jupyterlab container:
 ```
 docker run --rm -it -p 8888:8888 -v $HOME:/mnt jupyterlab
+```
+
+## R and Python
+The following is an example for a Python environment mixed with R packages.  
+R packages can be added via `extra_pkgs`.  
+If mach-nix finds R packages inside `extra_pkgs`, it will automatically include `rpy2` and add the selected R packages to its buildInputs.
+To get a list of available R packages, execute: `echo "builtins.attrNames(import <nixpkgs> {}).rPackages" | nix repl`
+
+```nix
+mach-nix.mkPython {
+  requirements =  ''
+    # some python requirements
+  '';
+  extra_pkgs = with mach-nix.rPackages; [
+    data_table
+  ];
+}
 ```
 
 
