@@ -145,15 +145,16 @@ let
       overrides = result.overrides manylinux autoPatchelfHook;
       select_pkgs = result.select_pkgs;
     };
-    __buildPython = with builtins; func: args:
-  if args ? pkgs then
-    throw "${func} does not accept 'pkgs' anymore. 'pkgs' need to be specified when importing mach-nix"
-  else if args ? extra_pkgs then
-    throw "'extra_pkgs' cannot be passed to ${func}. Please pass it to a mkPython call."
-  else if isString args || isPath args || pkgs.lib.isDerivation args then
-    _buildPython func { src = args; }
-  else
-    _buildPython func args;
+
+  __buildPython = with builtins; func: args:
+    if args ? pkgs then
+      throw "${func} does not accept 'pkgs' anymore. 'pkgs' need to be specified when importing mach-nix"
+    else if args ? extra_pkgs then
+      throw "'extra_pkgs' cannot be passed to ${func}. Please pass it to a mkPython call."
+    else if isString args || isPath args || pkgs.lib.isDerivation args then
+      _buildPython func { src = args; }
+    else
+      _buildPython func args;
 
   _buildPython = func: args@{
       add_requirements ? "",  # add additional requirements to the packge
@@ -380,7 +381,7 @@ rec {
   # expose dot interface for flakes cmdline
   "with" = (withDot (mkPythonBase "'.with'"))."with";
   shellWith = (withDot (mkPythonBase "'.shellWith'")).shellWith;
-  dockrImageWith = (withDot (mkPythonBase "'.shellWith'")).shellWith;
+  dockerImageWith = (withDot (mkPythonBase "'.dockerImageWith'")).dockerImageWith;
 
   # expose mach-nix' nixpkgs
   # those are equivalent to the pkgs passed by the user
