@@ -41,7 +41,10 @@ let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
     ref = "refs/tags/2.4.1";
-  });
+  }) {
+    # optionally bring your own nixpkgs
+    # pkgs = import <nixpkgs> {};
+  };
 in
 ...
 ```
@@ -97,7 +100,7 @@ mach-nix.buildPythonPackage {
 ```
 
 #### buildPythonPackage from GitHub and add requirements
-Use `add_requirements` in case the auto detected requirements are imcomplete
+Use `add_requirements` in case the auto detected requirements are incomplete
 ```nix
 mach-nix.buildPythonPackage {
   src = "https://github.com/psf/requests/tarball/2a7832b5b06d";
@@ -105,7 +108,7 @@ mach-nix.buildPythonPackage {
 }
 ```
 
-#### buildPythonPackage from GitHub (explicit source)
+#### buildPythonPackage from GitHub (reproducible source)
 ```nix
 mach-nix.buildPythonPackage {
   src = builtins.fetchGit{
@@ -248,10 +251,11 @@ mach-nix.mkPython rec {
 
 ### Starting point for a geospatial environment
 ```nix
-with mach-nix.nixpkgs;
 let
   pyEnv = mach-nix.mkPython rec {
+
     python = "python37";
+
     requirements =  ''
         jupyterlab
         geopandas
@@ -259,14 +263,13 @@ let
         pygeos
         shapely>=1.7.0
       '';
-    providers = {
-      shapely = "sdist,nixpkgs";
-    };
+
+    providers.shapely = "sdist,nixpkgs";
   };
 in
 mkShell rec {
+
   buildInputs = [
-    bash
     pyEnv
   ] ;
 
@@ -281,19 +284,17 @@ For every python environment a docker image is available via the `dockerImage` a
 ### JupyterLab Docker Image
 Assuming the following expression under `./jupyter-docker.nix`:
 ```nix
-with mach-nix.nixpkgs;
 let
-  pyEnv = mach-nix.mkPython rec {
-    python = "python37";
+  image = mach-nix.mkDockerImage {
     requirements =  ''
-        jupyterlab
-        # add packages here
-      '';
+      jupyterlab
+      # add more packages here
+    '';
   };
 in
 # The following overrides a call to nixpkgs.dockerTools.buildImage.
-# See more buildImage examples here: https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/docker/examples.nix
-pyEnv.dockerImage.override (oa: {
+# Find more buildImage examples here: https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/docker/examples.nix
+image.override (oldAttrs: {
   name = "jupyterlab";
   config.Cmd = [ "jupyter" "lab" "--notebook-dir=/mnt" "--allow-root" "--ip=0.0.0.0" ];
 })
