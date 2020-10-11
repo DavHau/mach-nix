@@ -170,7 +170,9 @@ rec {
   buildPythonApplication = __buildPython "buildPythonApplication";
 
   __buildPython = with builtins; func: args:
-    if isString args || isPath args || pkgs.lib.isDerivation args then
+    if args ? pkgs then
+      throw "${func} does not accept 'pkgs' anymore. 'pkgs' need to be specified when importing mach-nix"
+    else if isString args || isPath args || pkgs.lib.isDerivation args then
       _buildPython func { src = args; }
     else
       _buildPython func args;
@@ -247,7 +249,13 @@ rec {
 
 
   # (High level API) generates a python environment with minimal user effort
-  mkPython = args: if builtins.isList args then _mkPython { extra_pkgs = args; } else _mkPython args;
+  mkPython = args:
+    if args ? pkgs then
+      throw "mkPython does not accept 'pkgs' anymore. 'pkgs' need to be specified when importing mach-nix"
+    else if builtins.isList args then
+      _mkPython { extra_pkgs = args; }
+    else
+      _mkPython args;
 
   _mkPython =
     {
