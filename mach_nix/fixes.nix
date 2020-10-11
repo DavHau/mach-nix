@@ -89,6 +89,15 @@ rec {
     };
   };
 
+  rpy2.remove-pandas-patch = {
+    _cond = { prov, ver, ... }:
+      # https://github.com/rpy2/rpy2/commit/fbd060e364b70012e8d26cc74df04ee53f769379
+      # https://github.com/rpy2/rpy2/commit/39e1cb6fca0d4107f1078727d8670c422e3c6f7f
+      prov == "sdist"
+      && comp_ver ver ">=" "3.2.6";
+    patches.mod = oldPatches: filter (p: ! hasSuffix "pandas-1.x.patch" p) oldPatches;
+  };
+
   tensorflow.rm-tensorboard = {
     _cond = {prov, ... }: prov != "nixpkgs";
     postInstall = "rm $out/bin/tensorboard";
