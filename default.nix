@@ -297,7 +297,17 @@ let
           if hasAttr "requirements" p then p.requirements
           else throw "Packages passed via 'extra_pkgs' must be built via mach-nix.buildPythonPackage"
         ) extra_pkgs_python;
-      extra_pkgs_r_reqs = if extra_pkgs_r == [] then "" else "rpy2";
+      extra_pkgs_r_reqs = if extra_pkgs_r == [] then "" else ''
+        rpy2
+        ipython
+        jinja2
+        pytz
+        pandas
+        numpy
+        cffi
+        tzlocal
+        simplegeneric
+      '';
 
       # gather overrides necessary by extra_pkgs
       extra_pkgs_python_attrs = foldl' (a: b: a // b) {} (map (p: { "${p.pname}" = p; }) extra_pkgs_python);
