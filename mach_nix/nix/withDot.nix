@@ -2,26 +2,27 @@
 with builtins;
 let
   names = pypiFetcher.allNames;
-  gen = shell: selected:
+  gen = attr: selected:
     let
-      machnix = mkPython {
+      pyEnvBase = mkPython {
         python = "python38";
         requirements = foldl' (a: b: a + "\n" + b) "" selected;
       };
       attrs_list = map (n:
-          { name = n; value = (gen shell (selected ++ [n])); }
+          { name = n; value = (gen attr (selected ++ [n])); }
       ) names;
-      drv = if shell then machnix.env else machnix;
+      drv = if attr == "" then pyEnvBase else pyEnvBase."${attr}";
       pyEnv = drv.overrideAttrs (oa: {
         passthru =
           listToAttrs attrs_list
-          // { _passthru = machnix.passthr; };
+          // { _passthru = pyEnv.passthr; };
       });
     in
       pyEnv;
 
 in
 {
- "with" = gen false [];
- "shellWith" = gen true [];
+ "with" = gen "" [];
+ "shellWith" = gen "env" [];
+ "dockerImageWith" = gen "dockerImage" [];
 }

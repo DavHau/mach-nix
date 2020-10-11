@@ -20,6 +20,7 @@
           mach-nix = mach-nix-default.mach-nix;
           "with" = mach-nix-default."with";
           shellWith = mach-nix-default.shellWith;
+          dockerImageWith = mach-nix-default.dockerImageWith;
         };
 
         defaultPackage = self.packages."${system}".mach-nix.mach-nix;
