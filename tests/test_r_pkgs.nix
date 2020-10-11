@@ -1,5 +1,8 @@
+{
+  mach-nix ? import ../. {},
+  ...
+}:
 with builtins;
-{ mach-nix, ... }:
 let
   pyEnv = mach-nix.mkPython {
     requirements = ''

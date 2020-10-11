@@ -1,4 +1,8 @@
-{ mach-nix, ... }:
+{
+  mach-nix ? import ../. {},
+  ...
+}:
+with builtins;
 mach-nix.mkPython {
   requirements = ''
     aiohttp
