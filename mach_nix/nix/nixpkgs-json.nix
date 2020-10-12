@@ -1,32 +1,17 @@
 {pkgs, python, mergeOverrides, overrides}:
+
 let
-  fetchPypiPnamePassthruOverride = pySelf: PySuper: {
-    fetchPypi = let
-      computeUrl = {format ? "setuptools", ... } @attrs: let
-        computeWheelUrl = {pname, version, python ? "py2.py3", abi ? "none", platform ? "any"}:
-          "https://files.pythonhosted.org/packages/${python}/${builtins.substring 0 1 pname}/${pname}/${pname}-${version}-${python}-${abi}-${platform}.whl";
-        computeSourceUrl = {pname, version, extension ? "tar.gz"}:
-          "mirror://pypi/${builtins.substring 0 1 pname}/${pname}/${pname}-${version}.${extension}";
-        compute = (if format == "wheel" then computeWheelUrl
-          else if format == "setuptools" then computeSourceUrl
-          else throw "Unsupported format ${format}");
-      in compute (builtins.removeAttrs attrs ["format"]);
-    in pkgs.makeOverridable( {format ? "setuptools", sha256 ? "", hash ? "", ... } @attrs:
-      let
-        url = computeUrl (builtins.removeAttrs attrs ["sha256" "hash"]) ;
-      in pkgs.fetchurl {
-        inherit url sha256 hash;
-        passthru = {
-          inherit (attrs) pname;
-        };
-      });
+  pnamePassthruOverride = pySelf: pySuper: {
+    fetchPypi = args: (pySuper.fetchPypi args).overrideAttrs (oa: {
+      passthru = { inherit (args) pname; };
+    });
   };
 
   nameMap = {
     pytorch = "torch";
   };
 
-  py = python.override { packageOverrides = mergeOverrides ( overrides ++ [ fetchPypiPnamePassthruOverride ] ); };
+  py = python.override { packageOverrides = mergeOverrides ( overrides ++ [ pnamePassthruOverride ] ); };
 in
 
 with pkgs;
@@ -35,7 +20,7 @@ with builtins;
 let
   pname_and_version = python: attrname:
     let
-      pname = get_pname python attrname;
+      pname = get_pname python.pkgs."${attrname}";
       res = tryEval (
         if pname != "" && hasAttrByPath ["${attrname}" "version"] python.pkgs
         then pname + "@" + (toString python.pkgs."${attrname}".version)
@@ -44,13 +29,13 @@ let
     in
       {"${attrname}" = (toString res.value);};
 
-  get_pname = python: attrname:
+  get_pname = pkg:
     let
       res = tryEval (
-        if hasAttrByPath ["${attrname}" "src" "pname"] python.pkgs then
-          python.pkgs."${attrname}".src.pname
-        else if hasAttrByPath ["${attrname}" "pname"] python.pkgs then
-          let pname = python.pkgs."${attrname}".pname; in
+        if pkg ? src.pname then
+          pkg.src.pname
+        else if pkg ? pname then
+          let pname = pkg.pname; in
             if nameMap ? "${pname}" then nameMap."${pname}" else pname
           else ""
       );

@@ -40,6 +40,7 @@ class OverridesGenerator(ExpressionGenerator):
         out = f"""
             {{ pkgs, ... }}:
             with builtins;
+            with pkgs.lib;
             let
               pypi_fetcher_src = builtins.fetchTarball {{
                 name = "nix-pypi-fetcher";
@@ -52,19 +53,38 @@ class OverridesGenerator(ExpressionGenerator):
               fetchPypiWheel = pypiFetcher.fetchPypiWheel;
               is_py_module = pkg:
                 isAttrs pkg && hasAttr "pythonModule" pkg;
+              normalizeName = name: (replaceStrings ["_"] ["-"] (toLower name));
               replace_deps = oldAttrs: inputs_type: self:
-                map (pypkg: 
-                  if pypkg ? pname && self ? "${{pypkg.pname}}" && pypkg != self."${{pypkg.pname}}" then
-                    trace "Updated inherited nixpkgs dep ${{pypkg.pname}} from ${{pypkg.version}} to ${{self."${{pypkg.pname}}".version}}"
-                    self."${{pypkg.pname}}"
-                  else
-                    pypkg
+                map (pypkg:
+                  let
+                    pname = normalizeName (get_pname pypkg);
+                  in
+                    if self ? "${{pname}}" && pypkg != self."${{pname}}" then
+                      trace "Updated inherited nixpkgs dep ${{pname}} from ${{pypkg.version}} to ${{self."${{pname}}".version}}"
+                      self."${{pname}}"
+                    else
+                      pypkg
                 ) (oldAttrs."${{inputs_type}}" or []);
               override = pkg:
                 if hasAttr "overridePythonAttrs" pkg then
                     pkg.overridePythonAttrs
                 else
                     pkg.overrideAttrs;
+              nameMap = {{
+                pytorch = "torch";
+              }};
+              get_pname = pkg:
+                let
+                  res = tryEval (
+                    if pkg ? src.pname then
+                      pkg.src.pname
+                    else if pkg ? pname then
+                      let pname = pkg.pname; in
+                        if nameMap ? "${{pname}}" then nameMap."${{pname}}" else pname
+                      else ""
+                  );
+                in
+                  toString res.value;
               get_passthru = python: pypi_name: nix_name:
                 # if pypi_name is in nixpkgs, we must pick it, otherwise risk infinite recursion.
                 let
@@ -96,7 +116,15 @@ class OverridesGenerator(ExpressionGenerator):
                     doInstallCheck = enabled;
                   }} );
                 }};
-              merge_with_tests = enabled: pkgs.lib.composeExtensions (tests_on_off enabled);
+              pname_passthru_override = pySelf: pySuper: {{
+                fetchPypi = args: (pySuper.fetchPypi args).overrideAttrs (oa: {{
+                  passthru = {{ inherit (args) pname; }};
+                }});
+              }};
+              mergeOverrides = with pkgs.lib; foldl composeExtensions (self: super: {{}});
+              merge_with_overr = enabled: overr:
+                mergeOverrides [(tests_on_off enabled) pname_passthru_override overr];
+
             """
         return unindent(out, 12)
 
@@ -187,7 +215,7 @@ class OverridesGenerator(ExpressionGenerator):
             select_pkgs = ps: [
               {pkg_names_str.strip()}
             ];
-            overrides = manylinux1: autoPatchelfHook: merge_with_tests {check} (python-self: python-super: let self = {{
+            overrides = manylinux1: autoPatchelfHook: merge_with_overr {check} (python-self: python-super: let self = {{
           """
         out = unindent(out, 10)
         for pkg in pkgs.values():
