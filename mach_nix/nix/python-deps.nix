@@ -16,14 +16,6 @@ rec {
     };
     doCheck = false;
   };
-  toml = python.pkgs.buildPythonPackage {
-    name = "toml-0.10.1";
-    src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/da/24/84d5c108e818ca294efe7c1ce237b42118643ce58a14d2462b3b2e3800d5/toml-0.10.1.tar.gz";
-      sha256 = "926b612be1e5ce0634a2ca03470f95169cf16f939018233a670519cb4ac58b0f";
-    };
-    doCheck = false;
-  };
   tree-format = python.pkgs.buildPythonPackage {
     name = "tree-format-0.1.2";
     src = fetchurl {
@@ -35,4 +27,5 @@ rec {
 
   packaging = python.pkgs.packaging;
   setuptools = python.pkgs.setuptools;
+  toml = python.pkgs.toml;
 }

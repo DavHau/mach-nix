@@ -400,7 +400,8 @@ rec {
     name = "${pname}-${version}";
     src = ./.;
     propagatedBuildInputs = python_deps;
-    doCheck = false;
+    checkInputs = [ python.pkgs.pytest ];
+    checkPhase = "pytest";
   };
 
   # the main functions
