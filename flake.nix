@@ -18,7 +18,8 @@
         };
         packages = rec {
           mach-nix = mach-nix-default.mach-nix;
-          "with" = mach-nix-default."with";
+          "with" = mach-nix-default.pythonWith;
+          pythonWith = mach-nix-default.pythonWith;
           shellWith = mach-nix-default.shellWith;
           dockerImageWith = mach-nix-default.dockerImageWith;
         };

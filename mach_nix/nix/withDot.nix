@@ -15,14 +15,14 @@ let
       pyEnv = drv.overrideAttrs (oa: {
         passthru =
           listToAttrs attrs_list
-          // { _passthru = pyEnv.passthr; };
+          // { _passthru = pyEnvBase.passthru; };
       });
     in
       pyEnv;
 
 in
 {
- "with" = gen "" [];
+ "pythonWith" = gen "" [];
  "shellWith" = gen "env" [];
  "dockerImageWith" = gen "dockerImage" [];
 }

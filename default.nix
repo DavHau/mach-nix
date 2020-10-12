@@ -357,6 +357,10 @@ let
           selectPkgs = select_pkgs;
           pythonOverrides = all_overrides;
           python = py_final;
+          env = pkgs.mkShell {
+            name = "mach-nix-python-shell";
+            buildInputs = [ final_env ];
+          };
           overlay = self: super:
             let
               py_attr_name = "python${pyver.major}${pyver.minor}";
@@ -400,7 +404,7 @@ rec {
 
   # the main functions
   mkPython = args: mkPythonBase "mkPython" args;
-  mkPythonShell = args: pkgs.mkShell { buildInputs = (mkPythonBase "mkPythonShell" args) ;};
+  mkPythonShell = args: (mkPythonBase "mkPythonShell" args).env;
   mkDockerImage = args: (mkPythonBase "mkDockerImage" args).dockerImage;
   mkOverlay = args: (mkPythonBase "mkOverlay" args).overlay;
   mkNixpkgs = args: (mkPythonBase "mkNixpkgs" args).nixpkgs;
@@ -418,6 +422,7 @@ rec {
 
   # expose dot interface for flakes cmdline
   "with" = (withDot (mkPythonBase "'.with'"))."with";
+  pythonWith = (withDot (mkPythonBase "'.pythonWith'")).pythonWith;
   shellWith = (withDot (mkPythonBase "'.shellWith'")).shellWith;
   dockerImageWith = (withDot (mkPythonBase "'.dockerImageWith'")).dockerImageWith;
 
