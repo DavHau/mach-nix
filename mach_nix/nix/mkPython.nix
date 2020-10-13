@@ -6,7 +6,7 @@ let
 
   buildPythonPackageBase = (import ./buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; });
 
-  mkPythonBase =
+  mkPython =
     {
       requirements ? "",  # content from a requirements.txt file
       packagesExtra ? [], # add R-Packages, pkgs from nixpkgs, pkgs built via mach-nix.buildPythonPackage
@@ -157,4 +157,4 @@ let
     in self;
 in
 
-args: mkPythonBase (l.translateDeprecatedArgs args)
+args: mkPython (l.translateDeprecatedArgs args)

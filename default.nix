@@ -26,9 +26,9 @@ let
 
   withDot = mkPython: import ./mach_nix/nix/withDot.nix { inherit mkPython pypiFetcher; };
 
-  __buildPython = func: args: buildPythonXXX func (l.throwOnDeprecatedArgs func args);
+  __buildPython = func: args: _buildPython func (l.throwOnDeprecatedArgs func args);
 
-  buildPythonXXX = func: args:
+  _buildPython = func: args:
     if args ? extra_pkgs || args ? pkgsExtra then
       throw "'extra_pkgs'/'pkgsExtra' cannot be passed to ${func}. Please pass it to a mkPython call."
     else if isString args || isPath args || pkgs.lib.isDerivation args then
@@ -36,11 +36,11 @@ let
     else
       (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; }) func args;
 
+  __mkPython = caller: args: _mkPython caller (l.throwOnDeprecatedArgs caller args);
+
   # (High level API) generates a python environment with minimal user effort
-  mkPythonBase = caller: args:
-    if args ? pkgs then
-      throw "${caller} does not accept 'pkgs' anymore. 'pkgs' need to be specified when importing mach-nix"
-    else if builtins.isList args then
+  _mkPython = caller: args:
+    if builtins.isList args then
       (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; }) { extra_pkgs = args; }
     else
       (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; }) args;
@@ -59,12 +59,12 @@ rec {
   };
 
   # the main functions
-  mkPython = args: mkPythonBase "mkPython" args;
-  mkPythonShell = args: (mkPythonBase "mkPythonShell" args).env;
-  mkDockerImage = args: (mkPythonBase "mkDockerImage" args).dockerImage;
-  mkOverlay = args: (mkPythonBase "mkOverlay" args).overlay;
-  mkNixpkgs = args: (mkPythonBase "mkNixpkgs" args).nixpkgs;
-  mkPythonOverrides = args: (mkPythonBase "mkPythonOverrides" args).pythonOverrides;
+  mkPython = args: __mkPython "mkPython" args;
+  mkPythonShell = args: (__mkPython "mkPythonShell" args).env;
+  mkDockerImage = args: (__mkPython "mkDockerImage" args).dockerImage;
+  mkOverlay = args: (__mkPython "mkOverlay" args).overlay;
+  mkNixpkgs = args: (__mkPython "mkNixpkgs" args).nixpkgs;
+  mkPythonOverrides = args: (__mkPython "mkPythonOverrides" args).pythonOverrides;
 
   # equivalent to buildPythonPackage of nixpkgs
   buildPythonPackage = __buildPython "buildPythonPackage";
@@ -77,10 +77,10 @@ rec {
   fetchPypiWheel = pypiFetcher.fetchPypiWheel;
 
   # expose dot interface for flakes cmdline
-  "with" = (withDot (mkPythonBase "'.with'"))."with";
-  pythonWith = (withDot (mkPythonBase "'.pythonWith'")).pythonWith;
-  shellWith = (withDot (mkPythonBase "'.shellWith'")).shellWith;
-  dockerImageWith = (withDot (mkPythonBase "'.dockerImageWith'")).dockerImageWith;
+  "with" = (withDot (__mkPython "'.with'"))."with";
+  pythonWith = (withDot (__mkPython "'.pythonWith'")).pythonWith;
+  shellWith = (withDot (__mkPython "'.shellWith'")).shellWith;
+  dockerImageWith = (withDot (__mkPython "'.dockerImageWith'")).dockerImageWith;
 
   # expose mach-nix' nixpkgs
   # those are equivalent to the pkgs passed by the user
