@@ -51,7 +51,7 @@ jobs:
 ## test suite
     - name: PYTHON - execute pytest(s)
       run: |
-        echo pytest .
+        pytest .
       shell: bash
 ## tests build + pytest
     - name: NIX PY - Build + pytest 
