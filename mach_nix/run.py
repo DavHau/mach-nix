@@ -166,7 +166,6 @@ def main():
     print_be_patient()
 
     try:
-        import pdb; pdb.set_trace()
         nixpkgs = json.loads(args.nixpkgs)
         nixpkgs_rev = nixpkgs["rev"]
         nixpkgs_sha256 = nixpkgs["sha256"]
