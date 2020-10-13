@@ -9,6 +9,7 @@ on:
 jobs:
   testSuite:
 ## build
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, ]
@@ -20,7 +21,7 @@ jobs:
             python-version: 3.9
 
 ## tasks per natrix element
-    name: OS ${{ matrix.os }} - Python ${{ matrix.python-version }}
+#    name: OS ${{ matrix.os }} - Python ${{ matrix.python-version }}
     steps:
     - uses: actions/checkout@v2
 
