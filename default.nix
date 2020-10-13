@@ -90,5 +90,5 @@ rec {
   rPackages = pkgs.rPackages;
 
   # this might beuseful for someone
-  inherit mergeOverrides;
+  inherit (l) mergeOverrides;
 }
