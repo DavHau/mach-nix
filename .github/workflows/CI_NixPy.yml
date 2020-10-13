@@ -64,11 +64,10 @@ jobs:
         PY_VERSION: "3.7"
         PKGS_PY: "./requirements.txt"
         ENV_DIR: "./env_new_nixpkgs"         
-        #NIXPKGS: "{ "rev": $SHA , "sha256": $SHA256, }"
         SHA: "502845c3e31ef3de0e424f3fcb09217df2ce6df6"
         SHA256: "0fcqpsy6y7dgn0y0wgpa56gsg0b0p8avlpjrd79fp4mp9bl18nda"
       run: |
-         mach-nix $MN_ENTRY -p $PY_VERSION -r $PKGS_PY $ENV_DIR # --nixpkgs '{ "rev":"502845c3e31ef3de0e424f3fcb09217df2ce6df6" , "sha256":"0fcqpsy6y7dgn0y0wgpa56gsg0b0p8avlpjrd79fp4mp9bl18nda", }' 
+         mach-nix $MN_ENTRY -p $PY_VERSION -r $PKGS_PY $ENV_DIR --nixpkgs '{ "rev":"502845c3e31ef3de0e424f3fcb09217df2ce6df6", "sha256":"0fcqpsy6y7dgn0y0wgpa56gsg0b0p8avlpjrd79fp4mp9bl18nda"}' 
       shell: bash
 
     - name: RUN - mach-nix gen 
@@ -79,8 +78,9 @@ jobs:
         ENV_DIR: "./env_new_nixpkgs"         
         SHA: "502845c3e31ef3de0e424f3fcb09217df2ce6df6"
         SHA256: "0fcqpsy6y7dgn0y0wgpa56gsg0b0p8avlpjrd79fp4mp9bl18nda"
+        NIXPKGS: '{"rev":$SHA, "sha256":$SHA256}'
       run: |
-         mach-nix $MN_ENTRY -p $PY_VERSION -r $PKGS_PY  # --nixpkgs '{ "rev":"502845c3e31ef3de0e424f3fcb09217df2ce6df6" , "sha256":"0fcqpsy6y7dgn0y0wgpa56gsg0b0p8avlpjrd79fp4mp9bl18nda", }' 
+         mach-nix $MN_ENTRY -p $PY_VERSION -r $PKGS_PY  # --nixpkgs $NIXPKGS
       shell: bash
     
 
