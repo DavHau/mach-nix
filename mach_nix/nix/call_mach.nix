@@ -9,4 +9,4 @@ let
   python = pkgs."${python_attr}";
 in
 
-import ./mach.nix { inherit requirements pkgs python; }
+import ./compileOverrides.nix { inherit requirements pkgs python; }

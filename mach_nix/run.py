@@ -7,7 +7,6 @@ from argparse import ArgumentParser
 from json import JSONDecodeError
 from os.path import realpath, dirname
 from textwrap import dedent
-from ast import literal_eval
 from urllib import request
 from urllib.error import HTTPError
 
@@ -48,14 +47,14 @@ def env(args, nixpkgs_rev, nixpkgs_sha256):
     target_dir = args.directory
     py_ver = PyVer(args.python)
 
-    expr = gen(args, return_expr=True)
+    expr = gen(args, nixpkgs_rev, nixpkgs_sha256, return_expr=True)
     machnix_file = f"{target_dir}/machnix.nix"
     shell_nix_file = f"{target_dir}/shell.nix"
     default_nix_file = f"{target_dir}/default.nix"
     python_nix_file = f"{target_dir}/python.nix"
     python_nix_content = dedent(f"""
         let
-          result = import ./machnix.nix {{ inherit pkgs; }};;
+          result = import ./machnix.nix {{ inherit pkgs; }};
           nixpkgs_commit = "{nixpkgs_rev}";
           nixpkgs_sha256 = "{nixpkgs_sha256}";
           pkgs = import (builtins.fetchTarball {{
