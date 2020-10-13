@@ -116,9 +116,8 @@ let
       py_final_with_pkgs = py_final.withPackages (ps: selectPkgs ps);
       final_env = pkgs.buildEnv {
         name = "mach-nix-python-env";
-        paths = [
+        paths = extra_pkgs_other ++ [
           py_final_with_pkgs
-          extra_pkgs_other
         ];
       };
     in let
