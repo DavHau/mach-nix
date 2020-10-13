@@ -53,7 +53,7 @@ jobs:
 #      run: |
 #        pytest
 ## tests build + pytest
-    - name: NIX PY - Build + pytest
+    - name: NIX PY - Build + pytest 
       run: nix-build . 
       shell: bash
 ## app - run
