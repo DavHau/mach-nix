@@ -1,5 +1,5 @@
 
-name: "CI - Python"
+name: "CI - Python "
 
 on:
 #  pull_request:
