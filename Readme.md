@@ -13,8 +13,7 @@ Mach-nix makes it easy to create and share reproducible python environments or p
  - Hardware optimizations, like for example SSE/AVX/FMA for tensorflow, are available without the need to manually mess with their build system. (see [nixpkgs provider](#configure-providers))
  - Cross platform support (tested only aarch64)
  - Private packages or packages from other sources can easily be included.
- - Build time parameters and dependencies of complex python packages can be tweaked without needing to setup any build environment. It requires some knowledge about nix, though. For examples, see [override system](/examples.md/#using-_-simplified-override-system).
-
+ - Build time parameters and dependencies of complex python packages can be tweaked without needing to setup any build environment. It requires some knowledge about nix, though. For examples, see [override system](/examples.md/#simplified-overrides-_-argument).
 
 ## Donate
 Want to support mach-nix? A beer always helps ;)
