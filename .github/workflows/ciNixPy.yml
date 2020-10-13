@@ -1,0 +1,75 @@
+
+name: "CI - Python"
+
+on:
+#  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  testSuite:
+## build
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, ]
+        python-version: [3.7, 3.8, 3.9 ]
+        exclude:
+          - os: macos-latest
+            python-version: 3.9
+          - os: ubuntu-latest
+            python-version: 3.9
+
+## tasks per natrix element
+    name: OS ${{ matrix.os }} - Python ${{ matrix.python-version }}
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install/Setup - PYTHON
+    - uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        #architecture: 'x64'
+
+    - name: Install/Setup - NIX
+    - uses: cachix/install-nix-action@v9
+      with:
+        skip_adding_nixpkgs_channel: true
+
+    - name: PYTHON - Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        # install mach-nix with setup.py
+
+    - name: PYTHON - Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+## test suite
+#    - name: PYTHON - Tests with pytest
+#      run: |
+#        pytest
+## tests build + pytest
+    - name: NIX PY - Build + pytest
+      run: nix-build . 
+      shell: bash
+## app - run
+    - name: run mach-nix
+      env:
+        MN_ENTRY: env
+        PY_VERSION: "3.7"
+        PKGS_PY: "./requirements.txt"
+        ENV_DIR: "./env_new_nixpkgs"
+        #NIXPKGS: "{ "rev": $SHA , "sha256": $SHA256, }"
+
+        SHA: "c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38"
+        SHA256: "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v"
+      run: |
+         mach-nix $MN_ENTRY -p $PY_VERSION -r $PKGS_PY $ENV_DIR --nixpkgs '{ "rev":"c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38" , "sha256": "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v", }' 
+      shell: bash
+    
+
+   
