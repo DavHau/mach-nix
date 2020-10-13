@@ -1,5 +1,7 @@
 {
-  mach-nix ? import ../. {},
+  mach-nix ? import ../. {
+    python = "python38";
+  },
   ...
 }:
 with builtins;
@@ -8,5 +10,4 @@ mach-nix.mkPython {
     numba==0.50.1
   '';
   providers = { numba = "wheel"; };
-  python = "python38";
 }

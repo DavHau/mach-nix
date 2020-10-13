@@ -6,14 +6,13 @@ let
 
   buildPythonPackageBase = (import ./buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; });
 
-  mkPython =
+  mkPython = python:
     {
       requirements ? "",  # content from a requirements.txt file
       packagesExtra ? [], # add R-Packages, pkgs from nixpkgs, pkgs built via mach-nix.buildPythonPackage
       overridesPre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overridesPost ? [],  # list of pythonOverrides to apply after the machnix overrides
       providers ? {},  # define provider preferences
-      python ? "python3",  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
       tests ? false,  # Disable tests wherever possible to decrease build time.
       _ ? {},  # simplified overrides
       _providerDefaults ? with builtins; fromTOML (readFile ../provider_defaults.toml),
@@ -48,7 +47,7 @@ let
               p
         # translate sources to python packages
         else
-          buildPythonPackageBase "buildPythonPackage" {
+          buildPythonPackageBase python "buildPythonPackage" {
             inherit pkgs providers python pypiDataRev pypiDataSha256 tests _providerDefaults;
             src = p;
           }
@@ -95,6 +94,14 @@ let
         python = py;
         requirements = l.concat_reqs ([requirements] ++ extra_pkgs_py_reqs ++ [extra_pkgs_r_reqs]);
       };
+      selectPkgs = ps:
+        (result.select_pkgs ps)
+        ++ (map (name: ps."${name}") (attrNames extra_pkgs_python_attrs));
+
+      override_selectPkgs = pySelf: pySuper: {
+        inherit selectPkgs;
+      };
+
       all_overrides = l.mergeOverrides (
         overridesPre ++ overrides_pre_extra
         ++ extra_pkgs_py_overrides
@@ -103,12 +110,10 @@ let
         ++ overrides_post_extra ++ overridesPost
         ++ extra_pkgs_r_overrides
         ++ overrides_simple_extra ++ (l.simple_overrides _)
+        ++ [ override_selectPkgs ]
       );
       py_final = python_pkg.override { packageOverrides = all_overrides;};
-      select_pkgs = ps:
-        (result.select_pkgs ps)
-        ++ (map (name: ps."${name}") (attrNames extra_pkgs_python_attrs));
-      py_final_with_pkgs = py_final.withPackages (ps: select_pkgs ps);
+      py_final_with_pkgs = py_final.withPackages (ps: selectPkgs ps);
       final_env = pkgs.buildEnv {
         name = "mach-nix-python-env";
         paths = [
@@ -119,7 +124,7 @@ let
     in let
       self = final_env.overrideAttrs (oa: {
         passthru = oa.passthru // rec {
-          selectPkgs = select_pkgs;
+          inherit selectPkgs;
           pythonOverrides = all_overrides;
           python = py_final;
           env = pkgs.mkShell {
@@ -157,4 +162,4 @@ let
     in self;
 in
 
-args: mkPython (l.translateDeprecatedArgs args)
+python: args: mkPython python (l.translateDeprecatedArgs args)

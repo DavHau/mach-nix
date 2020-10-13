@@ -4,7 +4,7 @@ with pkgs.lib;
 let
   l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 
-  buildPythonPackageBase = func:
+  buildPythonPackageBase = python: func:
     args@{
       requirements ? null,  # content from a requirements.txt file
       requirementsExtra ? "",  # add additional requirements to the packge
@@ -15,7 +15,6 @@ let
       overridesPost ? [],  # list of pythonOverrides to apply after the machnix overrides
       passthru ? {},
       providers ? {},  # define provider preferences
-      python ? "python3",  # select custom python to base overrides onto. Should be from nixpkgs >= 20.03
       _ ? {},  # simplified overrides
       _providerDefaults ? with builtins; fromTOML (readFile ../provider_defaults.toml),
       _fixes ? import ../fixes.nix {pkgs = pkgs;},
@@ -75,4 +74,4 @@ let
     });
 in
 
-func: args: buildPythonPackageBase func (l.translateDeprecatedArgs args)
+python: func: args: buildPythonPackageBase python func (l.translateDeprecatedArgs args)

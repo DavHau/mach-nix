@@ -5,7 +5,6 @@ let
   gen = attr: selected:
     let
       pyEnvBase = mkPython {
-        python = "python38";
         requirements = foldl' (a: b: a + "\n" + b) "" selected;
       };
       attrs_list = map (n:

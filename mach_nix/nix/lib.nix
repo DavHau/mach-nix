@@ -165,13 +165,14 @@ rec {
     let
       moved = {
         pkgs = "pkgs";
+        python = "python";
         pypi_deps_db_commit = "pypiDataRev";
         pypi_deps_db_sha256 = "pypiDataSha256";
       };
     in
       mapAttrs' (k: v:
         if moved ? "${k}" then
-          throw ''${func} does not accept '${k}' anymore. Instead, pass '${moved."${k}"}' when importing mach-nix.''
+          throw ''${func} does not accept '${k}' anymore. Instead, provide '${moved."${k}"}' when importing mach-nix.''
         else
           nameValuePair k v
       ) args;

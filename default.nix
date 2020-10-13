@@ -2,6 +2,7 @@
   pkgs ? import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; },
   pypiDataRev ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB.json)).rev,
   pypiDataSha256 ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB.json)).sha256,
+  python ? "python3",
   ...
 }:
 
@@ -11,7 +12,7 @@ with pkgs.lib;
 let
   l = import ./mach_nix/nix/lib.nix { inherit pkgs; lib = pkgs.lib; };
 
-  python = import ./mach_nix/nix/python.nix { inherit pkgs; };
+  python_machnix = import ./mach_nix/nix/python.nix { inherit pkgs; };
 
   python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix {
     inherit python;
@@ -26,35 +27,39 @@ let
 
   withDot = mkPython: import ./mach_nix/nix/withDot.nix { inherit mkPython pypiFetcher; };
 
-  __buildPython = func: args: _buildPython func (l.throwOnDeprecatedArgs func args);
+  __buildPython = func: args: _buildPython func args;
 
   _buildPython = func: args:
     if args ? extra_pkgs || args ? pkgsExtra then
       throw "'extra_pkgs'/'pkgsExtra' cannot be passed to ${func}. Please pass it to a mkPython call."
     else if isString args || isPath args || pkgs.lib.isDerivation args then
-      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; }) func { src = args; }
+      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+        python func { src = args; }
     else
-      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; }) func args;
+      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+        python func (l.throwOnDeprecatedArgs func args);
 
-  __mkPython = caller: args: _mkPython caller (l.throwOnDeprecatedArgs caller args);
+  __mkPython = caller: args: _mkPython caller args;
 
   # (High level API) generates a python environment with minimal user effort
   _mkPython = caller: args:
     if builtins.isList args then
-      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; }) { extra_pkgs = args; }
+      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+        python { extra_pkgs = args; }
     else
-      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; }) args;
+      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+        python (l.throwOnDeprecatedArgs caller args);
 
 in
 rec {
   # the mach-nix cmdline tool derivation
-  mach-nix = python.pkgs.buildPythonPackage rec {
+  mach-nix = python_machnix.pkgs.buildPythonPackage rec {
     pname = "mach-nix";
     version = builtins.readFile ./mach_nix/VERSION;
     name = "${pname}-${version}";
     src = ./.;
     propagatedBuildInputs = python_deps;
-    checkInputs = [ python.pkgs.pytest ];
+    checkInputs = [ python_machnix.pkgs.pytest ];
     checkPhase = "pytest";
   };
 
