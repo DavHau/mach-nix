@@ -1,5 +1,5 @@
 
-name: "CI - Python "
+name: "CI - os - nix -Python "
 
 on:
 #  pull_request:
@@ -41,7 +41,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        # install mach-nix with setup.py
+        # python setup.py install
 
     - name: PYTHON - Lint with flake8
       run: |
