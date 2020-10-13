@@ -9,6 +9,8 @@ with builtins;
 with pkgs.lib;
 
 let
+  l = import ./mach_nix/nix/lib.nix { inherit pkgs; lib = pkgs.lib; };
+
   python = import ./mach_nix/nix/python.nix { inherit pkgs; };
 
   python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix {
@@ -24,11 +26,11 @@ let
 
   withDot = mkPython: import ./mach_nix/nix/withDot.nix { inherit mkPython pypiFetcher; };
 
-  __buildPython = with builtins; func: args:
-    if args ? pkgs then
-      throw "${func} does not accept 'pkgs' anymore. 'pkgs' need to be specified when importing mach-nix"
-    else if args ? extra_pkgs then
-      throw "'extra_pkgs' cannot be passed to ${func}. Please pass it to a mkPython call."
+  __buildPython = func: args: buildPythonXXX func (l.throwOnDeprecatedArgs func args);
+
+  buildPythonXXX = func: args:
+    if args ? extra_pkgs || args ? pkgsExtra then
+      throw "'extra_pkgs'/'pkgsExtra' cannot be passed to ${func}. Please pass it to a mkPython call."
     else if isString args || isPath args || pkgs.lib.isDerivation args then
       (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; }) func { src = args; }
     else
