@@ -1,7 +1,0 @@
-# requirements.txt
-distlib~=0.3.0
-resolvelib==0.3.0
-tree-format==0.1.2
-packaging>=19.0
-toml
-setuptools
