@@ -14,13 +14,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-10.14, ]
+        os: [ubuntu-latest, ] # macos-10.14, 
         python-version: [3.7, 3.8, 3.9 ]
         exclude:
-          - os: macos-latest
-            python-version: 3.9
-          - os: ubuntu-latest
-            python-version: 3.9
+          - python-version: 3.9
 
 ## tasks per natrix element
 #    name: OS ${{ matrix.os }} - Python ${{ matrix.python-version }}
@@ -42,8 +39,8 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        # python setup.py install
+        #if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        #python setup.py install
 
     - name: PYTHON - Lint (with flake8) over project files
       run: |
@@ -56,10 +53,10 @@ jobs:
       run: |
         pytest
 ## tests build + pytest
-#    - name: NIX PY - Build + pytest 
-#      run: nix-build . 
-#      shell: bash
-## app - run
+    - name: NIX PY - Build + pytest 
+      run: nix-env -if . -A mach-nix
+      shell: bash
+# app - run
     - name: RUN - mach-nix env 
       env:
         MN_ENTRY: env
@@ -67,10 +64,10 @@ jobs:
         PKGS_PY: "./requirements.txt"
         ENV_DIR: "./env_new_nixpkgs"         
         #NIXPKGS: "{ "rev": $SHA , "sha256": $SHA256, }"
-        SHA: "c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38"
-        SHA256: "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v"
+        SHA: "502845c3e31ef3de0e424f3fcb09217df2ce6df6"
+        SHA256: "0fcqpsy6y7dgn0y0wgpa56gsg0b0p8avlpjrd79fp4mp9bl18nda"
       run: |
-         mach-nix $MN_ENTRY -p $PY_VERSION -r $PKGS_PY $ENV_DIR --nixpkgs '{ "rev":"c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38" , "sha256": "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v", }' 
+         mach-nix $MN_ENTRY -p $PY_VERSION -r $PKGS_PY $ENV_DIR --nixpkgs '{ "rev":"502845c3e31ef3de0e424f3fcb09217df2ce6df6" , "sha256": "0fcqpsy6y7dgn0y0wgpa56gsg0b0p8avlpjrd79fp4mp9bl18nda", }' 
       shell: bash
 
     - name: RUN - mach-nix gen 
@@ -79,11 +76,10 @@ jobs:
         PY_VERSION: "3.7"
         PKGS_PY: "./requirements.txt"
         ENV_DIR: "./env_new_nixpkgs"         
-        #NIXPKGS: "{ "rev": $SHA , "sha256": $SHA256, }"
-        SHA: "c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38"
-        SHA256: "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v"
+        SHA: "502845c3e31ef3de0e424f3fcb09217df2ce6df6"
+        SHA256: "0fcqpsy6y7dgn0y0wgpa56gsg0b0p8avlpjrd79fp4mp9bl18nda"
       run: |
-         mach-nix $MN_ENTRY -p $PY_VERSION -r $PKGS_PY  --nixpkgs '{ "rev":"c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38" , "sha256": "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v", }' 
+         mach-nix $MN_ENTRY -p $PY_VERSION -r $PKGS_PY  --nixpkgs '{ "rev":"502845c3e31ef3de0e424f3fcb09217df2ce6df6" , "sha256": "0fcqpsy6y7dgn0y0wgpa56gsg0b0p8avlpjrd79fp4mp9bl18nda", }' 
       shell: bash
     
 
