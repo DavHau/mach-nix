@@ -84,7 +84,6 @@ and use `nix-shell` to activate it.
 ### Generate a nix expression from a requirements.txt
 ```bash
 mach-nix gen -r requirements.txt
-# mach-nix gen -r ./requirements.txt -p 3.7 --nixpkgs '{ "rev": "31827921288763999b5ae1386ac03a1a1c7f69e1", "sha256": "158x72ci07rkz7pfz70yg77gxsqk45hn1a37qd458g64mjw45klq", }'
 ```
 ...to print out the nix expression which defines a python derivation (optionally use `-o` to define an `output file`)
 
