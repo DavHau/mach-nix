@@ -2,26 +2,17 @@
 name: "CI - Python "
 
 on:
-#  pull_request:
+  pull_request:
   push:
     branches: [master]
 
 jobs:
   testSuite:
-## build
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        #os: [ubuntu-latest, macos-latest, ]
         python-version: [3.7, 3.8, 3.9 ]
-        #exclude:
-        #  - os: macos-latest
-        #    python-version: 3.9
-        #  - os: ubuntu-latest
-        #    python-version: 3.9
 
-## tasks per natrix element
-#    name: OS ${{ matrix.os }} - Python ${{ matrix.python-version }}
     steps:
     - uses: actions/checkout@v2
 
@@ -29,7 +20,6 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-        #architecture: 'x64'
 
     - name: Install/Setup - NIX
       uses: cachix/install-nix-action@v9
@@ -40,8 +30,8 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        # install mach-nix with setup.py
+        #if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        python setup.py install
 
     - name: PYTHON - Lint with flake8
       run: |
