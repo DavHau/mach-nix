@@ -2,17 +2,19 @@
 name: "CI - os - nix -Python "
 
 on:
-#  pull_request:
+  pull_request:
+    branches: ["master"]
   push:
     branches: [master]
 
 jobs:
   testSuite:
 ## build
+    name: Test on Python${{ matrix.python-version  }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, ]
+        os: [ubuntu-20.04, ubuntu-latest, macos-10.14, ]
         python-version: [3.7, 3.8, 3.9 ]
         exclude:
           - os: macos-latest
@@ -43,33 +45,45 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         # python setup.py install
 
-    - name: PYTHON - Lint with flake8
+    - name: PYTHON - Lint (with flake8) over project files
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 ## test suite
-#    - name: PYTHON - Tests with pytest
-#      run: |
-#        pytest
+    - name: PYTHON - execute pytest(s)
+      run: |
+        pytest
 ## tests build + pytest
-    - name: NIX PY - Build + pytest 
-      run: nix-build . 
-      shell: bash
+#    - name: NIX PY - Build + pytest 
+#      run: nix-build . 
+#      shell: bash
 ## app - run
-    - name: run mach-nix
+    - name: RUN - mach-nix env 
       env:
         MN_ENTRY: env
         PY_VERSION: "3.7"
         PKGS_PY: "./requirements.txt"
-        ENV_DIR: "./env_new_nixpkgs"
+        ENV_DIR: "./env_new_nixpkgs"         
         #NIXPKGS: "{ "rev": $SHA , "sha256": $SHA256, }"
-
         SHA: "c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38"
         SHA256: "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v"
       run: |
          mach-nix $MN_ENTRY -p $PY_VERSION -r $PKGS_PY $ENV_DIR --nixpkgs '{ "rev":"c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38" , "sha256": "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v", }' 
+      shell: bash
+
+    - name: RUN - mach-nix gen 
+      env:
+        MN_ENTRY: gen
+        PY_VERSION: "3.7"
+        PKGS_PY: "./requirements.txt"
+        ENV_DIR: "./env_new_nixpkgs"         
+        #NIXPKGS: "{ "rev": $SHA , "sha256": $SHA256, }"
+        SHA: "c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38"
+        SHA256: "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v"
+      run: |
+         mach-nix $MN_ENTRY -p $PY_VERSION -r $PKGS_PY  --nixpkgs '{ "rev":"c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38" , "sha256": "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v", }' 
       shell: bash
     
 
