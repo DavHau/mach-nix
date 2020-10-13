@@ -44,6 +44,8 @@ in
 
  - R support (experimental): R packages can be passed via `packagesExtra`. Mach-nix will setup rpy2 accordingly. See [usage example](https://github.com/DavHau/mach-nix/blob/master/examples.md#r-and-python).
  
+ - Non-python packages can be passed via `packagesExtra` to include them into the environment.
+ 
  
 ### Improvements
  - rework the logic for inheriting dependencies from nixpkgs
