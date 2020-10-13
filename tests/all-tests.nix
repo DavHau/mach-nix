@@ -9,6 +9,7 @@ map (file: import file { inherit mach-nix; }) [
   ./test_flakes.nix
   ./test_jupyterlab_nixpkgs.nix
   ./test_lazy_usage.nix
+  ./test_non_python_extra_pkgs.nix
   ./test_overrides_selectPkgs.nix
   ./test_passthru_select_pypi_pname.nix
   ./test_py38_cp38_wheel.nix

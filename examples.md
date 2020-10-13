@@ -35,15 +35,22 @@ This page contains basic and advanced examples for using mach-nix inside a nix e
 <!--te-->
 
 ### Import mach-nix
-(every mach-nix expression should begin like this)
+every mach-nix expression should begin like this:
 ```nix
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "refs/tags/2.4.1";
+    ref = "refs/tags/3.0.0";
   }) {
     # optionally bring your own nixpkgs
     # pkgs = import <nixpkgs> {};
+
+    # optionally specify the python version
+    # python = "python38";
+
+    # optionally update pypi data revision from https://github.com/DavHau/pypi-deps-db
+    # pypiDataRev = "some_revision";
+    # pypiDataSha256 = "some_sha256";
   };
 in
 ...
@@ -57,20 +64,26 @@ mach-nix.mkPython {  # replace with mkPythonShell if shell is wanted
 }
 ```
 
-#### Include packages from arbitrary sources.
-`extra_pkgs` accepts python packages built via `mach-nix.buildPythonPackage`. Alternatively, paths or URLs can be passed which are then automatically wrapped in a `mach-nix.buildPythonPackage` call.
+#### Include extra packages.
+`packagesExtra` accepts:
+  - python packages built via `mach-nix.buildPythonPackage`.
+  - R Packages from `nixpkgs.rPackages` (see R example further down)
+  - python package source trees as paths or derivations
+  - URLs pointing to a tarball archives containing a python source tree
 ```nix
+...
 mach-nix.mkPython {
   requirements = builtins.readFile ./requirements.txt;
-  extra_pkgs = [
+  packagesExtra = [
     "https://github.com/psf/requests/tarball/2a7832b5b06d"   # from tarball url
     ./some/local/project                                     # from local path
     mach-nix.buildPythonPackage { ... };                     # from package
   ];
 }
 ```
-Alternatively, if requirements are not needed, extra_pkgs can be passed directly to mkPython
+Alternatively, if requirements are not needed, packagesExtra can be passed directly to mkPython
 ```nix
+...
 mach-nix.mkPython [
   "https://github.com/psf/requests/tarball/2a7832b5b06d"   # from tarball url
   ./some/local/project                                     # from local path
@@ -79,20 +92,23 @@ mach-nix.mkPython [
 ```
 
 ### buildPythonPackage / buildPythonApplication
-These functions can be used to manually build individual python modules or applications. Those can either be used directly, or fed as `extra_pkgs` of `mkPython`.
+These functions can be used to manually build individual python modules or applications. Those can either be used directly, or fed as `packagesExtra` of `mkPython`.
 Whenever `requirements` are not explicitly specified, they will be extracted automatically from the packages setup.py/setup.cfg. The same goes for the `name` and `version`.
 #### Build python package from its source code
 ```nix
+...
 mach-nix.buildPythonPackage /python-project-path
 ```
 
 #### buildPythonPackage from GitHub
 ```nix
+...
 mach-nix.buildPythonPackage "https://github.com/psf/requests/tarball/2a7832b5b06d"
 ```
 
 #### buildPythonPackage from GitHub with extras
 ```nix
+...
 mach-nix.buildPythonPackage {
   src = "https://github.com/psf/requests/tarball/2a7832b5b06d";
   extras = "socks";
@@ -100,16 +116,18 @@ mach-nix.buildPythonPackage {
 ```
 
 #### buildPythonPackage from GitHub and add requirements
-Use `add_requirements` in case the auto detected requirements are incomplete
+Use `requirementsExtra` in case the auto detected requirements are incomplete
 ```nix
+...
 mach-nix.buildPythonPackage {
   src = "https://github.com/psf/requests/tarball/2a7832b5b06d";
-  add_requirements = "pytest";
+  requirementsExtra = "pytest";
 }
 ```
 
 #### buildPythonPackage from GitHub (reproducible source)
 ```nix
+...
 mach-nix.buildPythonPackage {
   src = builtins.fetchGit{
     url = "https://github.com/user/projectname";
@@ -122,6 +140,7 @@ mach-nix.buildPythonPackage {
 #### buildPythonPackage from GitHub (manual requirements)
 Use this if automatic requirements extraction doesn't work at all.
 ```nix
+...
 mach-nix.buildPythonPackage {
   src = "https://github.com/psf/requests/tarball/2a7832b5b06d";
   requirements = ''
@@ -152,6 +171,7 @@ mach-nix.mkPython {
 ### Example: add missing build inputs
 For example the package web2ldap depends on another python package `ldap0` which fails to build because of missing dependencies.
 ```nix
+...
 with mach-nix.nixpkgs;
 mach-nix.mkPython {
 
@@ -168,6 +188,7 @@ mach-nix.mkPython {
 `imagecodecs` is available via wheel, but if one wants to build it from source, dependencies will be missing since there is no nixpkgs candidate available.
 poetry2nix luckily maintains overrides for this package. They can be included into the mach-nix build like this.
 ```nix
+...
 mach-nix.mkPython rec {
 
   requirements = ''
@@ -181,7 +202,7 @@ mach-nix.mkPython rec {
 
   # Import overrides from poetry2nix
   # Caution! Use poetry2nix overrides only in `overrides_post`, not `overrides_pre`.
-  overrides_post = [
+  overridesPost = [
     (
       import (builtins.fetchurl {
         url = "https://raw.githubusercontent.com/nix-community/poetry2nix/1cfaa4084d651d73af137866622e3d0699851008/overrides.nix";
@@ -197,6 +218,7 @@ mach-nix.mkPython rec {
 Tensorflow from pypi does not provide any hardware optimization support. To get a SSE/AVX/FMA enabled version, set the provider for tensorflow to `nixpkgs`.
 
 ```nix
+...
 mach-nix.mkPython {
 
   requirements = ''
@@ -213,6 +235,7 @@ This only works if the restrictions in `requirements.txt` allow for the tensorfl
 ### Tensorflow via wheel (newer versions, quicker builds)
 Install recent tensorflow via wheel
 ```nix
+...
 mach-nix.mkPython {
 
   requirements = ''
@@ -228,6 +251,7 @@ mach-nix.mkPython {
 ### Recent PyTorch with nixpkgs dependencies, and custom python
 Recent pytorch version, Build dependencies from source
 ```nix
+...
 mach-nix.mkPython rec {
 
   requirements = ''
@@ -241,9 +265,6 @@ mach-nix.mkPython rec {
     # allow wheels only for torch
     torch = "wheel";
   };
-
-  # Select custom python version (Must be taken from pkgs with the overlay applied)
-  python = mach-nix.nixpkgs.python36;
 }
 ```
 
@@ -251,10 +272,9 @@ mach-nix.mkPython rec {
 
 ### Starting point for a geospatial environment
 ```nix
+...
 let
   pyEnv = mach-nix.mkPython rec {
-
-    python = "python37";
 
     requirements =  ''
         jupyterlab
@@ -280,10 +300,11 @@ mkShell rec {
 ```
 
 ## Docker
-For every python environment a docker image is available via the `dockerImage` attribute of the `mkPython` result
+Docker images can be built by using `mkDockerImage` instead of `mkPython`. It accepts the same arguments.
 ### JupyterLab Docker Image
 Assuming the following expression under `./jupyter-docker.nix`:
 ```nix
+...
 let
   image = mach-nix.mkDockerImage {
     requirements =  ''
@@ -314,16 +335,17 @@ docker run --rm -it -p 8888:8888 -v $HOME:/mnt jupyterlab
 
 ## R and Python
 The following is an example for a Python environment mixed with R packages.  
-R packages can be added via `extra_pkgs`.  
-If mach-nix finds R packages inside `extra_pkgs`, it will automatically include `rpy2` and add the selected R packages to its buildInputs.
+R packages can be added via `packagesExtra`.  
+If mach-nix finds R packages inside `packagesExtra`, it will automatically include `rpy2` and add the selected R packages to its buildInputs.
 To get a list of available R packages, execute: `echo "builtins.attrNames(import <nixpkgs> {}).rPackages" | nix repl`
 
 ```nix
+...
 mach-nix.mkPython {
   requirements =  ''
     # some python requirements
   '';
-  extra_pkgs = with mach-nix.rPackages; [
+  packagesExtra = with mach-nix.rPackages; [
     data_table
   ];
 }
@@ -340,6 +362,7 @@ For the SD-image, create a configuration.nix file which adds the mach-nix tool a
 let
   machNix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
+    ref = "refs/tags/put_version_here";
   }) { inherit pkgs; };
 
   defaultPythonEnv = machNix.mkPython {

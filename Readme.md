@@ -61,18 +61,17 @@ Table of Contents
 You can either install mach-nix via pip or by using nix in case you already have the nix package manager installed.
 #### Installing via pip
 ```shell
-pip install git+git://github.com/DavHau/mach-nix@2.4.1
+pip install git+git://github.com/DavHau/mach-nix@3.0.0
 ```
 #### Installing via nix
 ```shell
-nix-env -if https://github.com/DavHau/mach-nix/tarball/2.4.1 -A mach-nix
+nix-env -if https://github.com/DavHau/mach-nix/tarball/3.0.0 -A mach-nix
 ```
 
 ---
 ### Build a virtualenv-style python environment from a requirements.txt
 ```bash
 mach-nix env ./env -r requirements.txt
-# mach-nix env -r ./requirements.txt -p 3.7 --nixpkgs '{ "rev": "c59ea8b8a0e7f927e7291c14ea6cd1bd3a16ff38", "sha256": "1ak7jqx94fjhc68xh1lh35kh3w3ndbadprrb762qgvcfb8351x8v", }' "./env"
 ```
 This will generate the python environment into `./env`. To activate it, execute:
 ```bash
@@ -99,7 +98,7 @@ You can call mach-nix directly from a nix expression
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "refs/tags/2.4.1";
+    ref = "refs/tags/3.0.0";
   });
 in
 mach-nix.mkPython {
@@ -113,31 +112,35 @@ mach-nix.mkPython {
 find more examples under [./examples.md](/examples.md)
 
 ### Advanced
-Mach-nix can be fine tuned with additional arguments by importing it via `builtins.fetchGit`. Examples can be found in [./examples.md](/examples.md). There are 4 different methods which can be invoked:
+Mach-nix can be fine tuned with additional arguments. Examples can be found in [./examples.md](/examples.md).
+
+Functions for building python environments:
 1. **mkPython** - builds a python environment for a given `requirements.txt`.
-1. **mkPythonShell** - returns the python environment suitable for nix-shell.
+1. **mkPythonShell** - builds a python environment suitable for nix-shell.
+1. **mkDockerImage** - builds a layered docker image containing a python environment.
+1. **mkNixpkgs** - returns nixpkgs which is conform to the given requirements.
+1. **mkOverlay** - returns an overlay function to make nixpkgs conform to the given requirements  .
+1. **mkPythonOverrides** - produces pythonOverrides to make python conform to the given requirements.
+
+Functions for building python packages or applications:
 1. **buildPythonPackage** - build a single python package from a source code while automatically detecting requirements.
 1. **buildPythonApplication** - same as **buildPythonPackage**, but package will not be importable by other python packages.
 
 **buildPythonPackage** and **buildPythonApplication** accept the same arguments like their equally named partners in nixpkgs, plus the arguments of **mkPython**. If name/version/requirements arguments are omitted, mach-nix attempts to detect them automatically. See [./examples.md](/examples.md).
  
-**mkPython** and **mkPythonShell** take exactly the following arguments:
+**mkPython** and all other **mk...** functions take exactly the following arguments:
 
 #### Required Arguments:
  - **requirements** (string): Text content of a typical `requirements.txt`.
 
 #### Optional Arguments:
- - **disable_checks** (bool): Disable tests wherever possible to decrease build time and failures due to nix incompatible tests
- - **extra_pkgs** (list) Include packages which are not available from pypi. Can contain tarball-URLs, paths, or `mach-nix.buildPythonPackage` calls.
- - **overrides_pre** (list): list of pythonOverrides to apply before the machnix overrides. Use this to include additional packages which can then be selected inside the `requirements`
- - **overrides_post** (list): list of pythonOverrides to apply after the machnix overrides. Use this to fixup packages.
- - **pkgs** (set): pass custom nixpkgs (20.03 or higher is required for wheel support). Base it on `mach-nix.nixpkgs.path` to avoid incompatibilities.
  - **providers** (set): define provider preferences (see examples below)
- - **pypi_deps_db_commit** (string): commit hash of a specific version of the dependency graph ([pypi-deps-db](https://github.com/DavHau/pypi-deps-db)).
- - **pypi_deps_db_sha256** (string): sha256 hash obtained via `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
- - **python** (set): select custom python version. To prevent compatibility issues, only take python packages from the nixpkgs version used by mach-nix. For example:  `mach-nix.nixpkgs.python36`
- - **_provider_defaults** (set): builtin provider defaults. Disable them by passing {}
+ - **packagesExtra** (list) Add extra packages. Can contain tarball-URLs or paths of python source code, packages built via `mach-nix.buildPythonPackage`, or R Packages.
  - **_** (set): use underscore argument to easily modify arbitrary attributes of packages. For example to add built inputs use `_.{package}.builtInputs.add = [...]`. Or to remove patches use `_.{package}.patches = [...]`.
+ - **overridesPre** (list): (advanced) list of pythonOverrides to apply before the machnix overrides. Use this to include additional packages which can then be selected inside the `requirements`
+ - **overridesPost** (list): (advanced) list of pythonOverrides to apply after the machnix overrides. Use this to fixup packages.
+ - **tests** (bool): Whether to enable tests (default: false)
+ - **_providerDefaults** (set): builtin provider defaults. Disable them by passing {}
  
 #### Configure Providers
 **Providers** allow you to configure the origin for your packages on a granular basis.
