@@ -15,7 +15,7 @@ let
   python_machnix = import ./mach_nix/nix/python.nix { inherit pkgs; };
 
   python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix {
-    inherit python;
+    python = python_machnix;
     fetchurl = pkgs.fetchurl;
   }));
 
