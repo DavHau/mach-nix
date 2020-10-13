@@ -1,5 +1,6 @@
-.*/
+.git/*
 **/__pycache__/
 interpreter
 debug/expr.nix
 /media/
+result
