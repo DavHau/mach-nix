@@ -2,7 +2,7 @@
 
   description = "Create highly reproducible python environments";
 
-  inputs.flake-utils.url = "github:numtide/flake-utils/master";
+  inputs.flake-utils.url = "github:numtide/flake-utils";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -18,7 +18,7 @@
         };
         packages = flake-utils.lib.flattenTree {
           mach-nix = mach-nix-default.mach-nix;
-          "with" = mach-nix-default."with";
+          "with" = mach-nix-default.pythonWith;
           shellWith = mach-nix-default.shellWith;
           dockerImageWith = mach-nix-default.dockerImageWith;
         };

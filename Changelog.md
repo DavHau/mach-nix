@@ -1,3 +1,79 @@
+# 3.0.0 (14 Oct 2020)
+flakes pypi gateway, R support, new output formats, more packages for python 3.5/3.6, improved providers nixpkgs/wheel
+
+### IMPORTANT NOTICE
+The UI has been reworked. It is backward compatible with a few exceptions. Most importantly, when importing mach-nix, an attribute set must be passed. It can be empty. Example:
+```nix
+let
+  mach-nix = import (builtins.fetchGit {
+    url = "https://github.com/DavHau/mach-nix/";
+    ref = "refs/tags/3.0.0";
+  }) {
+    # optionally bring your own nixpkgs
+    # pkgs = import <nixpkgs> {};
+
+    # or specify the python version
+    # python = "python38";
+  };
+in
+...
+```
+
+### Features
+ - Flakes gateway to pypi. Get a shell with arbitrary python packages. Example:  
+   ```shell
+   nix develop github:davhau/mach-nix#shellWith.requests.tensorflow.aiohttp
+   ```
+ - New output formats:  
+   * **mkDockerImage** -> produces layered docker image containing a python environment  
+   * **mkNixpkgs** -> returns nixpkgs which is conform to the given requirements   
+   * **mkOverlay** -> returns an overlay function to make nixpkgs conform to the given requirements  
+   * **mkPythonOverrides** -> produces pythonOverrides to make python conform to the given requirements.
+
+ - New functions **fetchPypiSdist** and **fetchPypiWheel**. Example:
+    ```
+    mach-nix.buildPythonPackge {
+      src = fetchPypiSdist "requests" "2.24.0"
+    };
+    ```
+
+ - When using the mach-nix cmdline tool, the nixpkgs channel can now be picked via:
+    ```
+    mach-nix env ./env -r requirements.txt --nixpkgs nixos-20.09
+    ```
+
+ - R support (experimental): R packages can be passed via `packagesExtra`. Mach-nix will setup rpy2 accordingly. See [usage example](https://github.com/DavHau/mach-nix/blob/master/examples.md#r-and-python).
+ 
+ - Non-python packages can be passed via `packagesExtra` to include them into the environment.
+ 
+ 
+### Improvements
+ - rework the logic for inheriting dependencies from nixpkgs
+ - fixes.nix: allow alternative mod function signature with more arguments:  
+ `key-to-override.mod = pySelf: oldAttrs: oldVal: ...;`
+ - allow derivations passed as `src` argument to buildPythonPackage
+ - stop inheriting attribute names from nixpkgs, instead use normalized package names
+ - rework the public API of mach-nix (largely downwards compatible)
+ - add example on how to build aarch64 image containing a mach-nix env
+ - tests are now enabled/disabled via global override which is more reliable
+ - raise error if python version of any package in packagesExtra doesn't match to one of the environment
+
+
+### Fixes
+ - nixpkgs packages with identical versions swallowed
+ - pname/version null in buildPythonPackage
+ - update dependency extractor to use "LANG=C.utf8" (increases available packages for python 3.5 and 3.6)
+ - wheel provider picked wheels incompatible to python version
+ - unwanted python buildInput inheritance when overriding nixpkgs
+ - properly parse setup/install_requires if they are strings instead of lists
+ 
+### Package Fixes
+ - rpy2: sdist: remove conflicting patch for versions newer than 3.2.6
+ - pytorch from nixpkgs was not detected as `torch`
+ - pyqt5: fix for providers nixpkgs and wheel
+ - httpx: remove patches
+
+
 # 2.4.1 (21 Sep 2020)
 bugfixes
 
