@@ -17,16 +17,16 @@
           inherit pkgs;
         };
         packages = flake-utils.lib.flattenTree {
-          mach-nix = mach-nix-default.mach-nix;
+          mach-nix = mach-nix-default;
           "with" = mach-nix-default.pythonWith;
           shellWith = mach-nix-default.shellWith;
           dockerImageWith = mach-nix-default.dockerImageWith;
         };
 
-        defaultPackage = packages."${system}".mach-nix.mach-nix;
+        defaultPackage = packages.${system}.mach-nix.mach-nix;
 
         apps.mach-nix = flake-utils.lib.mkApp { drv = packages.mach-nix.mach-nix; };
-        defaultApp = { type = "app"; program = "${defaultPackage."${system}"}/bin/mach-nix"; };
+        defaultApp = { type = "app"; program = "${defaultPackage.${system}}/bin/mach-nix"; };
       }
   );
 }
