@@ -20,10 +20,12 @@ in
 ```
 
 ### Features
- - Flakes gateway to pypi. Get a shell with arbitrary python packages. Example:  
-   ```shell
-   nix develop github:davhau/mach-nix#shellWith.requests.tensorflow.aiohttp
-   ```
+  - Flakes gateway to pypi. Get a nix shell with arbitrary python packages. Example:  
+   `nix develop github:davhau/mach-nix#shellWith.requests.tensorflow.aiohttp`
+- or a docker image  
+  `nix build github:davhau/mach-nix#dockerImageWith.package1.package2 ...`
+- or a python derivation  
+  `nix build github:davhau/mach-nix#with.package1.package2 ...`
  - New output formats:  
    * **mkDockerImage** -> produces layered docker image containing a python environment  
    * **mkNixpkgs** -> returns nixpkgs which is conform to the given requirements   
