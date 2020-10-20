@@ -23,6 +23,7 @@ setup(
     setup_requires=["wheel"],
     install_requires=[
         'distlib ~= 0.3.0',
+        'networkx',
         'packaging >= 19.0',
         'resolvelib == 0.3.0',
         'toml',

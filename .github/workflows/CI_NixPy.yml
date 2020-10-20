@@ -1,38 +1,40 @@
 
-name: "CI - os - nix -Python "
+name: "mach-nix CI"
 
 on:
   pull_request:
     branches: ["master"]
   push:
-    branches: [master]
+    branches: [master, test-ci]
 
 jobs:
   testSuite:
-## build
     name: Test on Python${{ matrix.python-version  }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      max-parallel: 5
       matrix:
-        os: [ubuntu-latest, macos-10.14, ] #  
-        python-version: [3.7, 3.8, 3.9 ]
-        exclude:
-          - python-version: 3.9
+        os: [ubuntu-latest, macos-10.14, ]
+        python-version: [3.7]
 
-## tasks per natrix element
+## tasks per matrix element
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
     - name: Install/Setup - PYTHON
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-        #architecture: 'x64'
 
     - name: Install/Setup - NIX
-      uses: cachix/install-nix-action@v9
+      uses: cachix/install-nix-action@v11
       with:
-        skip_adding_nixpkgs_channel: true
+        nix_path: nixpkgs=channel:nixos-unstable
+        #install_url: https://github.com/numtide/nix-flakes-installer/releases/download/nix-3.0pre20201007_5257a25/install
+#        extra_nix_config: |
+#          experimental-features = nix-command flakes
 
     - name: PYTHON - Install dependencies
       run: |
@@ -46,11 +48,14 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-## tests build + pytest
     - name: NIX PY - Build + pytest 
       run: nix-env -if . -A mach-nix
       shell: bash
 
-    
-
-   
+#    # run nix tests
+#    - name: Build some python environments
+#      run: |
+#        nix --version
+#        cd tests
+#        nix-build test_*.nix
+#      shell: bash
