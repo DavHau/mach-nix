@@ -24,10 +24,14 @@
           dockerImageWith = mach-nix-default.dockerImageWith;
         };
 
-        defaultPackage = packages."${system}".mach-nix.mach-nix;
+        defaultPackage = packages.mach-nix;
 
         apps.mach-nix = flake-utils.lib.mkApp { drv = packages.mach-nix.mach-nix; };
-        defaultApp = { type = "app"; program = "${defaultPackage."${system}"}/bin/mach-nix"; };
+        defaultApp = { type = "app"; program = "${defaultPackage}/bin/mach-nix"; };
+
+        lib = {
+          mkPython = mach-nix-default.mkPython;
+        };
       }
   );
 }
