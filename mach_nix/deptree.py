@@ -7,6 +7,17 @@ from mach_nix.data.nixpkgs import NixpkgsIndex
 from mach_nix.resolver import ResolvedPkg
 
 
+def make_name(pkg: ResolvedPkg, nixpkgs: NixpkgsIndex):
+    pi = pkg.provider_info
+    extras = f"[{' '.join(pkg.extras_selected)}]" if pkg.extras_selected else ''
+    name = f"{pkg.name}{extras} - {pkg.ver} - {pi.provider.name}"
+    if pi.provider == 'wheel':
+        name += f" - {'-'.join(pi.wheel_fname.split('-')[-3:])[:-4]}"
+    if pi.provider == 'nixpkgs':
+        name += f" (attrs: {' '.join(c.nix_key for c in nixpkgs.get_all_candidates(pkg.name))})"
+    return name
+
+
 def mark_removed_circular_dep(pkgs: Dict[str, ResolvedPkg], G: DiGraph, node, removed_node):
     pkgs[node].removed_circular_deps.add(removed_node)
     for pred in G.predecessors(node):
@@ -57,9 +68,9 @@ def remove_circles_and_print(pkgs: Iterable[ResolvedPkg], nixpkgs: NixpkgsIndex)
         def name(self, node_name):
             if node_name in self.visited:
                 if indexed_pkgs[node_name].build_inputs + indexed_pkgs[node_name].prop_build_inputs == []:
-                    return node_name
-                return f"{node_name} -> ..."
-            return node_name
+                    return make_name(indexed_pkgs[node_name], nixpkgs)
+                return f"{make_name(indexed_pkgs[node_name], nixpkgs)} -> ..."
+            return make_name(indexed_pkgs[node_name], nixpkgs)
 
         def get_children(self, node_name):
             if node_name in self.visited:
