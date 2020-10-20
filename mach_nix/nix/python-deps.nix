@@ -25,6 +25,7 @@ rec {
     doCheck = false;
   };
 
+  networkx = python.pkgs.networkx;
   packaging = python.pkgs.packaging;
   setuptools = python.pkgs.setuptools;
   toml = python.pkgs.toml;
