@@ -66,10 +66,6 @@ rec {
     MARIADB_CONFIG = "${pkgs.mariadb-connector-c}/bin/mariadb_config";
   };
 
-  orange3.skipFixup = {
-    dontFixup = true;
-  };
-
   pip.remove-reproducible-patch = {
     _cond = { prov, ver, ... }: prov == "sdist" && comp_ver ver "<" "20.0";
     patches.mod = oldPatches: filter (patch: ! hasSuffix "reproducible.patch" patch) oldPatches;
