@@ -198,7 +198,7 @@ class OverridesGenerator(ExpressionGenerator):
         if manylinux:
             out += f"""
               nativeBuildInputs = [ autoPatchelfHook ];
-              autoPatchelfIgnoreNotFound = true;"""
+              autoPatchelfIgnoreMissingDeps = true;"""
         if prop_build_inputs_str.strip() or manylinux:
             out += f"""
               propagatedBuildInputs = with python-self; {manylinux}[ {prop_build_inputs_str} ];"""

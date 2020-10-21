@@ -19,6 +19,7 @@
         packages = flake-utils.lib.flattenTree {
           mach-nix = mach-nix-default;
           "with" = mach-nix-default.pythonWith;
+          pythonWith = mach-nix-default.pythonWith;
           shellWith = mach-nix-default.shellWith;
           dockerImageWith = mach-nix-default.dockerImageWith;
         };

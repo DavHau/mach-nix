@@ -27,18 +27,15 @@ provider_settings.update(dict(
 os.environ['providers'] = json.dumps(provider_settings)
 
 nixpkgs_json = tempfile.mktemp()
-cmd = f'nix-build {pwd}/nixpkgs-json.nix -o {nixpkgs_json}'
+cmd = f'nix-build {pwd}/../mach_nix/nix/nixpkgs-json.nix -o {nixpkgs_json} --show-trace'
 sp.check_call(cmd, shell=True)
 os.environ['nixpkgs_json'] = nixpkgs_json
 
 pypi_deps_db = tempfile.mktemp()
-cmd = f'nix-build {pwd}/pypi-deps-db.nix -o {pypi_deps_db}'
+cmd = f'nix-build {pwd}/../mach_nix/nix/deps-db-and-fetcher.nix -A pypi_deps_db_src -o {pypi_deps_db} --show-trace'
 sp.check_call(cmd, shell=True)
 os.environ['pypi_deps_db_src'] = pypi_deps_db
 
-for key in ('NIXPKGS_COMMIT', 'NIXPKGS_SHA256'):
-    with open(f"{pwd}/../mach_nix/nix/{key}") as f:
-        os.environ[key.lower()] = f.read()
 
 for key in ('PYPI_FETCHER_COMMIT', 'PYPI_FETCHER_SHA256'):
     with open(f"{pypi_deps_db}/{key}") as f:

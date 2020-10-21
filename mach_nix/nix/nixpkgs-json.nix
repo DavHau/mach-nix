@@ -1,6 +1,12 @@
-{pkgs, python, mergeOverrides, overrides}:
+{
+  pkgs ? import (import ./nixpkgs-src.nix) { config = {}; overlays = []; },
+  python ? pkgs.python3,
+  overrides ? []
+}:
 
 let
+  mergeOverrides = with pkgs.lib; foldl composeExtensions (self: super: { });
+
   pnamePassthruOverride = pySelf: pySuper: {
     fetchPypi = args: (pySuper.fetchPypi args).overrideAttrs (oa: {
       passthru = { inherit (args) pname; };

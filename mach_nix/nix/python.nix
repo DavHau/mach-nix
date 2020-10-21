@@ -1,4 +1,7 @@
-{pkgs, ...}:
+{
+  pkgs ? import (import ./nixpkgs-src.nix) { config = {}; overlays = []; },
+  ...
+}:
 with pkgs;
 let
   python = python37;

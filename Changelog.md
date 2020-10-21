@@ -1,3 +1,16 @@
+# 3.0.1 (21 Oct 2020)
+bugfixes, return missing packages
+
+### Fixes
+ - Some sdist packages were missing from the dependency DB due to a corrupt index in the SQL DB used by the crawler.
+ - When automatically fixing circular deps, removed deps could trigger a `No matching distribution found` error in higher level parent packages. Now `--no-dependencies` is set recursively for all parents of removed deps.
+ - Mapping out the resulting dependency DAG to a tree for printing could exhaust the systems resources, due to complexity. Now, when printing dependencies, sub-trees are trimmed and marked via (...) if they have already been printed earlier.
+
+### Improvements
+ - optimized autoPatchelfHook for faster processing of large wheel packages (see [upstream PR](https://github.com/NixOS/nixpkgs/pull/101142))
+ - `networkx` is now used for dealing with some graph related problems
+
+
 # 3.0.0 (14 Oct 2020)
 flakes pypi gateway, R support, new output formats, more packages for python 3.5/3.6, improved providers nixpkgs/wheel
 
@@ -20,10 +33,12 @@ in
 ```
 
 ### Features
- - Flakes gateway to pypi. Get a shell with arbitrary python packages. Example:  
-   ```shell
-   nix develop github:davhau/mach-nix#shellWith.requests.tensorflow.aiohttp
-   ```
+  - Flakes gateway to pypi. Get a nix shell with arbitrary python packages. Example:  
+   `nix develop github:davhau/mach-nix#shellWith.requests.tensorflow.aiohttp`
+- or a docker image  
+  `nix build github:davhau/mach-nix#dockerImageWith.package1.package2 ...`
+- or a python derivation  
+  `nix build github:davhau/mach-nix#with.package1.package2 ...`
  - New output formats:  
    * **mkDockerImage** -> produces layered docker image containing a python environment  
    * **mkNixpkgs** -> returns nixpkgs which is conform to the given requirements   
