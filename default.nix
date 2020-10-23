@@ -50,8 +50,38 @@ let
       (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; })
         python (l.throwOnDeprecatedArgs caller args);
 
+  exposed = rec {
+    # the main functions
+    mkPython = args: __mkPython "mkPython" args;
+    mkPythonShell = args: (__mkPython "mkPythonShell" args).env;
+    mkDockerImage = args: (__mkPython "mkDockerImage" args).dockerImage;
+    mkOverlay = args: (__mkPython "mkOverlay" args).overlay;
+    mkNixpkgs = args: (__mkPython "mkNixpkgs" args).nixpkgs;
+    mkPythonOverrides = args: (__mkPython "mkPythonOverrides" args).pythonOverrides;
+
+    # equivalent to buildPythonPackage of nixpkgs
+    buildPythonPackage = __buildPython "buildPythonPackage";
+
+    # equivalent to buildPythonApplication of nixpkgs
+    buildPythonApplication = __buildPython "buildPythonApplication";
+
+    # provide pypi fetcher to user
+    fetchPypiSdist = pypiFetcher.fetchPypiSdist;
+    fetchPypiWheel = pypiFetcher.fetchPypiWheel;
+
+    # expose mach-nix' nixpkgs
+    # those are equivalent to the pkgs passed by the user
+    nixpkgs = pkgs;
+
+    # expose R packages
+    rPackages = pkgs.rPackages;
+
+    # this might beuseful for someone
+    inherit (l) mergeOverrides;
+  };
+
 in
-rec {
+exposed // rec {
   # the mach-nix cmdline tool derivation
   mach-nix = python_machnix.pkgs.buildPythonPackage rec {
     pname = "mach-nix";
@@ -63,37 +93,11 @@ rec {
     checkPhase = "pytest";
   };
 
-  # the main functions
-  mkPython = args: __mkPython "mkPython" args;
-  mkPythonShell = args: (__mkPython "mkPythonShell" args).env;
-  mkDockerImage = args: (__mkPython "mkDockerImage" args).dockerImage;
-  mkOverlay = args: (__mkPython "mkOverlay" args).overlay;
-  mkNixpkgs = args: (__mkPython "mkNixpkgs" args).nixpkgs;
-  mkPythonOverrides = args: (__mkPython "mkPythonOverrides" args).pythonOverrides;
-
-  # equivalent to buildPythonPackage of nixpkgs
-  buildPythonPackage = __buildPython "buildPythonPackage";
-
-  # equivalent to buildPythonApplication of nixpkgs
-  buildPythonApplication = __buildPython "buildPythonApplication";
-
-  # provide pypi fetcher to user
-  fetchPypiSdist = pypiFetcher.fetchPypiSdist;
-  fetchPypiWheel = pypiFetcher.fetchPypiWheel;
+  inherit exposed;
 
   # expose dot interface for flakes cmdline
   "with" = (withDot (__mkPython "'.with'"))."with";
   pythonWith = (withDot (__mkPython "'.pythonWith'")).pythonWith;
   shellWith = (withDot (__mkPython "'.shellWith'")).shellWith;
   dockerImageWith = (withDot (__mkPython "'.dockerImageWith'")).dockerImageWith;
-
-  # expose mach-nix' nixpkgs
-  # those are equivalent to the pkgs passed by the user
-  nixpkgs = pkgs;
-
-  # expose R packages
-  rPackages = pkgs.rPackages;
-
-  # this might beuseful for someone
-  inherit (l) mergeOverrides;
 }

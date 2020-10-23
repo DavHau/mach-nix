@@ -17,7 +17,7 @@
           inherit pkgs;
         };
         packages = flake-utils.lib.flattenTree {
-          mach-nix = mach-nix-default;
+          mach-nix = mach-nix-default.exposed;
           "with" = mach-nix-default.pythonWith;
           pythonWith = mach-nix-default.pythonWith;
           shellWith = mach-nix-default.shellWith;
