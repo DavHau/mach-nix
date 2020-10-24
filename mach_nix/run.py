@@ -65,7 +65,7 @@ def env(args, nixpkgs_rev, nixpkgs_sha256):
           python = pkgs.python{str(py_ver.digits())};
           manylinux1 = pkgs.pythonManylinuxPackages.manylinux1;
           overrides = result.overrides manylinux1 pkgs.autoPatchelfHook;
-          py = pkgs.python37.override {{ packageOverrides = overrides; }};
+          py = python.override {{ packageOverrides = overrides; }};
         in
         py.withPackages (ps: result.select_pkgs ps)
     """)
