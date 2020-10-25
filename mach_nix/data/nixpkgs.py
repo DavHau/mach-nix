@@ -3,9 +3,10 @@ from collections import UserDict
 from dataclasses import dataclass
 from typing import List
 
-from packaging.version import Version, parse
+from packaging.version import Version
 
 from mach_nix.cache import cached
+from mach_nix.versions import parse_ver
 
 
 @dataclass
@@ -48,7 +49,7 @@ class NixpkgsIndex(UserDict):
     def get_all_candidates(self, name) -> List[NixpkgsPyPkg]:
         result = []
         for ver, nix_keys in self.data[name].items():
-            result += [NixpkgsPyPkg(nix_key, parse(ver)) for nix_key in nix_keys]
+            result += [NixpkgsPyPkg(nix_key, parse_ver(ver)) for nix_key in nix_keys]
         return result
 
     def get_highest_ver(self, pkgs: List[NixpkgsPyPkg]):

@@ -1,7 +1,8 @@
 import json
 from typing import Dict, List
 
-from mach_nix.data.providers import WheelDependencyProvider, SdistDependencyProvider, NixpkgsDependencyProvider
+from mach_nix.data.providers import WheelDependencyProvider, SdistDependencyProvider, NixpkgsDependencyProvider, \
+    CondaDependencyProvider
 from mach_nix.data.nixpkgs import NixpkgsIndex
 from mach_nix.generators import ExpressionGenerator
 from mach_nix.resolver import ResolvedPkg
@@ -160,7 +161,7 @@ class OverridesGenerator(ExpressionGenerator):
             });\n"""
         return unindent(out, 8)
 
-    def _gen_builPythonPackage(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str):
+    def _gen_buildPythonPackage(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str):
         out = f"""
             "{name}" = python-self.buildPythonPackage {{
               pname = "{name}";
@@ -206,6 +207,28 @@ class OverridesGenerator(ExpressionGenerator):
             };\n"""
         return unindent(out, 8)
 
+    def _gen_conda_buildPythonPackage(
+            self, name, ver, circular_deps, nix_name, prop_build_inputs_str, src_url, src_sha256):
+        out = f"""
+            "{name}" = python-self.buildPythonPackage {{
+              pname = "{name}";
+              version = "{ver}";
+              src = builtins.fetchurl {{
+                url = "{src_url}";
+                sha256 = "{src_sha256}";
+              }};
+              format = "condabin";
+              passthru = (get_passthru python-super "{name}" "{nix_name}") // {{ provider = "sdist"; }};"""
+        if circular_deps:
+            out += f"""
+              pipInstallFlags = "--no-dependencies";"""
+        if prop_build_inputs_str.strip():
+            out += f"""
+              propagatedBuildInputs = with python-self; [ {prop_build_inputs_str} ];"""
+        out += """
+            };\n"""
+        return unindent(out, 8)
+
     def _gen_overrides(self, pkgs: Dict[str, ResolvedPkg], overrides_keys):
         pkg_names_str = "".join(
             (f"ps.\"{name}\"\n{' ' * 14}"
@@ -247,7 +270,7 @@ class OverridesGenerator(ExpressionGenerator):
                         build_inputs_str,
                         prop_build_inputs_str)
                 else:
-                    out += self._gen_builPythonPackage(
+                    out += self._gen_buildPythonPackage(
                         pkg.name,
                         pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver),
                         pkg.removed_circular_deps,
@@ -263,6 +286,15 @@ class OverridesGenerator(ExpressionGenerator):
                     self._get_ref_name(pkg.name, pkg.ver),
                     prop_build_inputs_str,
                     pkg.provider_info.wheel_fname)
+            # CONDA
+            elif isinstance(pkg.provider_info.provider, CondaDependencyProvider):
+                out += self._gen_conda_buildPythonPackage(
+                    pkg.name,
+                    pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver),
+                    pkg.removed_circular_deps,
+                    self._get_ref_name(pkg.name, pkg.ver),
+                    prop_build_inputs_str,
+                    *pkg.provider_info.provider.pkg_url_src(pkg.name, pkg.ver))
             # NIXPKGS
             elif isinstance(pkg.provider_info.provider, NixpkgsDependencyProvider):
                 nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
@@ -275,6 +307,8 @@ class OverridesGenerator(ExpressionGenerator):
                     build_inputs_str,
                     prop_build_inputs_str,
                     keep_src=True)
+            else:
+                raise Exception("unknown provider")
         end_overlay_section = f"""
                 }}; in self);
           """

@@ -4,10 +4,11 @@ import re
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from os.path import abspath, dirname
 from typing import List, Tuple, Iterable
 
 import distlib.markers
-from packaging.version import Version, parse
+from packaging.version import Version, parse, LegacyVersion
 from pkg_resources import RequirementParseError
 
 from .nixpkgs import NixpkgsIndex
@@ -69,6 +70,8 @@ class DependencyProviderBase(ABC):
         self.context = context(py_ver, platform, system)
         self.context_wheel = self.context.copy()
         self.context_wheel['extra'] = None
+        self.py_ver = py_ver
+        self.py_ver_parsed = parse(py_ver.python_full_version())
         self.py_ver_digits = py_ver.digits()
         self.platform = platform
         self.system = system
@@ -94,19 +97,15 @@ class DependencyProviderBase(ABC):
     def unify_key(self, key: str) -> str:
         return key.replace('_', '-').lower()
 
-    @abstractmethod
-    def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
-        """
-        returns info about a candidate by it's provider.
-        This is later needed to identify the origin of a package and how to retrieve it
-        """
-        pass
+    def get_provider_info(self, pkg_name, pkg_version):
+        return ProviderInfo(provider=self)
 
     @abstractmethod
     @cached()
     def get_pkg_reqs(self, pkg_name, pkg_version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
         """
         Get all requirements of a candidate for the current platform and the specified extras
+        returns two lists: install_requires, setup_requires
         """
         pass
 
@@ -134,11 +133,13 @@ class CombinedDependencyProvider(DependencyProviderBase):
         self.provider_settings = provider_settings
         wheel = WheelDependencyProvider(f"{pypi_deps_db_src}/wheel", *args, **kwargs)
         sdist = SdistDependencyProvider(f"{pypi_deps_db_src}/sdist", *args, **kwargs)
+        conda = CondaDependencyProvider(f"{dirname(abspath(__file__))}", *args, **kwargs)
         nixpkgs = NixpkgsDependencyProvider(nixpkgs, wheel, sdist, *args, **kwargs)
         self._all_providers = {
             f"{wheel.name}": wheel,
             f"{sdist.name}": sdist,
             f"{nixpkgs.name}": nixpkgs,
+            f"{conda.name}": conda,
         }
         providers_used = set(provider_settings.default_providers)
         for p_list in provider_settings.pkg_providers.values():
@@ -225,9 +226,6 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
         self.nixpkgs = nixpkgs
         self.wheel_provider = wheel_provider
         self.sdist_provider = sdist_provider
-
-    def get_provider_info(self, pkg_name, pkg_version) -> ProviderInfo:
-        return ProviderInfo(self)
 
     def get_pkg_reqs(self, pkg_name, pkg_version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
         name = self.unify_key(pkg_name)
@@ -422,9 +420,6 @@ class SdistDependencyProvider(DependencyProviderBase):
         raise Exception(
             f"Something went wrong while trying to find the deviated version for {pkg_name}:{normalized_version}")
 
-    def get_provider_info(self, pkg_name, pkg_version):
-        return ProviderInfo(provider=self)
-
     def get_reqs_for_extras(self, pkg_name, pkg_ver, extras):
         name = self.unify_key(pkg_name)
         pkg = self._get_candidates(name)[pkg_ver]
@@ -469,3 +464,98 @@ class SdistDependencyProvider(DependencyProviderBase):
     def _available_versions(self, pkg_name: str) -> Iterable[Version]:
         return [ver for ver in self._get_candidates(pkg_name).keys()]
 
+
+class CondaDependencyProvider(DependencyProviderBase):
+
+    ignored_pkgs = (
+        "ld_impl_linux-64",
+        #"libffi",
+        "libgcc-ng",
+        "libstdcxx-ng",
+        "ncurses",
+        #"openssl",
+        "readline",
+        "sqlite",
+        "tk",
+        "tzdata",
+        "xz",
+        "zlib",
+        "python",
+    )
+
+    def __init__(self, repodata_file, py_ver: PyVer, platform, system, *args, **kwargs):
+        files = (
+            f"{repodata_file}/repodata.json",
+            f"{repodata_file}/noarch.json"
+        )
+        self.pkgs = {}
+        for file in files:
+            with open(file) as f:
+                content = json.load(f)
+            for fname, p in content['packages'].items():
+                name = p['name']
+                ver = p['version']
+                build = p['build']
+                if name not in self.pkgs:
+                    self.pkgs[name] = {}
+                if ver not in self.pkgs[name]:
+                    self.pkgs[name][ver] = {}
+                if build in self.pkgs[name][ver]:
+                    print("WARNING: colliding package")
+                self.pkgs[name][ver][build] = p
+                self.pkgs[name][ver][build]['fname'] = fname
+        super().__init__(py_ver, platform, system, *args, **kwargs)
+
+    @property
+    def name(self):
+        return "conda"
+
+    def get_pkg_reqs(self, pkg_name, pkg_version: Version, extras=None) -> Tuple[List[Requirement], List[Requirement]]:
+        candidate = self.choose_candidate(pkg_name, pkg_version)
+        depends = list(filter(lambda d: d.split()[0] not in self.ignored_pkgs, candidate['depends']))
+        print(f"candidate {pkg_name}:{pkg_version} depends on {list(parse_reqs(depends))}")
+        return list(parse_reqs(depends)), []
+
+    @cached()
+    def _available_versions(self, pkg_name: str) -> Iterable[Version]:
+        versions = []
+        for ver in self.pkgs[pkg_name].keys():
+            versions += [parse(b['version']) for b in self.compatible_builds(pkg_name, parse(ver))]
+        return versions
+
+    def deviated_version(self, pkg_name, normalized_version: Version):
+        for builds in self.pkgs[pkg_name].values():
+            for p in builds.values():
+                if parse(p['version']) == normalized_version:
+                    return p['version']
+        raise Exception(f"Cannot find deviated version for {pkg_name}:{normalized_version}")
+
+    def python_ok(self, build):
+        for dep in build['depends']:
+            if dep.startswith("python "):
+                req = next(iter(parse_reqs([dep])))
+                if not filter_versions([self.py_ver_parsed], req.specs):
+                    return False
+        return True
+
+    @cached()
+    def compatible_builds(self, pkg_name, pkg_version):
+        compatible = []
+        for build in self.pkgs[pkg_name][self.deviated_version(pkg_name, pkg_version)].values():
+            # continue if python incompatible
+            if not self.python_ok(build):
+                continue
+            # python is compatible
+            compatible.append(build)
+        return compatible
+
+    def choose_candidate(self, pkg_name, pkg_version: Version):
+        assert(isinstance(pkg_version, Version) or isinstance(pkg_version, LegacyVersion))
+        candidate = self.compatible_builds(pkg_name, pkg_version)[0]
+        print(f"chosen candidate {pkg_name}{candidate['version']} for {pkg_version}")
+        return candidate
+
+    def pkg_url_src(self, pkg_name, pkg_version):
+        pkg = self.choose_candidate(pkg_name, pkg_version)
+        url = f"https://anaconda.org/anaconda/{pkg['name']}/{pkg['version']}/download/{pkg['subdir']}/{pkg['fname']}"
+        return url, pkg['sha256']

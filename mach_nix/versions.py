@@ -3,9 +3,10 @@ import sys
 import traceback
 from typing import Iterable, Tuple, List
 
-from packaging.version import Version, parse, LegacyVersion
+from packaging.version import Version, LegacyVersion
 
 from mach_nix.cache import cached
+import packaging.version
 
 
 class PyVer(Version):
@@ -29,6 +30,10 @@ class PyVer(Version):
             traceback.print_exc()
             print("Error: please specify full python version including bugfix version (like 3.7.5)", file=sys.stderr)
             exit(1)
+
+
+def parse_ver(ver_str):
+    return packaging.version.parse(ver_str)
 
 
 def ver_better_than_other(v: Version, o: Version) -> bool:
@@ -81,7 +86,7 @@ def filter_versions(
     """
     versions = list(versions)
     for op, ver in specs:
-        ver = parse(ver)
+        ver = parse_ver(ver)
         if op == '==':
             versions_str = (str(ver) for ver in versions)
             versions_str_filtered = list(ver_str for ver_str in fnmatch.filter(versions_str, str(ver)))
