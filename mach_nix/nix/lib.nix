@@ -19,7 +19,7 @@ rec {
   # Returns `overrides` and `select_pkgs` which satisfy your requirements
   compileOverrides = args:
     let
-      result = import "${compileExpression args}/share/mach_nix_file.nix" { pkgs = args.pkgs; };
+      result = import "${compileExpression args}/share/mach_nix_file.nix" { inherit (args) pkgs python; };
       manylinux =
         if args.pkgs.stdenv.hostPlatform.system == "x86_64-darwin" then
           []
