@@ -39,7 +39,7 @@ class OverridesGenerator(ExpressionGenerator):
 
     def _gen_imports(self):
         out = f"""
-            {{ pkgs, ... }}:
+            {{ pkgs, python, ... }}:
             with builtins;
             with pkgs.lib;
             let
@@ -86,17 +86,18 @@ class OverridesGenerator(ExpressionGenerator):
                   );
                 in
                   toString res.value;
-              get_passthru = python: pypi_name: nix_name:
+              get_passthru = pypi_name: nix_name:
                 # if pypi_name is in nixpkgs, we must pick it, otherwise risk infinite recursion.
                 let
-                  pname = if hasAttr "${{pypi_name}}" python then pypi_name else nix_name;
+                  python_pkgs = python.pkgs;
+                  pname = if hasAttr "${{pypi_name}}" python_pkgs then pypi_name else nix_name;
                 in
-                  if hasAttr "${{pname}}" python then 
+                  if hasAttr "${{pname}}" python_pkgs then 
                     let result = (tryEval 
-                      (if isNull python."${{pname}}" then
+                      (if isNull python_pkgs."${{pname}}" then
                         {{}}
                       else
-                        python."${{pname}}".passthru)); 
+                        python_pkgs."${{pname}}".passthru)); 
                     in
                       if result.success then result.value else {{}}
                   else {{}};
@@ -148,7 +149,7 @@ class OverridesGenerator(ExpressionGenerator):
             "{name}" = override python-super.{nix_name} ( oldAttrs: {{
               pname = "{name}";
               version = "{ver}";
-              passthru = (get_passthru python-super "{name}" "{nix_name}") // {{ provider = "{provider}"; }};
+              passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "{provider}"; }};
               buildInputs = with python-self; (replace_deps oldAttrs "buildInputs" self) ++ [ {build_inputs_str} ];
               propagatedBuildInputs = with python-self; (replace_deps oldAttrs "propagatedBuildInputs" self) ++ [ {prop_build_inputs_str} ];"""
         if not keep_src:
@@ -167,7 +168,7 @@ class OverridesGenerator(ExpressionGenerator):
               pname = "{name}";
               version = "{ver}";
               src = fetchPypi "{name}" "{ver}";
-              passthru = (get_passthru python-super "{name}" "{nix_name}") // {{ provider = "sdist"; }};"""
+              passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "sdist"; }};"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
@@ -192,7 +193,7 @@ class OverridesGenerator(ExpressionGenerator):
               src = fetchPypiWheel "{name}" "{ver}" "{fname}";
               format = "wheel";
               dontStrip = true;
-              passthru = (get_passthru python-super "{name}" "{nix_name}") // {{ provider = "wheel"; }};"""
+              passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "wheel"; }};"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
@@ -218,7 +219,7 @@ class OverridesGenerator(ExpressionGenerator):
                 sha256 = "{src_sha256}";
               }};
               format = "condabin";
-              passthru = (get_passthru python-super "{name}" "{nix_name}") // {{ provider = "sdist"; }};"""
+              passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "conda"; }};"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
