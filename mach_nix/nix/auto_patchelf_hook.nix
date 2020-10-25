@@ -8,6 +8,7 @@ let
     '';
   };
   autoPatchelfHook = makeSetupHook { name = "auto-patchelf-hook-machnix"; }
-    auto_patchelf_script;
+    #auto_patchelf_script;
+    ./auto-patchelf.sh;
 in
 autoPatchelfHook

@@ -9,7 +9,8 @@ rec {
     };
     doCheck = false;
     propagatedBuildInputs = with python.pkgs; [ pycosat requests ruamel_yaml ];
-    patchPhase = ''
+    patches = [ ./conda_hashable_versionOrder.patch ];
+    postPatch = ''
       echo '
       def get_version(dunder_file):
         return "${version}"

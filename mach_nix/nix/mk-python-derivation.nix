@@ -37,13 +37,14 @@
 
 # conda pkgs
 , glibc
+, gcc-unwrapped
 
 # conda python
 , binutils
-, libffi
+#, libffi
 , libgcc
 , ncurses
-, openssl
+#, openssl
 , readline
 , sqlite
 , tk
@@ -124,7 +125,7 @@ if disabled
 then throw "${name} not supported for interpreter ${python.executable}"
 else
 
-let supportedFormats = [ "condabin" "egg" "flit" "pyproject" "setuptools" "wheel" ]; in
+let supportedFormats = [ "condabin" "egg" "flit" "other" "pyproject" "setuptools" "wheel" ]; in
 if ! lib.elem format supportedFormats then
   throw ''wrong format "${format}" for buildPythonPackage. Must be one of: [${toString supportedFormats}]''
 else
@@ -164,8 +165,8 @@ let
         [ autoPatchelfHook alsaLib cups libGL ]
         ++ (with xorg; [ libSM libICE libX11 libXau libXdamage libXi libXrender libXrandr libXcomposite libXcursor libXtst libXScrnSaver])
         # dependencies of conds python interpreter dstribution
-        ++ [ binutils libffi libgcc ncurses openssl readline sqlite tk xz zlib ]
-    ) ++ lib.optionals (!(builtins.elem format [ "condabin" "other"]) || dontUsePipInstall) [
+        ++ [ binutils glibc gcc-unwrapped.lib libgcc ncurses readline sqlite tk xz zlib ]
+    ) ++ lib.optionals (!(builtins.elem format [ "condabin" "other" ]) || dontUsePipInstall) [
       pipInstallHook
     ] ++ lib.optionals (stdenv.buildPlatform == stdenv.hostPlatform) [
       # This is a test, however, it should be ran independent of the checkPhase and checkInputs
@@ -226,6 +227,7 @@ let
         mkdir -p $out/lib/$pyDir/site-packages/
         cp -r ./site-packages/* $out/lib/$pyDir/site-packages/
       else
+        rm env-vars
         cp -r . $out
       fi
     '';
@@ -234,6 +236,9 @@ let
         find $out/bin -type f -exec sed -i "s|/opt/anaconda1anaconda2anaconda3|$out|g" {} \;
       fi
       rm -rf $out/ssl
+    '';
+    preFixup = ''
+      echo $nativeBuildInputs
     '';
   }
 

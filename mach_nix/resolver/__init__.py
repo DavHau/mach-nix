@@ -2,10 +2,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Iterable, Set
 
-from packaging.version import Version
-
 from mach_nix.data.providers import ProviderInfo
 from mach_nix.requirements import Requirement
+from mach_nix.versions import Version
 
 
 @dataclass
@@ -19,6 +18,7 @@ class ResolvedPkg:
     extras_selected: List[str]
     # contains direct or indirect children wich have been diconnected due to circular deps
     removed_circular_deps: Set[str] = field(default_factory=set)
+    build: str = None
 
 
 class Resolver(ABC):

@@ -2,28 +2,20 @@ from dataclasses import dataclass
 from typing import Iterable, List
 
 import resolvelib
-from packaging.version import Version
 
-from mach_nix.data.providers import DependencyProviderBase
 from mach_nix.data.nixpkgs import NixpkgsIndex
+from mach_nix.data.providers import DependencyProviderBase, Candidate
+from mach_nix.deptree import remove_circles_and_print
 from mach_nix.requirements import Requirement
 from mach_nix.resolver import Resolver, ResolvedPkg
-from mach_nix.versions import filter_versions
-from mach_nix.deptree import remove_circles_and_print
-
-
-@dataclass
-class Candidate:
-    name: str
-    ver: Version
-    extras: tuple
+from mach_nix.versions import filter_versions, Version
 
 
 # Implement logic so the resolver understands the requirement format.
 class Provider:
     def __init__(self, nixpkgs: NixpkgsIndex, deps_db: DependencyProviderBase):
         self.nixpkgs = nixpkgs
-        self.deps_db = deps_db
+        self.provider = deps_db
 
     def get_extras_for(self, dependency):
         return tuple(sorted(dependency.extras))
@@ -38,17 +30,18 @@ class Provider:
         return len(candidates)
 
     def find_matches(self, req):
-        all = self.deps_db.available_versions(req.key)
-        matching_versions = filter_versions(all, req.specs)
-        return [Candidate(name=req.name, ver=ver, extras=req.extras) for ver in matching_versions]
+        return self.provider.find_matches(req)
 
-    def is_satisfied_by(self, requirement, candidate):
+    def is_satisfied_by(self, requirement, candidate: Candidate):
+        res = None
         if not set(requirement.extras).issubset(set(candidate.extras)):
-            return False
-        return bool(len(list(filter_versions([candidate.ver], requirement.specs))))
+            res = False
+        res = bool(len(list(filter_versions([candidate.ver], requirement.specs))))
+        #print(f"{res} {requirement} satisfied by {candidate}")
+        return res
 
     def get_dependencies(self, candidate):
-        install_requires, setup_requires = self.deps_db.get_pkg_reqs(candidate.name, candidate.ver, candidate.extras)
+        install_requires, setup_requires = self.provider.get_pkg_reqs(candidate)
         deps = install_requires + setup_requires
         return deps
 
@@ -66,8 +59,7 @@ class ResolvelibResolver(Resolver):
             if name is None:
                 continue
             ver = result.mapping[name].ver
-            install_requires, setup_requires = self.deps_provider.get_pkg_reqs(
-                name, ver, extras=result.mapping[name].extras)
+            install_requires, setup_requires = self.deps_provider.get_pkg_reqs(result.mapping[name])
             provider_info = self.deps_provider.get_provider_info(name, ver)
             prop_build_inputs = list({req.key for req in install_requires})
             build_inputs = list({req.key for req in setup_requires})
@@ -79,7 +71,8 @@ class ResolvelibResolver(Resolver):
                 prop_build_inputs=prop_build_inputs,
                 is_root=is_root,
                 provider_info=provider_info,
-                extras_selected=list(result.mapping[name].extras)
+                extras_selected=list(result.mapping[name].extras),
+                build=result.mapping[name].build
             ))
         remove_circles_and_print(nix_py_pkgs, self.nixpkgs)
         return nix_py_pkgs
