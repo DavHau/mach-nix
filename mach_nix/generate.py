@@ -16,7 +16,6 @@ from mach_nix.requirements import parse_reqs, filter_reqs_by_eval_marker, contex
 from mach_nix.resolver.resolvelib_resolver import ResolvelibResolver
 from mach_nix.versions import PyVer
 
-
 def load_env(name, *args, **kwargs):
     var = os.environ.get(name, *args, **kwargs)
     if var is None:

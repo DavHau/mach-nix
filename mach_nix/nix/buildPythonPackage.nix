@@ -54,7 +54,11 @@ let
         requirements = reqs;
       };
       py_final = python_pkg.override { packageOverrides = l.mergeOverrides (
-        overridesPre ++ [ result.overrides ] ++ (l.fixes_to_overrides _fixes) ++ overridesPost ++ (l.simple_overrides _)
+        overridesPre
+        ++ [ (import ./mk-python-derivation-overlay.nix pkgs python_pkg) ]
+        ++ [ result.overrides ]
+        ++ (l.fixes_to_overrides _fixes)
+        ++ overridesPost ++ (l.simple_overrides _)
       );};
       pass_args = removeAttrs args (builtins.attrNames ({
         inherit requirementsExtra tests overridesPre overridesPost pkgs providers

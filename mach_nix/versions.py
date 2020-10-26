@@ -11,7 +11,9 @@ from mach_nix.cache import cached
 import packaging.version
 
 
-Version = VersionOrder
+@with_metaclass(SingleStrArgCachingType)
+class Version(VersionOrder):
+    pass
 
 
 class PyVer(Version):
@@ -80,7 +82,7 @@ def ver_sort_key(ver: Version):
     #     return 0, 0, 0, ver
     # is_dev = int(ver.is_devrelease)
     # is_pre = int(ver.is_prerelease)
-    return 1, not is_dev, not is_rc, ver
+    return not is_dev, not is_rc, ver
 
 
 def best_version(versions: Iterable[Version]) -> Version:

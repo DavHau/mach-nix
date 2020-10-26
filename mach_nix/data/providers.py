@@ -1,19 +1,20 @@
+import fnmatch
 import json
 import platform
 import re
 import sys
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from os.path import abspath, dirname
 from typing import List, Tuple, Iterable
 
 import distlib.markers
 from pkg_resources import RequirementParseError
 
-from .nixpkgs import NixpkgsIndex
 from mach_nix.requirements import filter_reqs_by_eval_marker, Requirement, parse_reqs, context
 from mach_nix.versions import PyVer, ver_sort_key, filter_versions, parse_ver, Version
 from .bucket_dict import LazyBucketDict
+from .nixpkgs import NixpkgsIndex
 from ..cache import cached
 
 
@@ -85,11 +86,15 @@ class DependencyProviderBase(ABC):
 
     @cached()
     def find_matches(self, req) -> List[Candidate]:
-        all = {c.ver: c for c in self.all_candidates(req.key, req.extras, req.build)}
-        mathing_versions = set(filter_versions(all.keys(), req.specs))
-        matching_candidates = [c for c in all.values() if c.ver in mathing_versions]
-        matching_candidates.sort(key=lambda c: (ver_sort_key(c.ver)))
+        all = list(self.all_candidates_sorted(req.key, req.extras, req.build))
+        matching_versions = set(filter_versions((c.ver for c in all), req.specs))
+        matching_candidates = [c for c in all if c.ver in matching_versions]
         return matching_candidates
+
+    def all_candidates_sorted(self, name, extras=None, build=None) -> Iterable[Candidate]:
+        candidates = list(self.all_candidates(name, extras, build))
+        candidates.sort(key=lambda c: (ver_sort_key(c.ver)))
+        return candidates
 
     @property
     @abstractmethod
@@ -203,16 +208,18 @@ class CombinedDependencyProvider(DependencyProviderBase):
         exit(1)
 
     @cached()
-    def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
+    def all_candidates_sorted(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
         # use dict as ordered set
         candidates = []
         # order by reversed preference expected
         for provider in reversed(tuple(self.allowed_providers_for_pkg(pkg_name).values())):
-            for c in provider.all_candidates(pkg_name, extras, build):
-                candidates.append(c)
+            candidates += list(provider.all_candidates_sorted(pkg_name, extras, build))
         if candidates:
             return tuple(candidates)
         self.print_error_no_versions_available(pkg_name)
+
+    def all_candidates(self, name, extras=None, build=None) -> Iterable[Candidate]:
+        return self.all_candidates_sorted(name, extras, build)
 
     def deviated_version(self, pkg_name, pkg_version: Version, build):
         self.get_provider(pkg_name, pkg_version, tuple(), build).deviated_version(pkg_name, pkg_version)
@@ -480,19 +487,7 @@ class SdistDependencyProvider(DependencyProviderBase):
 class CondaDependencyProvider(DependencyProviderBase):
 
     ignored_pkgs = (
-        "ld_impl_linux-64",
-        #"libffi",
-        ##"libgcc-ng",
-        ##"libstdcxx-ng",
-        "ncurses",
-        #"openssl",
-        "readline",
-        "sqlite",
-        "tk",
-        "tzdata",
-        "xz",
-        "zlib",
-        "python",
+        "python"
     )
 
     def __init__(self, repodata_file, py_ver: PyVer, platform, system, *args, **kwargs):
@@ -533,6 +528,8 @@ class CondaDependencyProvider(DependencyProviderBase):
     @cached()
     def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Version]:
         pkg_name = normalize_name(pkg_name)
+        if pkg_name not in self.pkgs:
+            return []
         candidates = []
         for ver in self.pkgs[pkg_name].keys():
             candidates += [
@@ -560,9 +557,8 @@ class CondaDependencyProvider(DependencyProviderBase):
     def compatible_builds(self, pkg_name, pkg_version: Version, build=None) -> list:
         deviated_ver = self.deviated_version(pkg_name, pkg_version, build)
         if build:
-            if build not in self.pkgs[pkg_name][deviated_ver]:
-                return []
-            return [self.pkgs[pkg_name][deviated_ver][build]]
+            matched = set(fnmatch.filter(self.pkgs[pkg_name][deviated_ver], build))
+            return [p for p in self.pkgs[pkg_name][deviated_ver].values() if p['build'] in matched]
         compatible = []
         for build in self.pkgs[pkg_name][deviated_ver].values():
             # continue if python incompatible

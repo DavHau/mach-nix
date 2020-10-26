@@ -161,12 +161,9 @@ let
       wheelUnpackHook
     ] ++ lib.optionals (format == "egg") [
       eggUnpackHook eggBuildHook eggInstallHook
-    ] ++ lib.optionals (format == "condabin") (
-        [ autoPatchelfHook alsaLib cups libGL ]
-        ++ (with xorg; [ libSM libICE libX11 libXau libXdamage libXi libXrender libXrandr libXcomposite libXcursor libXtst libXScrnSaver])
-        # dependencies of conds python interpreter dstribution
-        ++ [ binutils glibc gcc-unwrapped.lib libgcc ncurses readline sqlite tk xz zlib ]
-    ) ++ lib.optionals (!(builtins.elem format [ "condabin" "other" ]) || dontUsePipInstall) [
+    ] ++ lib.optionals (format == "condabin") [
+      autoPatchelfHook
+    ] ++ lib.optionals (!(builtins.elem format [ "condabin" "other" ]) || dontUsePipInstall) [
       pipInstallHook
     ] ++ lib.optionals (stdenv.buildPlatform == stdenv.hostPlatform) [
       # This is a test, however, it should be ran independent of the checkPhase and checkInputs
@@ -176,7 +173,14 @@ let
       pythonNamespacesHook
     ] ++ nativeBuildInputs;
 
-    buildInputs = buildInputs ++ pythonPath;
+    buildInputs =
+      buildInputs ++ pythonPath
+      ++ lib.optionals (format == "condabin") (
+        [ alsaLib cups libGL ]
+        ++ (with xorg; [ libSM libICE libX11 libXau libXdamage libXi libXrender libXrandr libXcomposite libXcursor libXtst libXScrnSaver])
+        # dependencies of condas python interpreter dstribution
+        ++ [ binutils glibc gcc-unwrapped.lib ncurses readline sqlite tk xz zlib ]
+      );
 
     propagatedBuildInputs = propagatedBuildInputs ++ [ python ];
 
@@ -196,9 +200,9 @@ let
       setuptoolsCheckHook
     ] ++ checkInputs;
 
-    postFixup = lib.optionalString (!dontWrapPythonPrograms) ''
-      wrapPythonPrograms
-    '' + attrs.postFixup or '''';
+    #postFixup = lib.optionalString (!dontWrapPythonPrograms) ''
+    #  wrapPythonPrograms
+    #'' + attrs.postFixup or '''';
 
     # Python packages built through cross-compilation are always for the host platform.
     disallowedReferences = lib.optionals (python.stdenv.hostPlatform != python.stdenv.buildPlatform) [ python.pythonForBuild ];
@@ -227,8 +231,8 @@ let
         mkdir -p $out/lib/$pyDir/site-packages/
         cp -r ./site-packages/* $out/lib/$pyDir/site-packages/
       else
-        rm env-vars
         cp -r . $out
+        rm $out/env-vars
       fi
     '';
     installPhase = ''
@@ -237,11 +241,7 @@ let
       fi
       rm -rf $out/ssl
     '';
-    preFixup = ''
-      echo $nativeBuildInputs
-    '';
   }
-
   ));
 
   passthru.updateScript = let
