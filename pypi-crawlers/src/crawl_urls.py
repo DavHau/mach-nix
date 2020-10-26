@@ -1,8 +1,10 @@
+import base64
 import os
 import sys
 import traceback
 import xmlrpc.client
 from time import sleep
+from urllib.parse import quote
 
 import requests
 import utils
@@ -15,6 +17,14 @@ email = os.environ.get("EMAIL")
 if not email:
     raise Exception("Please provide EMAIL=")
 headers = {'User-Agent': f'Pypi Daily Sync (Contact: {email})'}
+
+
+def urlencode(s):
+    return quote(s, safe='/ ')
+
+
+def hash_hex_to_base64(hash):
+    return base64.b64encode(bytes.fromhex(hash)).decode()
 
 
 def all_packages():
@@ -69,12 +79,14 @@ def save_pkg_meta(name, pkgs_dict):
         releases_dict[release_ver] = {}
         if sdist:
             releases_dict[release_ver]['sdist'] = [
-                sdist['digests']['sha256'],
-                sdist['filename'],
+                hash_hex_to_base64(sdist['digests']['sha256']),
+                urlencode(sdist['filename']),
             ]
         if wheels:
             releases_dict[release_ver]['wheels'] = {
-                wheel['filename']: (wheel['digests']['sha256'], wheel['python_version'])
+                wheel['filename']: (
+                    hash_hex_to_base64(wheel['digests']['sha256']),
+                    wheel['python_version'])
                 for wheel in wheels
             }
     if releases_dict:

@@ -54,7 +54,6 @@ def env(args, nixpkgs_rev, nixpkgs_sha256):
     python_nix_file = f"{target_dir}/python.nix"
     python_nix_content = dedent(f"""
         let
-          result = import ./machnix.nix {{ inherit pkgs; }};
           nixpkgs_commit = "{nixpkgs_rev}";
           nixpkgs_sha256 = "{nixpkgs_sha256}";
           pkgs = import (builtins.fetchTarball {{
@@ -63,9 +62,10 @@ def env(args, nixpkgs_rev, nixpkgs_sha256):
             sha256 = nixpkgs_sha256;
           }}) {{ config = {{}}; overlays = []; }};
           python = pkgs.python{str(py_ver.digits())};
+          result = import ./machnix.nix {{ inherit pkgs python; }};
           manylinux1 = pkgs.pythonManylinuxPackages.manylinux1;
           overrides = result.overrides manylinux1 pkgs.autoPatchelfHook;
-          py = pkgs.python37.override {{ packageOverrides = overrides; }};
+          py = python.override {{ packageOverrides = overrides; }};
         in
         py.withPackages (ps: result.select_pkgs ps)
     """)

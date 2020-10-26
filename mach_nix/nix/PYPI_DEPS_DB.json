@@ -1,7 +1,7 @@
 {
     "url": "https://github.com/davhau/pypi-deps-db",
-    "rev": "491dcc6953c8c84919dd7ceb040d1cd601010849",
-    "date": "2020-10-19T08:49:36+00:00",
-    "sha256": "04q4xxckzg2zhnmviymbgv3lnyi6m333m6qrg2n35vdfxpq79dmx",
+    "rev": "b0971936e8f3b27a49345088d0739b154284fd7b",
+    "date": "2020-10-24T08:14:50+00:00",
+    "sha256": "1683nzdzka97p76rz498crdfik64cgh0a9ahbz716jsqkfb6xlz2",
     "fetchSubmodules": false
 }
