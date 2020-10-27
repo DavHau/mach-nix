@@ -10,6 +10,7 @@ from mach_nix.cache import cached
 
 @dataclass
 class NixpkgsPyPkg:
+    name: str
     nix_key: str
     ver: Version
 
@@ -48,11 +49,14 @@ class NixpkgsIndex(UserDict):
     def get_all_candidates(self, name) -> List[NixpkgsPyPkg]:
         result = []
         for ver, nix_keys in self.data[name].items():
-            result += [NixpkgsPyPkg(nix_key, parse(ver)) for nix_key in nix_keys]
+            result += [NixpkgsPyPkg(name, nix_key, parse(ver)) for nix_key in nix_keys]
         return result
 
     def get_highest_ver(self, pkgs: List[NixpkgsPyPkg]):
-        return max(pkgs, key=lambda p: (p.ver, -len(p.nix_key)))
+        # prioritizing similar names, reduces chance of infinite recursion
+        # (see problem with dateutil alias)
+        name_difference = lambda p: abs(len(p.name)-len(p.nix_key))
+        return max(pkgs, key=lambda p: (p.ver, -name_difference(p)))
 
     @staticmethod
     def is_same_ver(ver1, ver2, ver_idx):
