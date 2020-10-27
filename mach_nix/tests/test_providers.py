@@ -24,8 +24,8 @@ from mach_nix.versions import PyVer
     # darwin
     (True, '2.0.0', 'requests-2.24.0-py2-none-any.whl', "darwin", "x86_64"),
     (True, '3.8.0', 'tensorflow-2.3.1-cp38-cp38-macosx_10_14_x86_64.whl', "darwin", "x86_64"),
-    (False, '3.8.0', 'tensorflow-2.3.1-cp35-cp35m-macosx_10_6_intel.whl', "darwin", "x86_64"),
-    (True, '3.5.0', 'tensorflow-2.3.1-cp35-cp35m-macosx_10_6_intel.whl', "darwin", "x86_64"),
+    (False, '3.8.0', 'tensorflow-2.3.1-cp35-cp35m-macosx_10_6_x86_64.whl', "darwin", "x86_64"),
+    (False, '3.5.0', 'tensorflow-2.3.1-cp35-cp35m-macosx_10_6_intel.whl', "darwin", "x86_64"),  # intel not supported
 ])
 def test_select_wheel_for_py_ver(expected, py_ver, wheel_fn, system, platform):
     prov = providers.WheelDependencyProvider('', py_ver=PyVer(py_ver), system=system, platform=platform)
