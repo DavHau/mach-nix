@@ -296,11 +296,11 @@ class WheelDependencyProvider(DependencyProviderBase):
             )
         elif self.system == "darwin":
             self.preferred_wheels = (
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*-({cp_abi}|abi3|none)-macosx_\d*_\d*_universal"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*-({cp_abi}|abi3|none)-macosx_\d*_\d*_x86_64"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*-({cp_abi}|abi3|none)-macosx_\d*_\d*_intel"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*-({cp_abi}|abi3|none)-macosx_\d*_\d*_(fat64|fat32)"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*-({cp_abi}|abi3|none)-any"),)
+                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_universal"),
+                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_x86_64"),
+                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_intel"),
+                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_(fat64|fat32)"),
+                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-any"),)
         else:
             raise Exception(f"Unsupported Platform {platform.system()}")
 
