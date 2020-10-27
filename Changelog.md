@@ -1,3 +1,13 @@
+# 3.0.2 (27 Oct 2020)
+bugfixes
+
+### Fixes
+ - fixed "\u characters in JSON strings are currently not supported" error, triggered by some packages using unicode characters in their file names
+ - mach-nix cmdline tool didn't use specified python version
+ - wheel provider was broken for MacOS resulting in 0 available packages
+ - several issues triggering infinite recursions
+
+
 # 3.0.1 (21 Oct 2020)
 bugfixes, return missing packages
 
