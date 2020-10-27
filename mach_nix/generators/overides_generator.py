@@ -211,7 +211,7 @@ class OverridesGenerator(ExpressionGenerator):
     def _gen_conda_buildPythonPackage(
             self, name, ver, circular_deps, nix_name, prop_build_inputs_str, src_url, src_sha256):
         out = f"""
-            "{name}" = python-self.buildPythonPackage {{
+            "{name}" = python-self.buildPythonPackage rec {{
               pname = "{name}";
               version = "{ver}";
               src = builtins.fetchurl {{
@@ -225,7 +225,7 @@ class OverridesGenerator(ExpressionGenerator):
               pipInstallFlags = "--no-dependencies";"""
         if prop_build_inputs_str.strip():
             out += f"""
-              propagatedBuildInputs = with python-self; [ {prop_build_inputs_str} ];"""
+              propagatedBuildInputs = (with python-self; [ {prop_build_inputs_str} ]);"""
         out += """
             };\n"""
         return unindent(out, 8)
@@ -295,7 +295,8 @@ class OverridesGenerator(ExpressionGenerator):
                     pkg.removed_circular_deps,
                     self._get_ref_name(pkg.name, pkg.ver),
                     prop_build_inputs_str,
-                    *pkg.provider_info.provider.pkg_url_src(pkg.name, pkg.ver))
+                    pkg.provider_info.url,
+                    pkg.provider_info.hash)
             # NIXPKGS
             elif isinstance(pkg.provider_info.provider, NixpkgsDependencyProvider):
                 nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)

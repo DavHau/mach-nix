@@ -58,9 +58,9 @@ class ResolvelibResolver(Resolver):
         for name in result.graph._forwards.keys():
             if name is None:
                 continue
-            ver = result.mapping[name].ver
-            install_requires, setup_requires = self.deps_provider.get_pkg_reqs(result.mapping[name])
-            provider_info = self.deps_provider.get_provider_info(name, ver)
+            candidate = result.mapping[name]
+            ver = candidate.ver
+            install_requires, setup_requires = self.deps_provider.get_pkg_reqs(candidate)
             prop_build_inputs = list({req.key for req in install_requires})
             build_inputs = list({req.key for req in setup_requires})
             is_root = name in result.graph._forwards[None]
@@ -70,9 +70,9 @@ class ResolvelibResolver(Resolver):
                 build_inputs=build_inputs,
                 prop_build_inputs=prop_build_inputs,
                 is_root=is_root,
-                provider_info=provider_info,
+                provider_info=candidate.provider_info,
                 extras_selected=list(result.mapping[name].extras),
-                build=result.mapping[name].build
+                build=candidate.build
             ))
         remove_circles_and_print(nix_py_pkgs, self.nixpkgs)
         return nix_py_pkgs

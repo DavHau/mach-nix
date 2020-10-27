@@ -95,7 +95,7 @@ def parse_reqs(strs):
 
         # handle conda requirements
         build = None
-        if not any(op in line for op in ('==', '!=', '<=', '>=', '<', '>', '~=')):
+        if not any(op in line for op in ('==', '!=', '<=', '>=', '<', '>', '~=', ';')):
             # conda spec with build like "tensorflow-base 2.0.0 gpu_py36h0ec5d1f_0"
             splitted = line.split(' ')
             if len(splitted) == 3:

@@ -44,6 +44,11 @@ in
       destDir = "/home/${user}/.ssh/";
       user = "${user}";
     };
+    id_ed25519_conda = {
+      keyFile = ./keys/id_ed25519_conda;
+      destDir = "/home/${user}/.ssh/";
+      user = "${user}";
+    };
   };
   swapDevices = [{
     size = 10000;
@@ -94,6 +99,9 @@ in
       deps = [];
     };
    };
+
+
+
   systemd.services.crawl-urls =
     let
       environment = {
@@ -125,6 +133,9 @@ in
     partOf = [ "crawl-urls.service" ];
     timerConfig.OnCalendar = "00/12:00";  # at 00:00 and 12:00
   };
+
+
+
   systemd.services.crawl-sdist =
     let
       environment = {
@@ -172,6 +183,9 @@ in
       "Mon-Sun *-*-* 16:00:00"
     ];
   };
+
+
+
   systemd.services.crawl-wheel =
     let
       environment = {
@@ -212,6 +226,59 @@ in
     timerConfig.OnCalendar = [
       "Mon-Sun *-*-* 8:00:00"
       "Mon-Sun *-*-* 20:00:00"
+    ];
+  };
+
+
+  systemd.services.crawl-conda =
+    let
+      environment = {
+        EMAIL = "hsngrmpf+condacrawler@gmail.com";
+        workdir = "/home/${user}/conda-channels";
+      };
+    in
+    {
+    inherit serviceConfig environment;
+    description = "Crawl conda channels repodata.json";
+    after = [ "network-online.target" ];
+    path = with pkgs; [ curl git gzip ];
+    script = with environment; ''
+      set -x
+      export GIT_SSH_COMMAND="${pkgs.openssh}/bin/ssh -i /home/${user}/.ssh/id_ed25519_conda"
+      [ ! -e ${workdir} ] && git clone git@github.com:DavHau/conda-channels.git ${workdir}
+      cd ${workdir}
+      git config user.email "${EMAIL}"
+      git config user.name "DavHau-bot"
+      git pull
+      echo ".tmpfile" > .gitignore
+      echo $(date +%s) > UNIX_TIMESTAMP
+      # main repos
+      for channel in main free r archive; do
+        [ ! -e $channel ] && mkdir $channel
+        for arch in linux-64 linux-aarch64 noarch osx-64; do
+          curl -H "Accept-Encoding: gzip" -L https://repo.anaconda.com/pkgs/main/linux-64/repodata.json | gzip -d > .tmpfile \
+          && mv .tmpfile $channel/$arch.json
+        done
+      done
+      # user repos
+      for channel in conda-forge intel; do
+        [ ! -e $channel ] && mkdir $channel
+        for arch in linux-64 linux-aarch64 noarch osx-64; do
+          curl -H "Accept-Encoding: gzip" -L https://repo.anaconda.com/pkgs/main/linux-64/repodata.json | gzip -d > .tmpfile \
+          && mv .tmpfile $channel/$arch.json
+        done
+      done
+      git add .
+      git commit -m "$(date)"
+      git push origin master
+    '';
+  };
+  systemd.timers.crawl-conda = {
+    inherit enable;
+    wantedBy = [ "timers.target" ];
+    timerConfig.OnCalendar = [
+      "Mon-Sun *-*-* 2:00:00"
+      "Mon-Sun *-*-* 14:00:00"
     ];
   };
 }

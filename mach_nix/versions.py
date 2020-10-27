@@ -66,7 +66,7 @@ def ver_sort_key(ver: Version):
     For sorting versions by preference in reversed order. (last elem == highest preference)
     """
     is_dev = 0
-    is_rc = 0
+    is_pre = 0
     for component in ver.version:
         if len(component) > 1:
             for elem in component:
@@ -75,14 +75,15 @@ def ver_sort_key(ver: Version):
                 if 'dev' in elem.lower():
                     is_dev = 1
                     break
-                if 'rc' in elem.lower():
-                    is_rc = 1
+                # contains letters == pre-release
+                if elem.lower().islower():
+                    is_pre = 1
                     break
     # if isinstance(ver, LegacyVersion):
     #     return 0, 0, 0, ver
     # is_dev = int(ver.is_devrelease)
     # is_pre = int(ver.is_prerelease)
-    return not is_dev, not is_rc, ver
+    return not is_dev, not is_pre, ver
 
 
 def best_version(versions: Iterable[Version]) -> Version:

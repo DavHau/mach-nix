@@ -23,6 +23,7 @@ class Candidate:
     name: str
     ver: Version
     extras: tuple
+    provider_info: 'ProviderInfo'
     build: str = None
 
 
@@ -31,6 +32,8 @@ class ProviderInfo:
     provider: 'DependencyProviderBase'
     # following args are only required in case of wheel
     wheel_fname: str = None
+    url: str = None
+    hash: str = None
 
 
 def normalize_name(key: str) -> str:
@@ -110,9 +113,6 @@ class DependencyProviderBase(ABC):
     def unify_key(self, key: str) -> str:
         return key.replace('_', '-').lower()
 
-    def get_provider_info(self, pkg_name, pkg_version, extras=None, build=None):
-        return ProviderInfo(provider=self)
-
     @abstractmethod
     @cached()
     def get_pkg_reqs(self, candidate: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
@@ -167,14 +167,10 @@ class CombinedDependencyProvider(DependencyProviderBase):
         selected_providers = ((name, p) for name, p in self._all_providers.items() if name in provider_keys)
         return dict(sorted(selected_providers, key=lambda x: provider_keys.index(x[0])))
 
-    def get_provider(self, pkg_name, pkg_version, extras, build) -> DependencyProviderBase:
+    def get_provider(self, pkg_name, pkg_version, build) -> DependencyProviderBase:
         for type, provider in self.allowed_providers_for_pkg(pkg_name).items():
-            if pkg_version in (c.ver for c in provider.all_candidates(pkg_name, extras, build)):
+            if pkg_version in (c.ver for c in provider.all_candidates(pkg_name, build=build)):
                 return provider
-
-    def get_provider_info(self, pkg_name, pkg_version, extras=None, build=None) -> ProviderInfo:
-        return self.get_provider(pkg_name, pkg_version, extras, build)\
-            .get_provider_info(pkg_name, pkg_version, extras, build)
 
     def get_pkg_reqs(self, c: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
         for provider in self.allowed_providers_for_pkg(c.name).values():
@@ -222,7 +218,7 @@ class CombinedDependencyProvider(DependencyProviderBase):
         return self.all_candidates_sorted(name, extras, build)
 
     def deviated_version(self, pkg_name, pkg_version: Version, build):
-        self.get_provider(pkg_name, pkg_version, tuple(), build).deviated_version(pkg_name, pkg_version)
+        self.get_provider(pkg_name, pkg_version, build).deviated_version(pkg_name, pkg_version, build)
 
 
 class NixpkgsDependencyProvider(DependencyProviderBase):
@@ -257,7 +253,12 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
         name = self.unify_key(pkg_name)
         if not self.nixpkgs.exists(name):
             return []
-        return [Candidate(pkg_name, p.ver, extras) for p in self.nixpkgs.get_all_candidates(name)]
+        return [Candidate(
+            pkg_name,
+            p.ver,
+            extras,
+            provider_info=ProviderInfo(self)
+        ) for p in self.nixpkgs.get_all_candidates(name)]
 
     def deviated_version(self, pkg_name, normalized_version: Version, build):
         # not necessary for nixpkgs provider since source doesn't need to be fetched
@@ -307,7 +308,12 @@ class WheelDependencyProvider(DependencyProviderBase):
     def all_candidates(self, pkg_name, extras=None, build=None) -> List[Candidate]:
         if build:
             return []
-        return [Candidate(w.name, parse_ver(w.ver), extras) for w in self._suitable_wheels(pkg_name)]
+        return [Candidate(
+            w.name,
+            parse_ver(w.ver),
+            extras,
+            provider_info=ProviderInfo(provider=self, wheel_fname=w.fn)
+        ) for w in self._suitable_wheels(pkg_name)]
 
     def get_pkg_reqs(self, c: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
         """
@@ -319,10 +325,6 @@ class WheelDependencyProvider(DependencyProviderBase):
         # handle extras by evaluationg markers
         install_reqs = list(filter_reqs_by_eval_marker(parse_reqs(reqs_raw), self.context_wheel, c.extras))
         return install_reqs, []
-
-    def get_provider_info(self, pkg_name, pkg_version, extras=None, build=None) -> ProviderInfo:
-        wheel = self._choose_wheel(pkg_name, pkg_version)
-        return ProviderInfo(provider=self, wheel_fname=wheel.fn)
 
     def deviated_version(self, pkg_name, pkg_version: Version, build):
         return self._choose_wheel(pkg_name, pkg_version).ver
@@ -481,7 +483,12 @@ class SdistDependencyProvider(DependencyProviderBase):
     def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
         if build:
             return []
-        return [Candidate(pkg_name, ver, extras) for ver, pkg in self._get_candidates(pkg_name).items()]
+        return [Candidate(
+            pkg_name,
+            ver,
+            extras,
+            provider_info=ProviderInfo(self)
+        ) for ver, pkg in self._get_candidates(pkg_name).items()]
 
 
 class CondaDependencyProvider(DependencyProviderBase):
@@ -533,8 +540,19 @@ class CondaDependencyProvider(DependencyProviderBase):
         candidates = []
         for ver in self.pkgs[pkg_name].keys():
             candidates += [
-                Candidate(b['name'], parse_ver(b['version']), extras, b['build'])
-                for b in self.compatible_builds(pkg_name, parse_ver(ver), build)
+                Candidate(
+                    p['name'],
+                    parse_ver(p['version']),
+                    extras,
+                    build=p['build'],
+                    provider_info=ProviderInfo(
+                        self,
+                        url=f"https://anaconda.org/anaconda/{p['name']}/"
+                            f"{p['version']}/download/{p['subdir']}/{p['fname']}",
+                        hash=p['sha256']
+                    )
+                )
+                for p in self.compatible_builds(pkg_name, parse_ver(ver), build)
             ]
         return candidates
 
@@ -558,7 +576,9 @@ class CondaDependencyProvider(DependencyProviderBase):
         deviated_ver = self.deviated_version(pkg_name, pkg_version, build)
         if build:
             matched = set(fnmatch.filter(self.pkgs[pkg_name][deviated_ver], build))
-            return [p for p in self.pkgs[pkg_name][deviated_ver].values() if p['build'] in matched]
+            pkgs = [p for p in self.pkgs[pkg_name][deviated_ver].values() if p['build'] in matched]
+            pkgs.sort(key=lambda p: p['build_number'], reverse=True)
+            return pkgs
         compatible = []
         for build in self.pkgs[pkg_name][deviated_ver].values():
             # continue if python incompatible
@@ -573,8 +593,3 @@ class CondaDependencyProvider(DependencyProviderBase):
         candidate = self.compatible_builds(pkg_name, pkg_version)[0]
         # print(f"chosen candidate {pkg_name}{candidate['version']} for {pkg_version}")
         return candidate
-
-    def pkg_url_src(self, pkg_name, pkg_version: Version):
-        pkg = self.choose_candidate(pkg_name, pkg_version)
-        url = f"https://anaconda.org/anaconda/{pkg['name']}/{pkg['version']}/download/{pkg['subdir']}/{pkg['fname']}"
-        return url, pkg['sha256']
