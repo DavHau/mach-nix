@@ -28,6 +28,7 @@ let
     { buildInputs = [ src builder_python db_and_fetcher.pypi_deps_db_src];
       inherit nixpkgs_json requirements;
       inherit (db_and_fetcher) pypi_deps_db_src pypi_fetcher_commit pypi_fetcher_sha256;
+      conda_channels_json =  (import ./conda-channels.nix {}).condaChannelsJson;
       disable_checks = ! tests;
       providers = providers_json;
       py_ver_str = python.version;

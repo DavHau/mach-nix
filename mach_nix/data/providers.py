@@ -137,6 +137,7 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
     def __init__(
             self,
+            conda_channels_json,
             nixpkgs: NixpkgsIndex,
             provider_settings: ProviderSettings,
             pypi_deps_db_src: str,
@@ -146,14 +147,17 @@ class CombinedDependencyProvider(DependencyProviderBase):
         self.provider_settings = provider_settings
         wheel = WheelDependencyProvider(f"{pypi_deps_db_src}/wheel", *args, **kwargs)
         sdist = SdistDependencyProvider(f"{pypi_deps_db_src}/sdist", *args, **kwargs)
-        conda = CondaDependencyProvider(f"{dirname(abspath(__file__))}", *args, **kwargs)
         nixpkgs = NixpkgsDependencyProvider(nixpkgs, wheel, sdist, *args, **kwargs)
         self._all_providers = {
             f"{wheel.name}": wheel,
             f"{sdist.name}": sdist,
             f"{nixpkgs.name}": nixpkgs,
-            f"{conda.name}": conda,
         }
+        with open(conda_channels_json) as f:
+            self._all_providers.update({
+                f"conda/{channel_name}": CondaDependencyProvider(channel_name, files, *args, **kwargs)
+                for channel_name, files in json.load(f).items()
+            })
         providers_used = set(provider_settings.default_providers)
         for p_list in provider_settings.pkg_providers.values():
             for p in p_list:
@@ -496,11 +500,8 @@ class CondaDependencyProvider(DependencyProviderBase):
         "python"
     )
 
-    def __init__(self, repodata_file, py_ver: PyVer, platform, system, *args, **kwargs):
-        files = (
-            f"{repodata_file}/repodata.json",
-            f"{repodata_file}/noarch.json"
-        )
+    def __init__(self, channel, files, py_ver: PyVer, platform, system, *args, **kwargs):
+        self.channel = channel
         self.pkgs = {}
         for file in files:
             with open(file) as f:
@@ -514,14 +515,14 @@ class CondaDependencyProvider(DependencyProviderBase):
                 if ver not in self.pkgs[name]:
                     self.pkgs[name][ver] = {}
                 if build in self.pkgs[name][ver]:
-                    print("WARNING: colliding package")
+                    print(f"WARNING: colliding package {p['name']}")
                 self.pkgs[name][ver][build] = p
                 self.pkgs[name][ver][build]['fname'] = fname
         super().__init__(py_ver, platform, system, *args, **kwargs)
 
     @property
     def name(self):
-        return "conda"
+        return f"conda/{self.channel}"
 
     def get_pkg_reqs(self, c: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
         candidate = self.choose_candidate(c.name, c.ver)

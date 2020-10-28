@@ -241,7 +241,7 @@ in
     inherit serviceConfig environment;
     description = "Crawl conda channels repodata.json";
     after = [ "network-online.target" ];
-    path = with pkgs; [ curl git gzip ];
+    path = with pkgs; [ curl gawk git gzip jq openssl moreutils ];
     script = with environment; ''
       set -x
       export GIT_SSH_COMMAND="${pkgs.openssh}/bin/ssh -i /home/${user}/.ssh/id_ed25519_conda"
@@ -256,7 +256,7 @@ in
       for channel in main free r archive; do
         [ ! -e $channel ] && mkdir $channel
         for arch in linux-64 linux-aarch64 noarch osx-64; do
-          curl -H "Accept-Encoding: gzip" -L https://repo.anaconda.com/pkgs/main/linux-64/repodata.json | gzip -d > .tmpfile \
+          curl -H "Accept-Encoding: gzip" -L https://repo.anaconda.com/pkgs/$channel/$arch/repodata.json | gzip -d > .tmpfile \
           && mv .tmpfile $channel/$arch.json
         done
       done
@@ -264,9 +264,14 @@ in
       for channel in conda-forge intel; do
         [ ! -e $channel ] && mkdir $channel
         for arch in linux-64 linux-aarch64 noarch osx-64; do
-          curl -H "Accept-Encoding: gzip" -L https://repo.anaconda.com/pkgs/main/linux-64/repodata.json | gzip -d > .tmpfile \
+          curl -H "Accept-Encoding: gzip" -L https://conda.anaconda.org/$channel/$arch/repodata.json | gzip -d > .tmpfile \
           && mv .tmpfile $channel/$arch.json
         done
+      done
+      echo "{}" > sha256.json
+      for f in $(find . -type f -not -path './.git/*' -not -name '.*'); do
+        jq  ". + {\"$f\": \"$(cat $f | openssl dgst -binary -sha256 | openssl base64 | awk '{print $1}')\"}" sha256.json \
+          | sponge sha256.json
       done
       git add .
       git commit -m "$(date)"

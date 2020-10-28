@@ -1,8 +1,13 @@
 {
   pkgs ? import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; },
+  python ? "python3",
+
+  # add some conda channels
+  condaChannelsExtra ? {},
+
+  # dependency databases
   pypiDataRev ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB.json)).rev,
   pypiDataSha256 ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB.json)).sha256,
-  python ? "python3",
   ...
 }:
 
@@ -33,10 +38,10 @@ let
     if args ? extra_pkgs || args ? pkgsExtra then
       throw "'extra_pkgs'/'pkgsExtra' cannot be passed to ${func}. Please pass it to a mkPython call."
     else if isString args || isPath args || pkgs.lib.isDerivation args then
-      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs condaChannelsExtra pypiDataRev pypiDataSha256; })
         python func { src = args; }
     else
-      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs condaChannelsExtra pypiDataRev pypiDataSha256; })
         python func (l.throwOnDeprecatedArgs func args);
 
   __mkPython = caller: args: _mkPython caller args;

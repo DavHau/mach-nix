@@ -27,6 +27,7 @@ def load_env(name, *args, **kwargs):
 def main():
     providers_json = load_env('providers')
 
+    conda_channels_json = load_env('conda_channels_json')
     disable_checks = load_env('disable_checks')
     nixpkgs_json = load_env('nixpkgs_json')
     out_file = load_env('out_file')
@@ -42,6 +43,7 @@ def main():
     py_ver = PyVer(py_ver_str)
     nixpkgs = NixpkgsIndex(nixpkgs_json)
     deps_provider = CombinedDependencyProvider(
+        conda_channels_json=conda_channels_json,
         nixpkgs=nixpkgs,
         provider_settings=provider_settings,
         pypi_deps_db_src=pypi_deps_db_src,
