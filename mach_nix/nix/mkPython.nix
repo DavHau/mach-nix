@@ -126,6 +126,7 @@ let
           inherit selectPkgs;
           pythonOverrides = all_overrides;
           python = py_final;
+          pyEnv = py_final_with_pkgs;
           env = pkgs.mkShell {
             name = "mach-nix-python-shell";
             buildInputs = [ final_env ];
