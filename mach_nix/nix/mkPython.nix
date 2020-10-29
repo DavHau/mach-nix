@@ -116,12 +116,11 @@ let
       );
       py_final = python_pkg.override { packageOverrides = all_overrides;};
       py_final_with_pkgs = py_final.withPackages (ps: selectPkgs ps);
-      final_env = pkgs.buildEnv {
-        name = "mach-nix-python-env";
-        paths = extra_pkgs_other ++ [
-          py_final_with_pkgs
+      final_env = py_final_with_pkgs.override (oa: {
+        makeWrapperArgs = [
+          ''--suffix-each PATH ":" "${toString (map (p: "${p}/bin") extra_pkgs_other)}"''
         ];
-      };
+      });
     in let
       self = final_env.overrideAttrs (oa: {
         passthru = oa.passthru // rec {
@@ -130,7 +129,7 @@ let
           python = py_final;
           env = pkgs.mkShell {
             name = "mach-nix-python-shell";
-            buildInputs = [ final_env ];
+            buildInputs = [ final_env extra_pkgs_other ];
           };
           overlay = self: super:
             let
@@ -150,12 +149,9 @@ let
               contents = [
                 pkgs.busybox
                 self
-              ];
+              ] ++ extra_pkgs_other;
               config = {
                 Cmd = [ "${self}/bin/python" ];
-                Env = {
-                  python = "${self}";
-                };
               };
             };
         };

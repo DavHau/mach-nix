@@ -134,7 +134,7 @@ Functions for building python packages or applications:
 #### Optional Arguments:
  - **providers** (set): define provider preferences (see examples below)
  - **packagesExtra** (list) Add extra packages. Can contain tarball-URLs or paths of python source code, packages built via `mach-nix.buildPythonPackage`, or R Packages.
- - **_** (set): use underscore argument to easily modify arbitrary attributes of packages. For example to add built inputs use `_.{package}.builtInputs.add = [...]`. Or to remove patches use `_.{package}.patches = [...]`.
+ - **_** (set): use underscore argument to easily modify arbitrary attributes of packages. For example to add build inputs use `_.{package}.buildInputs.add = [...]`. Or to remove patches use `_.{package}.patches = [...]`.
  - **overridesPre** (list): (advanced) list of pythonOverrides to apply before the machnix overrides. Use this to include additional packages which can then be selected inside the `requirements`
  - **overridesPost** (list): (advanced) list of pythonOverrides to apply after the machnix overrides. Use this to fixup packages.
  - **tests** (bool): Whether to enable tests (default: false)
