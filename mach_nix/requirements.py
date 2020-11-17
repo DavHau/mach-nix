@@ -69,27 +69,29 @@ def parse_reqs(strs):
 
 
 def parse_reqs_line(line):
-        build = None
-        splitted = line.strip().split(' ')
+    build = None
+    line = line.strip(' ,')
+    splitted = line.split(' ')
 
-        # conda spec with build like "tensorflow-base 2.0.0 gpu_py36h0ec5d1f_0"
-        # or "hdf5 >=1.10.5,<1.10.6.0a0 mpi_mpich_*"
-        if len(splitted) == 3 \
-                and (
-                    splitted[-1][-2] == '_' or '*' in splitted[-1]
-                    or
-                    not any(op in splitted[1] for op in all_ops)
-                ):
-            name, ver_spec, build = splitted
-            if not any(op in ver_spec for op in all_ops):
-                ver_spec = f"=={ver_spec}"
-            line = f"{name}{ver_spec}"
+    # conda spec with build like "tensorflow-base 2.0.0 gpu_py36h0ec5d1f_0"
+    # or "hdf5 >=1.10.5,<1.10.6.0a0 mpi_mpich_*"
+    if len(splitted) == 3 \
+            and not any(op in splitted[0]+splitted[2] for op in all_ops) \
+            and (
+                splitted[-1][-2] == '_' or '*' in splitted[-1]
+                or
+                not any(op in splitted[1] for op in all_ops)
+            ):
+        name, ver_spec, build = splitted
+        if not any(op in ver_spec for op in all_ops):
+            ver_spec = f"=={ver_spec}"
+        line = f"{name}{ver_spec}"
 
-        # parse conda specifiers without operator like "requests 2.24.*"
-        elif len(splitted) == 2:
-            name, ver_spec = splitted
-            if not any(op in ver_spec for op in all_ops):
-                ver_spec = f"=={ver_spec}"
-            line = f"{name}{ver_spec}"
+    # parse conda specifiers without operator like "requests 2.24.*"
+    elif len(splitted) == 2:
+        name, ver_spec = splitted
+        if not any(op in name + ver_spec for op in all_ops):
+            ver_spec = f"=={ver_spec}"
+        line = f"{name}{ver_spec}"
 
-        return line, build
+    return line, build
