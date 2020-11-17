@@ -1,4 +1,5 @@
-{ pkgs, pypiDataRev, pypiDataSha256, ... }:
+{ condaChannelsExtra, condaDataRev, condaDataSha256, pkgs, pypiDataRev, pypiDataSha256, ... }:
+
 with builtins;
 with pkgs.lib;
 let
@@ -48,7 +49,8 @@ let
         + "\n" + requirementsExtra;
       py = python_pkg.override { packageOverrides = l.mergeOverrides overridesPre; };
       result = l.compileOverrides {
-        inherit pkgs providers pypiDataRev pypiDataSha256 tests _providerDefaults;
+        inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs
+                providers pypiDataRev pypiDataSha256 tests _providerDefaults;
         overrides = overridesPre;
         python = py;
         requirements = reqs;
@@ -61,8 +63,8 @@ let
         ++ overridesPost ++ (l.simple_overrides _)
       );};
       pass_args = removeAttrs args (builtins.attrNames ({
-        inherit requirementsExtra tests overridesPre overridesPost pkgs providers
-                requirements pypiDataRev pypiDataSha256 python _providerDefaults _ ;
+        inherit condaDataRev condaDataSha256 overridesPre overridesPost pkgs providers
+                requirements requirementsExtra pypiDataRev pypiDataSha256 python tests _providerDefaults _ ;
       }));
     in
     py_final.pkgs."${func}" ( pass_args // {

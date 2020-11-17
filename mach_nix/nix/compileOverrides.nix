@@ -9,12 +9,27 @@
   pypiDataRev ? (builtins.fromJSON (builtins.readFile ./PYPI_DEPS_DB.json)).rev,  # python dependency DB version
   # Hash obtained using `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
   pypiDataSha256 ? (builtins.fromJSON (builtins.readFile ./PYPI_DEPS_DB.json)).sha256,
+  condaDataRev ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).rev,
+  condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).sha256,
   _providerDefaults ? with builtins; fromTOML (readFile ../provider_defaults.toml)
 }:
+
+with pkgs.lib;
 let
   l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 
-  _providers = l.parseProviders (_providerDefaults // providers);
+  _providers =
+    let
+      extraProviderNames = map (n: "conda/" + n) (attrNames condaChannelsExtra);
+      defaults = recursiveUpdate _providerDefaults {
+        _default =
+          if isString _providerDefaults._default then
+            _providerDefaults._default + concatMapStrings (s: "," + s) extraProviderNames
+          else
+            _providerDefaults._default ++ extraProviderNames;
+      };
+    in
+      (l.parseProviders (defaults // providers));
 
   nixpkgs_json = import ./nixpkgs-json.nix {
     inherit overrides pkgs python;

@@ -1,11 +1,13 @@
-{ condaChannelsExtra, pkgs, pypiDataRev, pypiDataSha256, ... }:
+{ condaChannelsExtra, condaDataRev, condaDataSha256, pkgs, pypiDataRev, pypiDataSha256, ... }:
 
 with builtins;
 with pkgs.lib;
 let
   l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 
-  buildPythonPackageBase = (import ./buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; });
+  buildPythonPackageBase = (import ./buildPythonPackage.nix {
+    inherit condaDataRev condaDataSha256 pkgs pypiDataRev pypiDataSha256;
+   });
 
   mkPython = python:
     {
@@ -49,7 +51,8 @@ let
         # translate sources to python packages
         else
           buildPythonPackageBase python "buildPythonPackage" {
-            inherit pkgs providers python pypiDataRev pypiDataSha256 tests _providerDefaults;
+            inherit condaDataRev condaDataSha256 pkgs providers python
+                    pypiDataRev pypiDataSha256 tests _providerDefaults;
             src = p;
           }
       ) (filter (p: l.is_src p || p ? pythonModule) packagesExtra);
@@ -90,7 +93,7 @@ let
 
       py = python_pkg.override { packageOverrides = l.mergeOverrides overridesPre; };
       result = l.compileOverrides {
-        inherit condaChannelsExtra pkgs providers pypiDataRev pypiDataSha256 tests _providerDefaults;
+        inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs providers pypiDataRev pypiDataSha256 tests _providerDefaults;
         overrides = overridesPre ++ overrides_pre_extra ++ extra_pkgs_py_overrides;
         python = py;
         requirements = l.concat_reqs ([requirements] ++ extra_pkgs_py_reqs ++ [extra_pkgs_r_reqs]);
