@@ -1,11 +1,49 @@
-{ lib, pkgs, ... }:
+{
+  pkgs ? import (import ./nixpkgs-src.nix) { config = {}; overlays = []; },
+  ...
+}:
 with builtins;
-with lib;
+with pkgs.lib;
+let
+  nonCondaProviders = [
+    "wheel"
+    "sdist"
+    "nixpkgs"
+  ];
+in
 rec {
 
   mergeOverrides = foldl composeExtensions (self: super: { });
 
   autoPatchelfHook = import ./auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
+
+  parseProviders = providers:
+    let
+      # transform strings to lists
+      _providers = mapAttrs (pkg: providers:
+        if isString providers then
+          splitString "," providers
+        else providers
+      ) providers;
+    in
+      # convert "some-conda-channel" to "conda/some-conda-channel"
+      mapAttrs (pkg: providers:
+        flatten (map (p:
+          if elem p nonCondaProviders || hasPrefix "conda/" p then
+            p
+          else if p == "conda" then
+            [ "conda/main" "conda/r" ]
+          else
+            "conda/${p}"
+        ) providers)
+      ) _providers;
+
+  parseProvidersToJson =
+    let
+      providers = (fromJSON (getEnv "providers"));
+    in
+      trace (getEnv "providers")
+      pkgs.writeText "providers-json" (toJSON (parseProviders providers));
 
   concat_reqs = reqs_list:
     let

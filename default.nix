@@ -49,10 +49,10 @@ let
   # (High level API) generates a python environment with minimal user effort
   _mkPython = caller: args:
     if builtins.isList args then
-      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+      (import ./mach_nix/nix/mkPython.nix { inherit pkgs condaChannelsExtra pypiDataRev pypiDataSha256; })
         python { extra_pkgs = args; }
     else
-      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+      (import ./mach_nix/nix/mkPython.nix { inherit pkgs condaChannelsExtra pypiDataRev pypiDataSha256; })
         python (l.throwOnDeprecatedArgs caller args);
 
 in

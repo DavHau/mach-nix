@@ -3,7 +3,6 @@ from typing import Iterable
 import distlib.markers
 import pkg_resources
 from distlib.markers import DEFAULT_CONTEXT
-from packaging.version import parse, _Version
 from pkg_resources._vendor.packaging.specifiers import SpecifierSet
 
 from mach_nix.cache import cached
@@ -34,21 +33,6 @@ class Requirement(pkg_resources.Requirement):
     def __hash__(self):
         return hash((super().__hash__(), self.build))
 
-    # @staticmethod
-    # def norm_specs(specs):
-    #     # PEP 440: Compatible Release
-    #     for spec in specs:
-    #         if spec[0] == "~=":
-    #             ver = spec[1]
-    #             yield ('>=', ver)
-    #             ver = parse(parse(ver).base_version)
-    #             ver_as_dict = ver._version._asdict()
-    #             ver_as_dict['release'] = ver_as_dict['release'][:-1] + ('*',)
-    #             ver._version = _Version(**ver_as_dict)
-    #             yield ('==', str(ver))
-    #         else:
-    #             yield spec
-
 
 def filter_reqs_by_eval_marker(reqs: Iterable[Requirement], context: dict, selected_extras=None):
     # filter requirements relevant for current environment
@@ -66,18 +50,7 @@ def filter_reqs_by_eval_marker(reqs: Iterable[Requirement], context: dict, selec
                 yield req
 
 
-# @cached(lambda args: tuple(args[0]) if isinstance(args[0], list) else args[0])
-# def parse_reqs(strs):
-#     if isinstance(strs, str):
-#         strs = [strs]
-#     strs = list(map(
-#         lambda s: s.replace(' ', '==') if not any(op in s for op in ('==', '!=', '<=', '>=', '<', '>', '~=')) else s,
-#         strs
-#     ))
-#     reqs = list(pkg_resources.parse_requirements(strs))
-#     for req in reqs:
-#         r = Requirement(str(req))
-#         yield r
+all_ops = {'==', '!=', '<=', '>=', '<', '>', '~=', ';'}
 
 
 @cached(lambda args: tuple(args[0]) if isinstance(args[0], list) else args[0])
@@ -92,17 +65,31 @@ def parse_reqs(strs):
                 line += next(lines)
             except StopIteration:
                 return
+        yield Requirement(*parse_reqs_line(line))
 
-        # handle conda requirements
+
+def parse_reqs_line(line):
         build = None
-        if not any(op in line for op in ('==', '!=', '<=', '>=', '<', '>', '~=', ';')):
-            # conda spec with build like "tensorflow-base 2.0.0 gpu_py36h0ec5d1f_0"
-            splitted = line.split(' ')
-            if len(splitted) == 3:
-                name, ver, build = splitted
-                line = f"{name}=={ver}"
-            # transform conda specifiers without operator like "requests 2.24.*"
-            else:
-                line = line.replace(' ', '==')
+        splitted = line.strip().split(' ')
 
-        yield Requirement(line, build)
+        # conda spec with build like "tensorflow-base 2.0.0 gpu_py36h0ec5d1f_0"
+        # or "hdf5 >=1.10.5,<1.10.6.0a0 mpi_mpich_*"
+        if len(splitted) == 3 \
+                and (
+                    splitted[-1][-2] == '_' or '*' in splitted[-1]
+                    or
+                    not any(op in splitted[1] for op in all_ops)
+                ):
+            name, ver_spec, build = splitted
+            if not any(op in ver_spec for op in all_ops):
+                ver_spec = f"=={ver_spec}"
+            line = f"{name}{ver_spec}"
+
+        # parse conda specifiers without operator like "requests 2.24.*"
+        elif len(splitted) == 2:
+            name, ver_spec = splitted
+            if not any(op in ver_spec for op in all_ops):
+                ver_spec = f"=={ver_spec}"
+            line = f"{name}{ver_spec}"
+
+        return line, build

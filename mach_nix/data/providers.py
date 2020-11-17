@@ -5,7 +5,6 @@ import re
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from os.path import abspath, dirname
 from typing import List, Tuple, Iterable
 
 import distlib.markers
@@ -22,7 +21,7 @@ from ..cache import cached
 class Candidate:
     name: str
     ver: Version
-    extras: tuple
+    selected_extras: tuple
     provider_info: 'ProviderInfo'
     build: str = None
 
@@ -30,8 +29,7 @@ class Candidate:
 @dataclass
 class ProviderInfo:
     provider: 'DependencyProviderBase'
-    # following args are only required in case of wheel
-    wheel_fname: str = None
+    wheel_fname: str = None  # only required for wheel
     url: str = None
     hash: str = None
 
@@ -41,8 +39,9 @@ def normalize_name(key: str) -> str:
 
 
 class ProviderSettings:
-    def __init__(self, json_str):
-        data = json.loads(json_str)
+    def __init__(self, providers_json):
+        with open(providers_json) as f:
+            data = json.load(f)
         if isinstance(data, list) or isinstance(data, str):
             self.default_providers = self._parse_provider_list(data)
             self.pkg_providers = {}
@@ -178,7 +177,7 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
     def get_pkg_reqs(self, c: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
         for provider in self.allowed_providers_for_pkg(c.name).values():
-            if c in provider.all_candidates(c.name, c.extras, c.build):
+            if c in provider.all_candidates(c.name, c.selected_extras, c.build):
                 return provider.get_pkg_reqs(c)
 
     def list_all_providers_for_pkg(self, pkg_name):
@@ -326,7 +325,7 @@ class WheelDependencyProvider(DependencyProviderBase):
         if reqs_raw is None:
             reqs_raw = []
         # handle extras by evaluationg markers
-        install_reqs = list(filter_reqs_by_eval_marker(parse_reqs(reqs_raw), self.context_wheel, c.extras))
+        install_reqs = list(filter_reqs_by_eval_marker(parse_reqs(reqs_raw), self.context_wheel, c.selected_extras))
         return install_reqs, []
 
     def deviated_version(self, pkg_name, pkg_version: Version, build):
@@ -476,11 +475,9 @@ class SdistDependencyProvider(DependencyProviderBase):
                 reqs_raw = pkg[t]
                 reqs = parse_reqs(reqs_raw)
                 requirements[t] = list(filter_reqs_by_eval_marker(reqs, self.context))
-        if not c.extras:
-            extras = []
         # even if no extras are selected we need to collect reqs for extras,
         # because some extras consist of only a marker which needs to be evaluated
-        requirements['install_requires'] += self.get_reqs_for_extras(c.name, c.ver, c.extras)
+        requirements['install_requires'] += self.get_reqs_for_extras(c.name, c.ver, c.selected_extras)
         return requirements['install_requires'], requirements['setup_requires']
 
     def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
@@ -515,7 +512,10 @@ class CondaDependencyProvider(DependencyProviderBase):
                 if ver not in self.pkgs[name]:
                     self.pkgs[name][ver] = {}
                 if build in self.pkgs[name][ver]:
-                    print(f"WARNING: colliding package {p['name']}")
+                    if 'collisions' not in self.pkgs[name][ver][build]:
+                        self.pkgs[name][ver][build]['collisions'] = []
+                    self.pkgs[name][ver][build]['collisions'].append(p['subdir'])
+                    continue
                 self.pkgs[name][ver][build] = p
                 self.pkgs[name][ver][build]['fname'] = fname
         super().__init__(py_ver, platform, system, *args, **kwargs)
@@ -525,35 +525,41 @@ class CondaDependencyProvider(DependencyProviderBase):
         return f"conda/{self.channel}"
 
     def get_pkg_reqs(self, c: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
-        candidate = self.choose_candidate(c.name, c.ver)
+        name = normalize_name(c.name)
+        deviated_ver = self.deviated_version(name, c.ver, c.build)
+        candidate = self.pkgs[name][deviated_ver][c.build]
         depends = list(filter(
             lambda d: d.split()[0] not in self.ignored_pkgs and not d.startswith('_'),
-            candidate['depends']))
-        # print(f"candidate {c.name}:{c.ver} depends on {depends}")
+            candidate['depends']
+            # always add optional dependencies to ensure constraints are applied
+            + (candidate['constrains'] if 'constrains' in candidate else [])
+        ))
         return list(parse_reqs(depends)), []
 
     @cached()
-    def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Version]:
+    def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
         pkg_name = normalize_name(pkg_name)
         if pkg_name not in self.pkgs:
             return []
         candidates = []
         for ver in self.pkgs[pkg_name].keys():
-            candidates += [
-                Candidate(
+            for p in self.compatible_builds(pkg_name, parse_ver(ver), build):
+                candidates.append(Candidate(
                     p['name'],
                     parse_ver(p['version']),
-                    extras,
+                    selected_extras=tuple(),
                     build=p['build'],
                     provider_info=ProviderInfo(
                         self,
-                        url=f"https://anaconda.org/anaconda/{p['name']}/"
+                        url=f"https://anaconda.org/{self.channel}/{p['name']}/"
                             f"{p['version']}/download/{p['subdir']}/{p['fname']}",
                         hash=p['sha256']
                     )
-                )
-                for p in self.compatible_builds(pkg_name, parse_ver(ver), build)
-            ]
+                ))
+                if 'collisions' in p:
+                    print(
+                        f"WARNING: Colliding conda package in {self.channel}. Ignoring {p['name']} from {p['collisions']} "
+                        f"in favor of {p['name']} from '{p['subdir']}'")
         return candidates
 
     def deviated_version(self, pkg_name, normalized_version: Version, build):
@@ -587,9 +593,3 @@ class CondaDependencyProvider(DependencyProviderBase):
             # python is compatible
             compatible.append(build)
         return compatible
-
-    def choose_candidate(self, pkg_name, pkg_version: Version):
-        pkg_name = normalize_name(pkg_name)
-        candidate = self.compatible_builds(pkg_name, pkg_version)[0]
-        # print(f"chosen candidate {pkg_name}{candidate['version']} for {pkg_version}")
-        return candidate

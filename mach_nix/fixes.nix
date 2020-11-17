@@ -101,4 +101,9 @@ rec {
 
   tensorflow-gpu = tensorflow;
 
+  websockets.remove-patchPhase = {
+    _cond = {prov, ... }: elem prov [ "sdist" "nixpkgs" ];
+    patchPhase = "";
+  };
+
 }

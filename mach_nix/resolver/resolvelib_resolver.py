@@ -18,7 +18,8 @@ class Provider:
         self.provider = deps_db
 
     def get_extras_for(self, dependency):
-        return tuple(sorted(dependency.extras))
+        # return selected extras
+        return tuple(sorted(dependency.selected_extras))
 
     def get_base_requirement(self, candidate):
         return Requirement("{}=={}".format(candidate.name, candidate.ver))
@@ -34,7 +35,7 @@ class Provider:
 
     def is_satisfied_by(self, requirement, candidate: Candidate):
         res = None
-        if not set(requirement.extras).issubset(set(candidate.extras)):
+        if not set(requirement.extras).issubset(set(candidate.selected_extras)):
             res = False
         res = bool(len(list(filter_versions([candidate.ver], requirement.specs))))
         #print(f"{res} {requirement} satisfied by {candidate}")
@@ -71,7 +72,7 @@ class ResolvelibResolver(Resolver):
                 prop_build_inputs=prop_build_inputs,
                 is_root=is_root,
                 provider_info=candidate.provider_info,
-                extras_selected=list(result.mapping[name].extras),
+                extras_selected=list(result.mapping[name].selected_extras),
                 build=candidate.build
             ))
         remove_circles_and_print(nix_py_pkgs, self.nixpkgs)

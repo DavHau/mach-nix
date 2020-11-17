@@ -1,5 +1,4 @@
-#_default =                "wheel,sdist,nixpkgs"
-_default =                "conda/conda-forge,wheel,sdist,nixpkgs"
+_default =                "conda,wheel,sdist,nixpkgs"
 
 gdal =                    "nixpkgs"
 pip =                     "nixpkgs,sdist"

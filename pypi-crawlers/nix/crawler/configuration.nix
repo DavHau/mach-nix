@@ -269,7 +269,7 @@ in
         done
       done
       echo "{}" > sha256.json
-      for f in $(find . -type f -not -path './.git/*' -not -name '.*'); do
+      for f in $(find . -type f -not -path './.git/*' -not -name '.*' -not -name 'sha256*'); do
         jq  ". + {\"$f\": \"$(cat $f | openssl dgst -binary -sha256 | openssl base64 | awk '{print $1}')\"}" sha256.json \
           | sponge sha256.json
       done

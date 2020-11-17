@@ -9,4 +9,5 @@ mach-nix.mkPython {
     python-dateutil
   '';
   providers.python-dateutil = "sdist";
+  providers.setuptools-scm = "wheel,sdist,nixpkgs";
 }
