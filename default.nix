@@ -1,6 +1,6 @@
 {
   pkgs ? import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; },
-  python ? "python3",
+  python ? null,
 
   # add some conda channels
   condaChannelsExtra ? {},

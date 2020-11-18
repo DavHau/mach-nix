@@ -7,7 +7,7 @@ let
 
   buildPythonPackageBase = python: func:
     args@{
-      requirements ? null,  # content from a requirements.txt file
+      requirements ? "",  # content from a requirements.txt file
       requirementsExtra ? "",  # add additional requirements to the packge
       tests ? false,  # Disable tests wherever possible to decrease build time.
       extras ? [],
@@ -24,10 +24,7 @@ let
     with (_buildPythonParseArgs args);
     with builtins;
     let
-      python_arg = if isString python then python else throw '''python' must be a string. Example: "python38"'';
-    in
-    let
-      python_pkg = pkgs."${python_arg}";
+      python_pkg = l.selectPythonPkg pkgs python requirements;
       src = l.get_src pass_args.src;
       # Extract dependencies automatically if 'requirements' is unset
       pname =
@@ -38,7 +35,7 @@ let
         else l.extract_meta python_pkg src "version" "version";
       meta_reqs = l.extract_requirements python_pkg src "${pname}:${version}" extras;
       reqs =
-        (if requirements == null then
+        (if requirements == "" then
           if builtins.hasAttr "format" args && args.format != "setuptools" then
             throw "Automatic dependency extraction is only available for 'setuptools' format."
                   " Please specify 'requirements' if setuptools is not used."

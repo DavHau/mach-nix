@@ -6,7 +6,7 @@ let
   l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 
   buildPythonPackageBase = (import ./buildPythonPackage.nix {
-    inherit condaDataRev condaDataSha256 pkgs pypiDataRev pypiDataSha256;
+    inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs pypiDataRev pypiDataSha256;
    });
 
   mkPython = python:
@@ -22,11 +22,7 @@ let
       _fixes ? import ../fixes.nix {pkgs = pkgs;}
     }:
     let
-      python_arg =
-        (if isString python then python else throw '''python' must be a string. Example: "python38"'');
-    in
-    let
-      python_pkg = pkgs."${python_arg}";
+      python_pkg = l.selectPythonPkg pkgs python requirements;
       pyver = l.get_py_ver python_pkg;
       # and separate pkgs into groups
       extra_pkgs_python = map (p:
@@ -118,10 +114,15 @@ let
         ++ [ override_selectPkgs ]
       );
       py_final = python_pkg.override { packageOverrides = all_overrides;};
-      py_final_with_pkgs = py_final.withPackages (ps: selectPkgs ps);
+      py_final_with_pkgs = (py_final.withPackages (ps: selectPkgs ps)).overrideAttrs (oa:{
+        postBuild = ''
+          ${l.condaSymlinkJoin (flatten (map (p: p.allCondaDeps or []) (selectPkgs py_final.pkgs))) }
+        '' + oa.postBuild;
+      });
       final_env = py_final_with_pkgs.override (oa: {
         makeWrapperArgs = [
           ''--suffix-each PATH ":" "${toString (map (p: "${p}/bin") extra_pkgs_other)}"''
+          ''--set QT_PLUGIN_PATH ${py_final_with_pkgs}/plugins''
         ];
       });
     in let

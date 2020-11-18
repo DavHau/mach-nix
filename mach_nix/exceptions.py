@@ -1,0 +1,3 @@
+
+class MachNixError(Exception):
+    pass

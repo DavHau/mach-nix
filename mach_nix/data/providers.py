@@ -180,19 +180,19 @@ class CombinedDependencyProvider(DependencyProviderBase):
             if c in provider.all_candidates(c.name, c.selected_extras, c.build):
                 return provider.get_pkg_reqs(c)
 
-    def list_all_providers_for_pkg(self, pkg_name):
+    def list_all_providers_for_pkg(self, pkg_name, extras, build):
         result = []
         for p_name, provider in self._all_providers.items():
-            if provider.all_candidates(pkg_name):
+            if provider.all_candidates(pkg_name, extras, build):
                 result.append(p_name)
         return result
 
-    def print_error_no_versions_available(self, pkg_name):
+    def print_error_no_versions_available(self, pkg_name, extras, build):
         provider_names = set(self.allowed_providers_for_pkg(pkg_name).keys())
-        error_text = f"\nThe Package '{pkg_name}' is not available from any of the " \
-                     f"selected providers {provider_names}\n for the selected python version"
+        error_text = f"\nThe Package '{pkg_name}' (build: {build}) is not available from any of the " \
+                     f"selected providers {sorted(provider_names)}\n for the selected python version"
         if provider_names != set(self._all_providers.keys()):
-            alternative_providers = self.list_all_providers_for_pkg(pkg_name)
+            alternative_providers = self.list_all_providers_for_pkg(pkg_name, extras, build)
             if alternative_providers:
                 error_text += f'... but the package is is available from providers {alternative_providers}\n' \
                               f"Consider adding them via 'providers='"
@@ -215,7 +215,7 @@ class CombinedDependencyProvider(DependencyProviderBase):
             candidates += list(provider.all_candidates_sorted(pkg_name, extras, build))
         if candidates:
             return tuple(candidates)
-        self.print_error_no_versions_available(pkg_name)
+        self.print_error_no_versions_available(pkg_name, extras, build)
 
     def all_candidates(self, name, extras=None, build=None) -> Iterable[Candidate]:
         return self.all_candidates_sorted(name, extras, build)
@@ -544,22 +544,27 @@ class CondaDependencyProvider(DependencyProviderBase):
         candidates = []
         for ver in self.pkgs[pkg_name].keys():
             for p in self.compatible_builds(pkg_name, parse_ver(ver), build):
-                candidates.append(Candidate(
-                    p['name'],
-                    parse_ver(p['version']),
-                    selected_extras=tuple(),
-                    build=p['build'],
-                    provider_info=ProviderInfo(
-                        self,
-                        url=f"https://anaconda.org/{self.channel}/{p['name']}/"
-                            f"{p['version']}/download/{p['subdir']}/{p['fname']}",
-                        hash=p['sha256']
-                    )
-                ))
-                if 'collisions' in p:
+                if 'sha256' not in p:
                     print(
-                        f"WARNING: Colliding conda package in {self.channel}. Ignoring {p['name']} from {p['collisions']} "
-                        f"in favor of {p['name']} from '{p['subdir']}'")
+                        f"Ignoring conda package {p['name']}:{p['version']} from provider {self.channel} \n"
+                        "since it doesn't provide a sha256 sum.\n")
+                else:
+                    candidates.append(Candidate(
+                        p['name'],
+                        parse_ver(p['version']),
+                        selected_extras=tuple(),
+                        build=p['build'],
+                        provider_info=ProviderInfo(
+                            self,
+                            url=f"https://anaconda.org/{self.channel}/{p['name']}/"
+                                f"{p['version']}/download/{p['subdir']}/{p['fname']}",
+                            hash=p['sha256']
+                        )
+                    ))
+                    if 'collisions' in p:
+                        print(
+                            f"WARNING: Colliding conda package in {self.channel}. Ignoring {p['name']} from {p['collisions']} "
+                            f"in favor of {p['name']} from '{p['subdir']}'")
         return candidates
 
     def deviated_version(self, pkg_name, normalized_version: Version, build):

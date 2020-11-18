@@ -22,6 +22,7 @@ from mach_nix.requirements import parse_reqs_line
     ('build123*', 'requests==2.24.*', 'requests ==2.24.* build123*'),
     ('build123*', 'requests==2.24.*', 'requests 2.24.* build123*'),
     ('build123*', 'requests==2.24.0', 'requests 2.24.0 build123*'),
+    (None, 'requests==2.24.0', 'requests 2.24.0 *'),
 
     # stripping
     ('build123*', 'requests==2.24.0', ' requests 2.24.0 build123*'),
@@ -34,6 +35,13 @@ from mach_nix.requirements import parse_reqs_line
 
     # test 3 parts non-conda
     (None, 'python >=2.6, !=3.0.*', 'python >=2.6, !=3.0.*'),
+
+    # ignoring builds
+    (None, 'requests==2.24.0', ' requests 2.24.0 py37_2'),
+    (None, 'requests==2.24.0', ' requests 2.24.0 0'),
+    (None, 'requests==2.24.0', ' requests 2.24.0 *'),
+    (None, 'ca-certificates>=2020.10.14', 'ca-certificates >=2020.10.14 0'),
+    ('py35hd5e75dd_0', 'requests==2.24.0', ' requests 2.24.0 py35hd5e75dd_0'),
 
 ])
 def test_parse_requirements(exp_build, exp_line, line):

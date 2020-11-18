@@ -1,3 +1,4 @@
+import re
 from typing import Iterable
 
 import distlib.markers
@@ -27,7 +28,6 @@ class Requirement(pkg_resources.Requirement):
         self.build = build
         super(Requirement, self).__init__(line)
         self.name = self.name.lower().replace('_', '-')
-        #self.specs = list(self.norm_specs(self.specs))
         self.specifier = SpecifierSet(','.join(f"{op}{ver}" for op, ver in self.specs))
 
     def __hash__(self):
@@ -76,11 +76,13 @@ def parse_reqs_line(line):
     # conda spec with build like "tensorflow-base 2.0.0 gpu_py36h0ec5d1f_0"
     # or "hdf5 >=1.10.5,<1.10.6.0a0 mpi_mpich_*"
     if len(splitted) == 3 \
+            and not splitted[1] in all_ops \
             and not any(op in splitted[0]+splitted[2] for op in all_ops) \
             and (
-                splitted[-1][-2] == '_' or '*' in splitted[-1]
-                or
-                not any(op in splitted[1] for op in all_ops)
+                splitted[-1].isdigit()
+                or (len(splitted[-1]) > 1 and splitted[-1][-2] == '_')
+                or '*' in splitted[-1]
+                or not any(op in splitted[1] for op in all_ops)
             ):
         name, ver_spec, build = splitted
         if not any(op in ver_spec for op in all_ops):
@@ -93,5 +95,11 @@ def parse_reqs_line(line):
         if not any(op in name + ver_spec for op in all_ops):
             ver_spec = f"=={ver_spec}"
         line = f"{name}{ver_spec}"
+
+    if build is None \
+            or build == "*"\
+            or re.match(r"(py)?\d+_\d+", build)\
+            or re.match(r"\d+", build):
+        build = None
 
     return line, build

@@ -11,6 +11,7 @@ from resolvelib.resolvers import RequirementInformation
 import mach_nix
 from mach_nix.data.nixpkgs import NixpkgsIndex
 from mach_nix.data.providers import CombinedDependencyProvider, ProviderSettings
+from mach_nix.exceptions import MachNixError
 from mach_nix.generators.overides_generator import OverridesGenerator
 from mach_nix.requirements import parse_reqs, filter_reqs_by_eval_marker, context
 from mach_nix.resolver.resolvelib_resolver import ResolvelibResolver
@@ -25,7 +26,7 @@ def load_env(name, *args, **kwargs):
     return var.strip()
 
 
-def main():
+def do():
     providers_json = load_env('providers')
 
     conda_channels_json = load_env('conda_channels_json')
@@ -83,13 +84,21 @@ def handle_resolution_impossible(exc: ResolutionImpossible, reqs_str, providers_
     print(
         f"\nSome requirements could not be resolved.\n"
         f"Top level requirements: \n  {'  '.join(l for l in reqs_str.splitlines())}\n"
-        f"Providers:\n  {f'{nl}  '.join(pformat(json.loads(providers_json)).splitlines())}\n"
+        f"Providers:\n  {f'{nl}  '.join(pformat(json.load(open(providers_json))).splitlines())}\n"
         f"Mach-nix version: {open(dirname(mach_nix.__file__) + '/VERSION').read().strip()}\n"
         f"Python: {py_ver_str}\n"
         f"Cause: {exc.__context__}\n"
         f"The requirements which caused the error:"
         f"{causes_str}\n",
         file=sys.stderr)
+
+
+def main():
+    try:
+        do()
+    except MachNixError as e:
+        print(e)
+        exit(1)
 
 
 if __name__ == "__main__":

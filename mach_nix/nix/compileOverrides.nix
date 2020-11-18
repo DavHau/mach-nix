@@ -14,19 +14,27 @@
   _providerDefaults ? with builtins; fromTOML (readFile ../provider_defaults.toml)
 }:
 
+with builtins;
 with pkgs.lib;
 let
   l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 
+  processedReqs = l.preProcessRequirements requirements;
+
+  _requirements = processedReqs.requirements;
+
+  __providerDefaults = l.parseProviders _providerDefaults;
+
   _providers =
     let
-      extraProviderNames = map (n: "conda/" + n) (attrNames condaChannelsExtra);
-      defaults = recursiveUpdate _providerDefaults {
+      extraChannelProviders =(map (n: "conda/" + n) (attrNames condaChannelsExtra));
+      extraProviders =
+        extraChannelProviders
+        ++ filter (p: ! extraChannelProviders ? p) processedReqs.providers;
+      defaults = recursiveUpdate __providerDefaults {
         _default =
-          if isString _providerDefaults._default then
-            _providerDefaults._default + concatMapStrings (s: "," + s) extraProviderNames
-          else
-            _providerDefaults._default ++ extraProviderNames;
+            __providerDefaults._default
+            ++ (filter (p: ! elem p __providerDefaults._default) extraProviders);
       };
     in
       (l.parseProviders (defaults // providers));
@@ -50,7 +58,7 @@ let
   providers_json_file = pkgs.writeText "providers" (builtins.toJSON _providers);
   mach_nix_file = pkgs.runCommand "mach_nix_file"
     { buildInputs = [ src builder_python db_and_fetcher.pypi_deps_db_src];
-      inherit nixpkgs_json requirements;
+      inherit nixpkgs_json;
       inherit (db_and_fetcher) pypi_deps_db_src pypi_fetcher_commit pypi_fetcher_sha256;
       conda_channels_json =  (import ./conda-channels.nix {
         inherit condaChannelsExtra pkgs;
@@ -59,6 +67,7 @@ let
       disable_checks = ! tests;
       providers = providers_json_file;
       py_ver_str = python.version;
+      requirements = _requirements;
     }
     ''
       mkdir -p $out/share

@@ -101,6 +101,11 @@ class OverridesGenerator(ExpressionGenerator):
                     in
                       if result.success then result.value else {{}}
                   else {{}};
+              allCondaDepsRec = pkg:
+                let directCondaDeps = 
+                  filter (p: p ? provider && p.provider == "conda") (pkg.propagatedBuildInputs or []);
+                in
+                  directCondaDeps ++ filter (p: ! directCondaDeps ? p) (map (p: p.allCondaDeps) directCondaDeps);
               tests_on_off = enabled: pySelf: pySuper:
                 let
                   mod = {{
@@ -211,7 +216,7 @@ class OverridesGenerator(ExpressionGenerator):
     def _gen_conda_buildPythonPackage(
             self, name, ver, circular_deps, nix_name, prop_build_inputs_str, src_url, src_sha256):
         out = f"""
-            "{name}" = python-self.buildPythonPackage rec {{
+            "{name}" = let pSelf = python-self.buildPythonPackage rec {{
               pname = "{name}";
               version = "{ver}";
               src = builtins.fetchurl {{
@@ -219,7 +224,10 @@ class OverridesGenerator(ExpressionGenerator):
                 sha256 = "{src_sha256}";
               }};
               format = "condabin";
-              passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "conda"; }};"""
+              passthru = (get_passthru "{name}" "{nix_name}") // {{ 
+                provider = "conda";
+                allCondaDeps = allCondaDepsRec pSelf;
+              }};"""
         if circular_deps:
             out += f"""
               pipInstallFlags = "--no-dependencies";"""
@@ -227,7 +235,7 @@ class OverridesGenerator(ExpressionGenerator):
             out += f"""
               propagatedBuildInputs = (with python-self; [ {prop_build_inputs_str} ]);"""
         out += """
-            };\n"""
+            }; in pSelf;\n"""
         return unindent(out, 8)
 
     def _gen_overrides(self, pkgs: Dict[str, ResolvedPkg], overrides_keys):

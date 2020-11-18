@@ -33,6 +33,7 @@
 , gnutar
 , libGL
 , libselinux
+, lbzip2
 , xorg
 
 # conda pkgs
@@ -200,9 +201,9 @@ let
       setuptoolsCheckHook
     ] ++ checkInputs;
 
-    #postFixup = lib.optionalString (!dontWrapPythonPrograms) ''
-    #  wrapPythonPrograms
-    #'' + attrs.postFixup or '''';
+    postFixup = lib.optionalString (!dontWrapPythonPrograms) ''
+      wrapPythonPrograms
+    '' + attrs.postFixup or '''';
 
     # Python packages built through cross-compilation are always for the host platform.
     disallowedReferences = lib.optionals (python.stdenv.hostPlatform != python.stdenv.buildPlatform) [ python.pythonForBuild ];
@@ -220,12 +221,10 @@ let
     # Longer-term we should get rid of `checkPhase` and use `installCheckPhase`.
     installCheckPhase = attrs.checkPhase;
   } // lib.optionalAttrs (format == "condabin") {
-    # If given use the specified checkPhase, otherwise use the setup hook.
-    # Longer-term we should get rid of `checkPhase` and use `installCheckPhase`.
     unpackPhase = ''
-      ${gnutar}/bin/tar --exclude='info' -xf $src
+      ${lbzip2}/bin/lbzip2 -dc -n $(nproc) $src | ${gnutar}/bin/tar --exclude='info' -x
     '';
-    buildPhase = ''
+    installPhase = ''
       pyDir=$(echo ${lib.removeSuffix "-" namePrefix})
       if [ -e ./site-packages ]; then
         mkdir -p $out/lib/$pyDir/site-packages/
@@ -234,12 +233,9 @@ let
         cp -r . $out
         rm $out/env-vars
       fi
-    '';
-    installPhase = ''
       if [ -e $out/bin ]; then
-        find $out/bin -type f -exec sed -i "s|/opt/anaconda1anaconda2anaconda3|$out|g" {} \;
+        find $out/bin -type f -exec sed -i "s|/opt/anaconda1anaconda2anaconda3||g" {} \;
       fi
-      rm -rf $out/ssl
     '';
   }
   ));

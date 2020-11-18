@@ -53,6 +53,14 @@ let
   allCondaChannels = (_registryChannels // _condaChannelsExtra);
 
   condaChannelsJson = pkgs.writeText "conda-channels.json" (toJSON allCondaChannels);
+
+  missingChannels = filter (c:
+    ! elem c ((attrNames registryChannels) ++ (attrNames condaChannelsExtra))
+  ) usedChannels;
+
 in
-trace "using conda channels: ${toString (intersperse "," (attrNames allCondaChannels))}"
-{ inherit condaChannelsJson; }
+if missingChannels != [] then
+  throw "Conda channels [${toString missingChannels}] are unknown. Use 'condaChannelsExtra' to make them available"
+else
+  trace "using conda channels: ${toString (concatStringsSep ", " (attrNames allCondaChannels))}"
+  { inherit condaChannelsJson; }
