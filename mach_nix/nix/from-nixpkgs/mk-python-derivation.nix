@@ -42,10 +42,8 @@
 
 # conda python
 , binutils
-#, libffi
 , libgcc
 , ncurses
-#, openssl
 , readline
 , sqlite
 , tk

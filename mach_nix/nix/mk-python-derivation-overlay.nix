@@ -26,15 +26,19 @@ pkgs: python: with pkgs.lib;
     callPackage = pkgs.newScope python.pkgs;
   in
   pySelf: pySuper: {
-    buildPythonPackage = makeOverridablePythonPackage ( makeOverridable (callPackage ./mk-python-derivation.nix {
-      inherit namePrefix;     # We want Python libraries to be named like e.g. "python3.6-${name}"
-      inherit toPythonModule; # Libraries provide modules
-      autoPatchelfHook = callPackage ./auto_patchelf_hook.nix {};
-    }));
+    buildPythonPackage = makeOverridablePythonPackage (
+      makeOverridable (callPackage ./from-nixpkgs/mk-python-derivation.nix {
+        inherit namePrefix;     # We want Python libraries to be named like e.g. "python3.6-${name}"
+        inherit toPythonModule; # Libraries provide modules
+        autoPatchelfHook = callPackage ./auto_patchelf_hook.nix {};
+      })
+    );
 
-    buildPythonApplication = makeOverridablePythonPackage ( makeOverridable (callPackage ./mk-python-derivation.nix {
-      namePrefix = "";        # Python applications should not have any prefix
-      toPythonModule = x: x;  # Application does not provide modules.
-      autoPatchelfHook = callPackage ./auto_patchelf_hook.nix {};
-    }));
+    buildPythonApplication = makeOverridablePythonPackage (
+      makeOverridable (callPackage ./from-nixpkgs/mk-python-derivation.nix {
+        namePrefix = "";        # Python applications should not have any prefix
+        toPythonModule = x: x;  # Application does not provide modules.
+        autoPatchelfHook = callPackage ./auto_patchelf_hook.nix {};
+      })
+    );
   }
