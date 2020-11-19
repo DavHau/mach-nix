@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Iterable, List
 
 import resolvelib
@@ -8,7 +7,7 @@ from mach_nix.data.providers import DependencyProviderBase, Candidate
 from mach_nix.deptree import remove_circles_and_print
 from mach_nix.requirements import Requirement
 from mach_nix.resolver import Resolver, ResolvedPkg
-from mach_nix.versions import filter_versions, Version
+from mach_nix.versions import filter_versions
 
 
 # Implement logic so the resolver understands the requirement format.
@@ -38,7 +37,6 @@ class Provider:
         if not set(requirement.extras).issubset(set(candidate.selected_extras)):
             res = False
         res = bool(len(list(filter_versions([candidate.ver], requirement.specs))))
-        #print(f"{res} {requirement} satisfied by {candidate}")
         return res
 
     def get_dependencies(self, candidate):

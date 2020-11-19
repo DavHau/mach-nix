@@ -89,7 +89,7 @@ class DependencyProviderBase(ABC):
     @cached()
     def find_matches(self, req) -> List[Candidate]:
         all = list(self.all_candidates_sorted(req.key, req.extras, req.build))
-        matching_versions = set(filter_versions((c.ver for c in all), req.specs))
+        matching_versions = set(filter_versions([c.ver for c in all], req.specs))
         matching_candidates = [c for c in all if c.ver in matching_versions]
         return matching_candidates
 

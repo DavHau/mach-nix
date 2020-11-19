@@ -1,14 +1,13 @@
-import fnmatch
 import sys
 import traceback
 from typing import Iterable, Tuple, List
 
+import packaging.version
 from conda.common.compat import with_metaclass
-from packaging.version import LegacyVersion
 from conda.models.version import ver_eval, VersionOrder, SingleStrArgCachingType
+from packaging.version import LegacyVersion
 
 from mach_nix.cache import cached
-import packaging.version
 
 
 @with_metaclass(SingleStrArgCachingType)
@@ -43,22 +42,11 @@ class PyVer(Version):
 
 
 def parse_ver(ver_str) -> Version:
-    #return packaging.version.parse(ver_str)
     return Version(ver_str)
 
 
 def ver_better_than_other(v: Version, o: Version) -> bool:
     return ver_eval(v, f">{o}")
-    # instability = {v: 0, o: 0}
-    # if v >= o:
-    #     for ver in [v, o]:
-    #         if ver.dev:
-    #             instability[ver] += 2
-    #         if ver.pre:
-    #             instability[ver] += 1
-    #     if instability[v] <= instability[o]:
-    #         return True
-    # return False
 
 
 def ver_sort_key(ver: Version):
@@ -79,34 +67,23 @@ def ver_sort_key(ver: Version):
                 if elem.lower().islower():
                     is_pre = 1
                     break
-    # if isinstance(ver, LegacyVersion):
-    #     return 0, 0, 0, ver
-    # is_dev = int(ver.is_devrelease)
-    # is_pre = int(ver.is_prerelease)
     return not is_dev, not is_pre, ver
 
 
 def best_version(versions: Iterable[Version]) -> Version:
     return sorted(versions)[-1]
-    # best = None
-    # for ver in versions:
-    #     if best is None:
-    #         best = ver
-    #         continue
-    #     if ver_better_than_other(ver, best):
-    #         best = ver
-    # return best
 
 
-#@cached(keyfunc=lambda args: tuple(args[0]) + tuple(args[1]))
+@cached(keyfunc=lambda args: hash(tuple(args[0]) + tuple(args[1])))
 def filter_versions(
-        versions: Iterable[Version],
-        specs: Iterable[Tuple[str, str]]) -> List[Version]:
+        versions: List[Version],
+        specs: List[Tuple[str, str]]) -> List[Version]:
     """
     Reduces a given list of versions to contain only versions
     which are allowed according to the given specifiers
     """
     versions = list(versions)
+    assert len(versions) > 0
     for op, ver in specs:
         if op == '==':
             if str(ver) == "*":
@@ -115,15 +92,5 @@ def filter_versions(
                 op = '='
         ver = parse_ver(ver)
         versions = list(filter(lambda v: ver_eval(v, f"{op}{ver}"), versions))
-        # if op == '==':
-        #     versions_str = (str(ver) for ver in versions)
-        #     versions_str_filtered = list(ver_str for ver_str in fnmatch.filter(versions_str, str(ver)))
-        #     versions = [ver for ver in versions if str(ver) in versions_str_filtered]
-        # elif op == '!=':
-        #     versions_str = (str(ver) for ver in versions)
-        #     bad_versions_str = set(fnmatch.filter(versions_str, str(ver)))
-        #     versions = list(filter(lambda v: str(v) not in bad_versions_str, versions))
-        # else:
-        #     versions = list(filter(lambda v: eval(f'v {op} ver', dict(v=v, ver=ver)), versions))
     return list(versions)
 
