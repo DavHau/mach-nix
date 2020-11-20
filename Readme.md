@@ -143,18 +143,22 @@ Functions for building python packages or applications:
 #### Configure Providers
 **Providers** allow you to configure the origin for your packages on a granular basis.
 
-The following 3 providers are available since version 2.0.0:
-  1. **nixpkgs**: Provides packages directly from nixpkgs without modifying their sources. Has only a few versions available, but has a high success rate and all the nix supported features, like `SSE/AVX/FMA` for tensorflow for example.
-  2. **sdist**: Provides all package versions available from pypi which support setuptools and builds them via nixpkgs overlays wherever possible to resolve external dependencies. It still supports the nixpkgs specific features no matter which package version is selected. But chances are higher for a build to fail than with the **nixpkgs** provider.
-  3. **wheel**: Provides all linux compatible wheel releases from pypi. Wheels can contain binaries. Mach-nix autopatches them to work on nix. Wheels are super quick to install and work quite reliable. Therefore this provider is preferred by default.
+The following 3 providers are available:
+  1. **conda**: Provides packages from anaconda.org. Those packages can contain binaries. Some benefits of anaconda are:  
+      - Different build variants for packages  
+      - Provides all system dependencies for packages  
+      - Good support for aarch64  
+  1. **wheel**: Provides all linux compatible wheel releases from pypi. If wheels contain binaries, Mach-nix patches them via patchelf to ensure reproducibility. Wheels are very quick to install and work quite reliable.
+  1. **sdist**: Provides all setuptools compatible packages from pypi. It still uses nix for building, which allows it to be tweaked in a flexible way. But in some cases problems can occur, if there is not sufficient information available to determine required system depedencies.
+  1. **nixpkgs**: Provides packages directly from nixpkgs without modifying their sources. Has only a few versions available, Use this provider if you need to tweak individual build parameters, like `SSE/AVX/FMA` for tensorflow for example.
 
 Mach-nix builds environments by mixing packages from all 3 providers. You decide which providers should be preferred for which packages, or which providers shouldn't be used at all.
-The default preferred order of providers is `wheel`, `sdist`, `nixpkgs`.
+The default preferred order of providers is `conda`, `wheel`, `sdist`, `nixpkgs`.
 
 Providers can be disabled/enabled/preferred like in the following examples:
  - A provider specifier like **`"wheel,sdist,nixpkgs"`** means, that the resolver will first try to satisfy the requirements with candidates from the wheel provider. If a resolution is impossible or a package doesn't provide a wheel release, it falls back to sdist/nixpkgs for a minimal number of packages. In general it will choose as many packages from wheel as possible, then sdist, then nixpkgs.
 
- - **`"nixpkgs,sdist"`** means, that `nixpkgs` candidates are preferred, but mach-nix falls back to build from source (sdist). **`wheel`** is not listed and therefore wheels are disabled.
+ - **`"nixpkgs,sdist"`** means, that `nixpkgs` candidates are preferred, but mach-nix falls back to sdist. **`wheel`** is not listed and therefore wheels are disabled.
 
  A full provider config passed to mach-nix looks like this:
  ```nix
