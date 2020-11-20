@@ -96,7 +96,7 @@ You can call mach-nix directly from a nix expression
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "refs/tags/3.0.2";
+    ref = "refs/heads/conda-beta";
   }) {};
 in
 mach-nix.mkPython {

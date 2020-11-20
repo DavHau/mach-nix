@@ -40,7 +40,7 @@ every mach-nix expression should begin like this:
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "refs/tags/3.0.2";
+    ref = "refs/heads/conda-beta";
   }) {
     # optionally bring your own nixpkgs
     # pkgs = import <nixpkgs> {};
