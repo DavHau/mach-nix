@@ -7,7 +7,7 @@
 
   # dependency databases
   condaDataRev ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/CONDA_CHANNELS.json)).rev,
-  condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/CONDA_CHANNELS.json)).sha256,
+  condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/CONDA_CHANNELS.json)).indexSha256,
   pypiDataRev ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB.json)).rev,
   pypiDataSha256 ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB.json)).sha256,
   ...
