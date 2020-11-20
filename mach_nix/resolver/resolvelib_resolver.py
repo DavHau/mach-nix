@@ -51,13 +51,17 @@ class ResolvelibResolver(Resolver):
         result = resolvelib.Resolver(Provider(self.nixpkgs, self.deps_provider), reporter).resolve(reqs, max_rounds=1000)
         nix_py_pkgs = []
         for name in result.graph._forwards.keys():
-            if name is None:
+            if name is None or name.startswith('-'):
                 continue
             candidate = result.mapping[name]
             ver = candidate.ver
             install_requires, setup_requires = self.deps_provider.get_pkg_reqs(candidate)
-            prop_build_inputs = list({req.key for req in install_requires})
-            build_inputs = list({req.key for req in setup_requires})
+            prop_build_inputs = list(filter(
+                lambda name: not name.startswith('-'),
+                list({req.key for req in install_requires})))
+            build_inputs = list(filter(
+                lambda name: not name.startswith('-'),
+                list({req.key for req in setup_requires})))
             is_root = name in result.graph._forwards[None]
             nix_py_pkgs.append(ResolvedPkg(
                 name=name,
