@@ -96,10 +96,7 @@ def parse_reqs_line(line):
             ver_spec = f"=={ver_spec}"
         line = f"{name}{ver_spec}"
 
-    if build is None \
-            or build == "*"\
-            or re.match(r"(py)?\d+_\d+", build)\
-            or re.match(r"\d+", build):
+    if build == "*":
         build = None
 
     return line, build

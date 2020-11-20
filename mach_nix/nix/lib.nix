@@ -85,45 +85,51 @@ rec {
         pkgs."${python_arg}" ;
 
   preProcessRequirements = str:
-    if isCondaEnvironmentYml str then
-      condaYml2reqs (fromYAML str)
-    else {
-      requirements = str;
-      providers = [];
-    };
-
-  condaYml2reqs = data:
-  {
-    requirements =
-      concatStringsSep "\n" (flatten (map (d:
-        let
-          split = splitString "=" d;
-          name = elemAt split 0;
-          ver = elemAt split 1;
-          build = elemAt split 2;
-        in
-          if hasPrefix "_" name || elem name [ "python" "conda" ] then
-            []
-          else
-            "${name} ${ver} ${build}"
-      ) data.dependencies));
-
-    providers = flatten (map (c:
-      if c == "defaults" then
-        [ "conda/main" "conda/r" ]
-      else
-        "conda/" + c
-    ) data.channels);
-  } // (
     let
-      pyDep = filter (d: hasPrefix "python=" d) data.dependencies;
+     condaYml2reqs = data:
+      {
+        requirements =
+          concatStringsSep "\n" (flatten (map (d:
+            let
+              split = splitString "=" d;
+              name = elemAt split 0;
+              ver = elemAt split 1;
+              build = elemAt split 2;
+              build'=
+                if isNull (match "py[[:digit:]]+_[[:digit:]]+" build) && isNull (match "[[:digit:]]+" build) then
+                  build
+                else
+                  "*";
+            in
+              if hasPrefix "_" name || elem name [ "python" "conda" ] then
+                []
+              else
+                "${name} ${ver} ${build'}"
+          ) data.dependencies));
+
+        providers = flatten (map (c:
+          if c == "defaults" then
+            [ "conda/main" "conda/r" ]
+          else
+            "conda/" + c
+        ) data.channels);
+      } // (
+        let
+          pyDep = filter (d: hasPrefix "python=" d) data.dependencies;
+        in
+          if pyDep == [] then {}
+          else let
+            pyVer = splitString "." (elemAt (splitString "=" (elemAt pyDep 0)) 1); # example: [ 3 7 2 ]
+          in
+            { python = "python${elemAt pyVer 0}${elemAt pyVer 1}"; }
+      );
     in
-      if pyDep == [] then {}
-      else let
-        pyVer = splitString "." (elemAt (splitString "=" (elemAt pyDep 0)) 1); # example: [ 3 7 2 ]
-      in
-        { python = "python${elemAt pyVer 0}${elemAt pyVer 1}"; }
-  );
+      if isCondaEnvironmentYml str then
+        condaYml2reqs (fromYAML str)
+      else {
+        requirements = str;
+        providers = [];
+      };
 
   parseProviders = providers:
     let
