@@ -91,14 +91,12 @@ def parse_reqs(strs):
 re_specs = re.compile(r"(==|!=|>=|<=|>|<|~=)(.*)")
 
 
-def parse_specs(spec_str):
-    parts = spec_str.split(',')
+def parse_spec_part(part):
     specs = []
-    for part in parts:
-        op, ver = re.fullmatch(re_specs, part.strip()).groups()
-        ver = ver.strip()
-        specs.append((op, ver))
-    return tuple(specs)
+    op, ver = re.fullmatch(re_specs, part.strip()).groups()
+    ver = ver.strip()
+    specs.append((op, ver))
+    return list(specs)
 
 
 extra_name = r"([a-z]|[A-Z]|-|_|\d)+"
@@ -137,14 +135,20 @@ def parse_reqs_line(line):
 
     all_specs = groups[6]
     if all_specs:
-        all_specs = all_specs.split('|')
-        for i, specs in enumerate(all_specs):
-            if not re.search(r"==|!=|>=|<=|>|<|~=|=", specs):
-                all_specs[i] = '==' + specs
-                continue
-            if re.fullmatch(r"=\d(\d|\.|\*|[a-z])*", specs):
-                all_specs[i] = '=' + specs
-        all_specs = tuple(map(parse_specs, all_specs))
+        all_specs_raw = all_specs.split('|')
+        all_specs = []
+        for specs in all_specs_raw:
+            parts = specs.split(',')
+            parsed_parts = []
+            for part in parts:
+                if not re.search(r"==|!=|>=|<=|>|<|~=|=", part):
+                    part = '==' + part
+                elif re.fullmatch(r"=\d(\d|\.|\*|[a-z])*", part):
+                    part = '=' + part
+                parsed_parts += parse_spec_part(part)
+            all_specs.append(tuple(parsed_parts))
+
+        all_specs = tuple(all_specs)
 
     build = groups[11]
     if build:

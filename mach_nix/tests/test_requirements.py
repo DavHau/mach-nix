@@ -44,6 +44,7 @@ from mach_nix.requirements import parse_reqs_line
        ('ruamel.yaml', (), ((('>=', '0.12.4'), ('<', '0.16')), (('==', '0.16.5.*'),)), None, None))
     , ('openjdk =8|11', ('openjdk', (), ((('==', '8'),), (('==', '11'),)), None, None))
     , ('python 3.6.9 ab_73_pypy', ('python', (), ((('==', '3.6.9'),),), 'ab_73_pypy', None))
+    , ('gitpython >=3.0.8,3.0.*', ('gitpython', (), ((('>=', '3.0.8'), ('==', '3.0.*')),), None, None))
 ])
 def test_parse_requirements(input, exp_output):
     assert parse_reqs_line(input) == exp_output
