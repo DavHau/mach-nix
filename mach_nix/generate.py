@@ -79,7 +79,8 @@ def handle_resolution_impossible(exc: ResolutionImpossible, reqs_str, providers_
         causes_str += f"\n  {ri.requirement}"
         if ri.parent:
             causes_str += \
-                f" - parent: {ri.parent.name}{ri.parent.extras if ri.parent.extras else ''}:{ri.parent.ver}"
+                f" - parent: {ri.parent.name}" \
+                f"{ri.parent.selected_extras if ri.parent.selected_extras else ''}:{ri.parent.ver}"
     nl = '\n'
     print(
         f"\nSome requirements could not be resolved.\n"

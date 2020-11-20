@@ -1,13 +1,14 @@
 import re
-from typing import Iterable
+from typing import Iterable, Tuple, List
 
 import distlib.markers
 import pkg_resources
+from conda.models.version import ver_eval
 from distlib.markers import DEFAULT_CONTEXT
 from pkg_resources._vendor.packaging.specifiers import SpecifierSet
 
 from mach_nix.cache import cached
-from mach_nix.versions import PyVer
+from mach_nix.versions import PyVer, Version, parse_ver
 
 
 def context(py_ver: PyVer, platform: str, system: str):
@@ -23,7 +24,26 @@ def context(py_ver: PyVer, platform: str, system: str):
     return context
 
 
-class Requirement(pkg_resources.Requirement):
+class Requirement:
+    def __init__(self, name, extras, specs: Tuple[Tuple[Tuple[str, str]]], build=None, marker=None):
+        self.name = name.lower().replace('_', '-')
+        self.extras = extras or tuple()
+        self.specs = specs or tuple()
+        self.build = build
+        self.marker = marker
+
+    def __repr__(self):
+        return ' '.join(map(lambda x: str(x), filter(lambda e: e, (self.name, self.extras, self.specs, self.build, self.marker))))
+
+    @property
+    def key(self):
+        return self.name
+
+    def __hash__(self):
+        return hash((self.name, self.specs, self.build))
+
+
+class RequirementOld(pkg_resources.Requirement):
     def __init__(self, line, build=None):
         self.build = build
         super(Requirement, self).__init__(line)
@@ -68,35 +88,97 @@ def parse_reqs(strs):
         yield Requirement(*parse_reqs_line(line))
 
 
+re_specs = re.compile(r"(==|!=|>=|<=|>|<|~=)(.*)")
+
+
+def parse_specs(spec_str):
+    parts = spec_str.split(',')
+    specs = []
+    for part in parts:
+        op, ver = re.fullmatch(re_specs, part.strip()).groups()
+        ver = ver.strip()
+        specs.append((op, ver))
+    return tuple(specs)
+
+
+extra_name = r"([a-z]|[A-Z]|-|_|\d)+"
+re_marker_extras = re.compile(rf"extra *== *'?({extra_name})'?")
+
+
+def extras_from_marker(marker):
+    matches = re.findall(re_marker_extras, marker)
+    if matches:
+        return tuple(group[0] for group in matches)
+    return tuple()
+
+
+re_reqs = re.compile(
+    r"^(([a-z]|[A-Z]|-|_|\d|\.)+)"  # name
+    r"("
+        rf"(\[({extra_name},?)+\])?"  # extras
+        r" *\(?(([,\|]? *(==|!=|>=|<=|>|<|~=|=)? *(\* |\d(\d|\.|\*|[a-z])*))+(?![_\d]))\)?"  # specs
+        r"( *([a-z]|\d|_|\*)+)?"  # build
+    r")?"
+    r"( *[:;] *(.*))?$")  # marker
+
+
 def parse_reqs_line(line):
-    build = None
-    line = line.strip(' ,')
-    splitted = line.split(' ')
+    match = re.fullmatch(re_reqs, line)
+    if not match:
+        raise Exception(f"couldn't parse: '{line}'")
+    groups = list(match.groups())
+    name = groups[0]
 
-    # conda spec with build like "tensorflow-base 2.0.0 gpu_py36h0ec5d1f_0"
-    # or "hdf5 >=1.10.5,<1.10.6.0a0 mpi_mpich_*"
-    if len(splitted) == 3 \
-            and not splitted[1] in all_ops \
-            and not any(op in splitted[0]+splitted[2] for op in all_ops) \
-            and (
-                splitted[-1].isdigit()
-                or (len(splitted[-1]) > 1 and splitted[-1][-2] == '_')
-                or '*' in splitted[-1]
-                or not any(op in splitted[1] for op in all_ops)
-            ):
-        name, ver_spec, build = splitted
-        if not any(op in ver_spec for op in all_ops):
-            ver_spec = f"=={ver_spec}"
-        line = f"{name}{ver_spec}"
+    extras = groups[3]
+    if extras:
+        extras = tuple(extras.strip('[]').split(','))
+    else:
+        extras = tuple()
 
-    # parse conda specifiers without operator like "requests 2.24.*"
-    elif len(splitted) == 2:
-        name, ver_spec = splitted
-        if not any(op in name + ver_spec for op in all_ops):
-            ver_spec = f"=={ver_spec}"
-        line = f"{name}{ver_spec}"
+    all_specs = groups[6]
+    if all_specs:
+        all_specs = all_specs.split('|')
+        for i, specs in enumerate(all_specs):
+            if not re.search(r"==|!=|>=|<=|>|<|~=|=", specs):
+                all_specs[i] = '==' + specs
+                continue
+            if re.fullmatch(r"=\d(\d|\.|\*|[a-z])*", specs):
+                all_specs[i] = '=' + specs
+        all_specs = tuple(map(parse_specs, all_specs))
 
-    if build == "*":
-        build = None
+    build = groups[11]
+    if build:
+        build = build.strip()
 
-    return line, build
+    marker = groups[14]
+    if marker:
+        extras_marker = extras_from_marker(marker)
+        extras = extras + extras_marker
+
+    return name, extras, all_specs, build, marker
+
+
+@cached(keyfunc=lambda args: hash((tuple(args[0]), args[1])))
+def filter_versions(
+        versions: List[Version],
+        req: Requirement):
+    """
+    Reduces a given list of versions to contain only versions
+    which are allowed according to the given specifiers
+    """
+    assert isinstance(versions, list)
+    versions = list(versions)
+    if not req.specs:
+        return versions
+    all_versions = []
+    for specs in req.specs:
+        for op, ver in specs:
+            if op == '==':
+                if str(ver) == "*":
+                    return versions
+                elif '*' in str(ver):
+                    op = '='
+            ver = parse_ver(ver)
+            versions = list(filter(lambda v: ver_eval(v, f"{op}{ver}"), versions))
+        all_versions += list(versions)
+    return all_versions

@@ -7,8 +7,8 @@
   # conda-channels index
   repoName ? "conda-channels",
   repoOwner ? "DavHau",
-  rev ? "e742cc6152473ddffb33e91181ff5d1b23222fc8",
-  sha256 ? "1dqxni9yjk1g327blmz3n9fmnp7vs9syr3hf7xzhnramkng1fb30",
+  condaDataRev ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).rev,
+  condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).indexSha256
 }:
 with builtins;
 with pkgs.lib;
@@ -28,8 +28,8 @@ let
 
   channelRegistry = fromJSON (readFile (fetchurl {
     name = "conda-channels-index";
-    url = "https://raw.githubusercontent.com/${repoOwner}/${repoName}/${rev}/sha256.json";
-    inherit sha256;
+    url = "https://raw.githubusercontent.com/${repoOwner}/${repoName}/${condaDataRev}/sha256.json";
+    sha256 = condaDataSha256;
   }));
 
   registryChannels = mapAttrs' (filepath: hash:
@@ -41,7 +41,7 @@ let
       nameValuePair
         chan
         (map (sys: (builtins.fetchurl {
-          url = "https://raw.githubusercontent.com/${repoOwner}/${repoName}/${rev}/${chan}/${sys}.json";
+          url = "https://raw.githubusercontent.com/${repoOwner}/${repoName}/${condaDataRev}/${chan}/${sys}.json";
           sha256 = channelRegistry."./${chan}/${sys}.json";
         })) [ systemMap."${system}" "noarch" ])
   ) channelRegistry;

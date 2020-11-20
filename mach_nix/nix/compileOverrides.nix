@@ -10,7 +10,7 @@
   # Hash obtained using `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
   pypiDataSha256 ? (builtins.fromJSON (builtins.readFile ./PYPI_DEPS_DB.json)).sha256,
   condaDataRev ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).rev,
-  condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).sha256,
+  condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).indexSha256,
   _providerDefaults ? with builtins; fromTOML (readFile ../provider_defaults.toml)
 }:
 
@@ -61,7 +61,7 @@ let
       inherit nixpkgs_json;
       inherit (db_and_fetcher) pypi_deps_db_src pypi_fetcher_commit pypi_fetcher_sha256;
       conda_channels_json =  (import ./conda-channels.nix {
-        inherit condaChannelsExtra pkgs;
+        inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs;
         providers = _providers;
       }).condaChannelsJson;
       disable_checks = ! tests;

@@ -1,13 +1,10 @@
 import sys
 import traceback
-from typing import Iterable, Tuple, List
+from typing import Iterable
 
 import packaging.version
 from conda.common.compat import with_metaclass
 from conda.models.version import ver_eval, VersionOrder, SingleStrArgCachingType
-from packaging.version import LegacyVersion
-
-from mach_nix.cache import cached
 
 
 @with_metaclass(SingleStrArgCachingType)
@@ -72,25 +69,3 @@ def ver_sort_key(ver: Version):
 
 def best_version(versions: Iterable[Version]) -> Version:
     return sorted(versions)[-1]
-
-
-@cached(keyfunc=lambda args: hash(tuple(args[0]) + tuple(args[1])))
-def filter_versions(
-        versions: List[Version],
-        specs: List[Tuple[str, str]]) -> List[Version]:
-    """
-    Reduces a given list of versions to contain only versions
-    which are allowed according to the given specifiers
-    """
-    versions = list(versions)
-    assert len(versions) > 0
-    for op, ver in specs:
-        if op == '==':
-            if str(ver) == "*":
-                return versions
-            elif '*' in str(ver):
-                op = '='
-        ver = parse_ver(ver)
-        versions = list(filter(lambda v: ver_eval(v, f"{op}{ver}"), versions))
-    return list(versions)
-

@@ -5,9 +5,8 @@ import resolvelib
 from mach_nix.data.nixpkgs import NixpkgsIndex
 from mach_nix.data.providers import DependencyProviderBase, Candidate
 from mach_nix.deptree import remove_circles_and_print
-from mach_nix.requirements import Requirement
+from mach_nix.requirements import Requirement, filter_versions
 from mach_nix.resolver import Resolver, ResolvedPkg
-from mach_nix.versions import filter_versions
 
 
 # Implement logic so the resolver understands the requirement format.
@@ -33,10 +32,7 @@ class Provider:
         return self.provider.find_matches(req)
 
     def is_satisfied_by(self, requirement, candidate: Candidate):
-        res = None
-        if not set(requirement.extras).issubset(set(candidate.selected_extras)):
-            res = False
-        res = bool(len(list(filter_versions([candidate.ver], requirement.specs))))
+        res = bool(len(list(filter_versions([candidate.ver], requirement))))
         return res
 
     def get_dependencies(self, candidate):

@@ -5,13 +5,14 @@ import re
 import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from operator import itemgetter
 from typing import List, Tuple, Iterable
 
 import distlib.markers
 from pkg_resources import RequirementParseError
 
-from mach_nix.requirements import filter_reqs_by_eval_marker, Requirement, parse_reqs, context
-from mach_nix.versions import PyVer, ver_sort_key, filter_versions, parse_ver, Version
+from mach_nix.requirements import filter_reqs_by_eval_marker, Requirement, parse_reqs, context, filter_versions
+from mach_nix.versions import PyVer, ver_sort_key, parse_ver, Version
 from .bucket_dict import LazyBucketDict
 from .nixpkgs import NixpkgsIndex
 from ..cache import cached
@@ -89,7 +90,7 @@ class DependencyProviderBase(ABC):
     @cached()
     def find_matches(self, req) -> List[Candidate]:
         all = list(self.all_candidates_sorted(req.key, req.extras, req.build))
-        matching_versions = set(filter_versions([c.ver for c in all], req.specs))
+        matching_versions = set(filter_versions([c.ver for c in all], req))
         matching_candidates = [c for c in all if c.ver in matching_versions]
         return matching_candidates
 
@@ -204,7 +205,6 @@ class CombinedDependencyProvider(DependencyProviderBase):
                 f"If it still doesn't work, there was probably a problem while crawling pypi.\n" \
                 f"Please open an issue at: https://github.com/DavHau/mach-nix/issues/new\n"
         print(error_text, file=sys.stderr)
-        exit(1)
 
     @cached()
     def all_candidates_sorted(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
@@ -213,9 +213,9 @@ class CombinedDependencyProvider(DependencyProviderBase):
         # order by reversed preference expected
         for provider in reversed(tuple(self.allowed_providers_for_pkg(pkg_name).values())):
             candidates += list(provider.all_candidates_sorted(pkg_name, extras, build))
-        if candidates:
-            return tuple(candidates)
-        self.print_error_no_versions_available(pkg_name, extras, build)
+        if not candidates:
+            self.print_error_no_versions_available(pkg_name, extras, build)
+        return tuple(candidates)
 
     def all_candidates(self, name, extras=None, build=None) -> Iterable[Candidate]:
         return self.all_candidates_sorted(name, extras, build)
@@ -397,7 +397,7 @@ class WheelDependencyProvider(DependencyProviderBase):
         ver = parse_ver('.'.join(self.py_ver_digits))
         try:
             parsed_py_requires = list(parse_reqs(f"python{wheel.requires_python}"))
-            return bool(filter_versions([ver], parsed_py_requires[0].specs))
+            return bool(filter_versions([ver], parsed_py_requires[0]))
         except RequirementParseError:
             print(f"WARNING: `requires_python` attribute of wheel {wheel.name}:{wheel.ver} could not be parsed")
             return False
@@ -503,7 +503,8 @@ class CondaDependencyProvider(DependencyProviderBase):
         for file in files:
             with open(file) as f:
                 content = json.load(f)
-            for fname, p in content['packages'].items():
+            for i, fname in enumerate(content['packages'].keys()):
+                p = content['packages'][fname]
                 name = p['name'].replace('_', '-').lower()
                 ver = p['version']
                 build = p['build']
@@ -514,7 +515,7 @@ class CondaDependencyProvider(DependencyProviderBase):
                 if build in self.pkgs[name][ver]:
                     if 'collisions' not in self.pkgs[name][ver][build]:
                         self.pkgs[name][ver][build]['collisions'] = []
-                    self.pkgs[name][ver][build]['collisions'].append(p['subdir'])
+                    self.pkgs[name][ver][build]['collisions'].append((p['name'], p['subdir']))
                     continue
                 self.pkgs[name][ver][build] = p
                 self.pkgs[name][ver][build]['fname'] = fname
@@ -529,7 +530,8 @@ class CondaDependencyProvider(DependencyProviderBase):
         deviated_ver = self.deviated_version(name, c.ver, c.build)
         candidate = self.pkgs[name][deviated_ver][c.build]
         depends = list(filter(
-            lambda d: d.split()[0] not in self.ignored_pkgs and not d.startswith('_'),
+            lambda d: d.split()[0] not in self.ignored_pkgs,
+           # lambda d: d.split()[0] not in self.ignored_pkgs and not d.startswith('_'),
             candidate['depends']
             # always add optional dependencies to ensure constraints are applied
             + (candidate['constrains'] if 'constrains' in candidate else [])
@@ -563,7 +565,9 @@ class CondaDependencyProvider(DependencyProviderBase):
                     ))
                     if 'collisions' in p:
                         print(
-                            f"WARNING: Colliding conda package in {self.channel}. Ignoring {p['name']} from {p['collisions']} "
+                            f"WARNING: Colliding conda package in channel '{self.channel}' "
+                            f"Ignoring {list(map(itemgetter(0), p['collisions']))} "
+                            f"from {list(map(itemgetter(1), p['collisions']))} "
                             f"in favor of {p['name']} from '{p['subdir']}'")
         return candidates
 
@@ -576,9 +580,11 @@ class CondaDependencyProvider(DependencyProviderBase):
 
     def python_ok(self, build):
         for dep in build['depends']:
+            if dep == "pypy" or dep.startswith("pypy "):
+                return False
             if dep.startswith("python "):
                 req = next(iter(parse_reqs([dep])))
-                if not filter_versions([self.py_ver_parsed], req.specs):
+                if not filter_versions([self.py_ver_parsed], req):
                     return False
         return True
 
