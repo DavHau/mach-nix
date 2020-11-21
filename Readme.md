@@ -1,3 +1,5 @@
+##### [Beta version](https://github.com/DavHau/mach-nix/tree/conda-beta) with conda support is released. See [Announcement](https://discourse.nixos.org/t/mach-nix-create-python-environments-quick-and-easy/6858/86). Please test!
+
 <p align="center">
 <img width="200" src="https://gist.githubusercontent.com/DavHau/9a66b8c66b798254b714cc3ca44ffda8/raw/ef6b947b3753425118c730a5dfe81084c1bcfe86/logo_small.jpg">  
 </p>
