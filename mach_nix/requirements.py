@@ -112,9 +112,9 @@ def extras_from_marker(marker):
 
 re_reqs = re.compile(
     r"^(([a-z]|[A-Z]|-|_|\d|\.)+)"  # name
+    rf"(\[({extra_name},?)+\])?"  # extras
     r"("
-        rf"(\[({extra_name},?)+\])?"  # extras
-        r" *\(?(([,\|]? *(==|!=|>=|<=|>|<|~=|=)? *(\* |\d(\d|\.|\*|[a-z])*))+(?![_\d]))\)?"  # specs
+        r" *\(?(([,\|]? *(==|!=|>=|<=|>|<|~=|=)? *(\* |dev|\d(\d|\.|\*|[a-z])*))+(?![_\d]))\)?"  # specs
         r"( *([a-z]|\d|_|\*)+)?"  # build
     r")?"
     r"( *[:;] *(.*))?$")  # marker
@@ -128,7 +128,7 @@ def parse_reqs_line(line):
     groups = list(match.groups())
     name = groups[0]
 
-    extras = groups[3]
+    extras = groups[2]
     if extras:
         extras = tuple(extras.strip('[]').split(','))
     else:

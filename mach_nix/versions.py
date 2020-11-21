@@ -12,7 +12,7 @@ class Version(VersionOrder):
     pass
 
 
-class PyVer(Version):
+class PyVer(VersionOrder):
     def __init__(self, vstr):
         self.pypa_ver = packaging.version.Version(vstr)
         super(PyVer, self).__init__(vstr)
