@@ -8,13 +8,14 @@
 Mach-nix makes it easy to create and share reproducible python environments or packages. Existing tools for python package management often either do not achieve reproducibility, are difficult to use, or require additional virtualization layers to make them reliable. Mach-nix aims to solve these problems by providing a simple way to use nix, a revolutionary build system which is known to achieve great reproducibility and portability besides [many other advantages](https://nixos.org/features.html). 
 
 ## Who is this meant for?
- - Anyone who has no idea about nix but wants to maintain python environments for their projects which are reliable and easy to reproduce.
- - Anyone who is already working with nix but wants to reduce the effort needed to create nix expressions for their python projects.
+ - Users without nix experience, who want to maintain python environments for their projects which are reliable and easy to reproduce.
+ - Users already working with nix who want to reduce the effort needed to create nix expressions for their python projects.
 
 ## Other benefits of mach-nix
+ - Use one tool to install packages from 3 different universes: pypi, conda, nixpkgs.
  - Hardware optimizations, like for example SSE/AVX/FMA for tensorflow, are available without the need to manually mess with their build system. (see [nixpkgs provider](#configure-providers))
  - Cross platform support (tested only aarch64)
- - Private packages or packages from other sources can easily be included.
+ - Easily include private packages or packages from other sources.
  - Build time parameters and dependencies of complex python packages can be tweaked without needing to setup any build environment. It requires some knowledge about nix, though. For examples, see [override system](/examples.md/#simplified-overrides-_-argument).
 
 ## Donate
