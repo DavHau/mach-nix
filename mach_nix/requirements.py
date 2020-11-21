@@ -121,6 +121,7 @@ re_reqs = re.compile(
 
 
 def parse_reqs_line(line):
+    line = line.strip()
     match = re.fullmatch(re_reqs, line)
     if not match:
         raise Exception(f"couldn't parse: '{line}'")
