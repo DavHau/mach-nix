@@ -17,7 +17,11 @@ let
       passthru ? {},
       providers ? {},  # define provider preferences
       _ ? {},  # simplified overrides
-      _providerDefaults ? with builtins; fromTOML (readFile ../provider_defaults.toml),
+      _providerDefaults ?
+        if (import ./lib.nix { inherit (pkgs) lib; inherit pkgs; }).isCondaEnvironmentYml requirements then
+          { _default = []; }
+        else
+          fromTOML (readFile ../provider_defaults.toml),
       _fixes ? import ../fixes.nix {pkgs = pkgs;},
       ...
     }:

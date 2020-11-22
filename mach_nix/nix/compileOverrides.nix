@@ -13,7 +13,7 @@ with builtins;
   condaDataRev ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).rev,
   condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).indexSha256,
   _providerDefaults ?
-    if (./lib.nix { inherit (pkgs) lib; inherit pkgs; }).isCondaEnvironmentYml requirements then
+    if (import ./lib.nix { inherit (pkgs) lib; inherit pkgs; }).isCondaEnvironmentYml requirements then
       { _default = []; }
     else
       fromTOML (readFile ../provider_defaults.toml)
