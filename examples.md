@@ -5,13 +5,13 @@ This page contains basic and advanced examples for using mach-nix inside a nix e
  * [Import mach-nix](#import-mach-nix)
  * [mkPython / mkPythonShell](#mkpython--mkpythonshell)
     * [From a list of requirements](#from-a-list-of-requirements)
-    * [Include packages from arbitrary sources.](#include-packages-from-arbitrary-sources)
+    * [Include extra packages.](#include-extra-packages)
  * [buildPythonPackage / buildPythonApplication](#buildpythonpackage--buildpythonapplication)
     * [Build python package from its source code](#build-python-package-from-its-source-code)
     * [buildPythonPackage from GitHub](#buildpythonpackage-from-github)
     * [buildPythonPackage from GitHub with extras](#buildpythonpackage-from-github-with-extras)
     * [buildPythonPackage from GitHub and add requirements](#buildpythonpackage-from-github-and-add-requirements)
-    * [buildPythonPackage from GitHub (explicit source)](#buildpythonpackage-from-github-explicit-source)
+    * [buildPythonPackage from GitHub (reproducible source)](#buildpythonpackage-from-github-reproducible-source)
     * [buildPythonPackage from GitHub (manual requirements)](#buildpythonpackage-from-github-manual-requirements)
   * [Simplified overrides ('_' argument)](#simplified-overrides-_-argument)
      * [General usage](#general-usage)
@@ -23,14 +23,15 @@ This page contains basic and advanced examples for using mach-nix inside a nix e
      * [Tensorflow via wheel (newer versions, quicker builds)](#tensorflow-via-wheel-newer-versions-quicker-builds)
   * [PyTorch](#pytorch)
      * [Recent PyTorch with nixpkgs dependencies, and custom python](#recent-pytorch-with-nixpkgs-dependencies-and-custom-python)
-  * [JupyterLab](#jupyterlab)
-     * [Starting point for a geospatial environment](#starting-point-for-a-geospatial-environment)
+  * [Jupyter](#jupyter)
+     * [...using jupyterWith   mach-nix](#using-jupyterwith--mach-nix)
+     * [...using mach-nix only](#using-mach-nix-only)
   * [Docker](#docker)
      * [JupyterLab Docker Image](#jupyterlab-docker-image)
   * [R and Python](#r-and-python)
   * [Raspberry PI / aarch64 SD Image](#raspberry-pi--aarch64-sd-image)
 
-<!-- Added by: grmpf, at: Mon 12 Oct 2020 01:25:02 AM +07 -->
+<!-- Added by: grmpf, at: Mon 23 Nov 2020 03:10:05 PM +07 -->
 
 <!--te-->
 
