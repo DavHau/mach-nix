@@ -268,9 +268,44 @@ mach-nix.mkPython rec {
 }
 ```
 
-## JupyterLab
+## Jupyter 
 
-### Starting point for a geospatial environment
+### ...using jupyterWith + mach-nix
+In this example, mach-nix is used to resolve our python dependencies and provide them to [jupyterWith](https://github.com/tweag/jupyterWith) which is a Nix-based framework for the definition of declarative and reproducible Jupyter environments. 
+```nix
+let
+  mach-nix = import (builtins.fetchGit {
+    url = "https://github.com/DavHau/mach-nix/";
+    ref = "refs/tags/3.0.2";  # update this version
+  }) {
+    python = "python37";
+  };
+
+  # load your requirements
+  machNix = mach-nix.mkPython rec {
+    requirements = builtins.readFile ./requirements.txt;
+  };
+
+  jupyter = import (builtins.fetchGit {
+    url = https://github.com/tweag/jupyterWith;
+    ref = "master";
+    #rev = "some_revision";
+  }) {};
+
+  iPython = jupyter.kernels.iPythonWith {
+    name = "mach-nix-jupyter";
+    python3 = machNix.python;
+    packages = machNix.python.pkgs.selectPkgs;
+  };
+
+  jupyterEnvironment = jupyter.jupyterlabWith {
+    kernels = [ iPython ];
+  };
+in
+  jupyterEnvironment.env
+```
+
+### ...using mach-nix only
 ```nix
 ...
 let
