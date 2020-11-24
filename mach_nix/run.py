@@ -4,15 +4,15 @@ import subprocess as sp
 import sys
 import tempfile
 from argparse import ArgumentParser
-from json import JSONDecodeError
-from os.path import realpath, dirname
+from os.path import realpath, dirname, isfile
 from textwrap import dedent
 from urllib import request
 from urllib.error import HTTPError
 
+import toml
+
 from mach_nix.ensure_nix import ensure_nix
 from mach_nix.versions import PyVer
-
 
 pwd = dirname(realpath(__file__))
 
@@ -43,52 +43,100 @@ def gen(args, nixpkgs_rev, nixpkgs_sha256, return_expr=False):
             print(expr)
 
 
-def env(args, nixpkgs_rev, nixpkgs_sha256):
+def env(args, nixpkgs_ref):
     target_dir = args.directory
     py_ver = PyVer(args.python)
 
-    expr = gen(args, nixpkgs_rev, nixpkgs_sha256, return_expr=True)
-    machnix_file = f"{target_dir}/machnix.nix"
-    shell_nix_file = f"{target_dir}/shell.nix"
     default_nix_file = f"{target_dir}/default.nix"
+    inputs_nix_file = f"{target_dir}/inputs.nix"
+    lock_file = f"{target_dir}/lock.toml"
     python_nix_file = f"{target_dir}/python.nix"
-    python_nix_content = dedent(f"""
+    requirements_file = f"{target_dir}/requirements.txt"
+    shell_nix_file = f"{target_dir}/shell.nix"
+
+    with open(f"{pwd}/VERSION") as f:
+        machnix_version = f.read()
+    with open(args.r) as f:
+        requirements = f.read().strip()
+    inputs_nix_content = dedent(f"""
+        with builtins;
         let
-          nixpkgs_commit = "{nixpkgs_rev}";
-          nixpkgs_sha256 = "{nixpkgs_sha256}";
+          lock = fromTOML (readFile ./lock.toml);
+          machNixRev = lock.rev;
+          machNixSha256 = lock.sha256;
+        in rec {{
           pkgs = import (builtins.fetchTarball {{
             name = "nixpkgs";
-            url = "https://github.com/nixos/nixpkgs/tarball/${{nixpkgs_commit}}";
-            sha256 = nixpkgs_sha256;
+            url = "https://github.com/nixos/nixpkgs/tarball/${{lock.nixpkgs.rev}}";
+            sha256 = "${{lock.nixpkgs.sha256}}";
           }}) {{ config = {{}}; overlays = []; }};
-          python = pkgs.python{str(py_ver.digits())};
-          result = import ./machnix.nix {{ inherit pkgs python; }};
-          manylinux1 = pkgs.pythonManylinuxPackages.manylinux1;
-          overrides = result.overrides manylinux1 pkgs.autoPatchelfHook;
-          py = python.override {{ packageOverrides = overrides; }};
-        in
-        py.withPackages (ps: result.select_pkgs ps)
+          mach-nix = import (builtins.fetchTarball {{
+            url = "https://github.com/DavHau/mach-nix/tarball/${{machNixRev}}";
+            sha256 = machNixSha256;
+          }}) {{
+            python = "python{py_ver.digits()}";
+            inherit pkgs;
+          }};
+        }}
     """)
+    python_nix_content = dedent(f"""
+        with (import ./inputs.nix);
+        mach-nix.mkPython {{
+          requirements = builtins.readFile ./requirements.txt;
+        }}
+    """)
+    shell_nix_content = dedent(f"""
+        with (import ./inputs.nix);
+        pkgs.mkShell {{
+          buildInputs = [
+            mach-nix.mach-nix
+            (import ./python.nix)
+          ];
+        }}
+    """)
+    # ensure target path exists
     if not os.path.isdir(target_dir):
         if os.path.exists(target_dir):
             print(f'Error: {target_dir} already exists and is not a directory!')
             exit(1)
         os.mkdir(target_dir)
-    with open(machnix_file, 'w') as machnix:
-        machnix.write(expr)
-    with open(python_nix_file, 'w') as python:
-        python.write(python_nix_content)
-    with open(shell_nix_file, 'w') as shell:
-        shell.write("(import ./python.nix).env\n")
+    # update lock file if mach-nix version mismatch
+    update_lock_file(lock_file, 'DavHau', "mach-nix", machnix_version)
+    update_lock_file(lock_file, 'nixos', "nixpkgs", nixpkgs_ref)
+
+    # write requirements file
     with open(default_nix_file, 'w') as default:
         default.write("import ./shell.nix\n")
+    with open(inputs_nix_file, 'w') as default:
+        default.write(inputs_nix_content)
+    with open(python_nix_file, 'w') as python:
+        python.write(python_nix_content)
+    with open(requirements_file, "w") as dest:
+        dest.write(requirements)
+    with open(shell_nix_file, 'w') as shell:
+        shell.write(shell_nix_content)
     print(f"\nInitialized python environment in {target_dir}\n"
           f"To activate it, execute: 'nix-shell {target_dir}'")
 
 
-def print_be_patient():
-    print("Generating python environment... If you run this the first time, the python package index "
-          "and dependency graph (~200MB) need to be downloaded. Please stay patient!", file=sys.stderr)
+def update_lock_file(file, owner, project, ref):
+    lock = {}
+    lock_ok = False
+    if isfile(file):
+        with open(file) as f:
+            lock = toml.load(f)
+        if project in lock\
+                and all(k in lock[project] for k in ("ref", "rev", "sha256")) \
+                and lock[project]['ref'].split('/')[-1] == ref:
+            lock_ok = True
+    if not lock_ok:
+        rev, sha256 = github_rev_and_sha256(owner, project, ref)
+        lock[project] = dict(
+            ref=ref,
+            rev=rev,
+            sha256=sha256)
+        with open(file, 'w') as f:
+            toml.dump(lock, f)
 
 
 def github_rev_and_sha256(owner, repo, ref):
@@ -144,7 +192,7 @@ def main():
     # read nixpkgs json file for revision ref
     nixpkgs_json = f"""{pwd}/nix/NIXPKGS.json"""
     with open(nixpkgs_json, 'r') as f:
-        nixpkgs_ver_default = f.read()
+        nixpkgs_ver_default = json.load(f)['rev']
 
     parser = ArgumentParser()
     args = parse_args(parser, nixpkgs_ver_default)
@@ -163,20 +211,11 @@ def main():
         exit(1)
 
     ensure_nix()
-    print_be_patient()
-
-    try:
-        nixpkgs = json.loads(args.nixpkgs)
-        nixpkgs_rev = nixpkgs["rev"]
-        nixpkgs_sha256 = nixpkgs["sha256"]
-    except (JSONDecodeError, KeyError):
-        print(args.nixpkgs)
-        nixpkgs_rev, nixpkgs_sha256 = github_rev_and_sha256('nixos', 'nixpkgs', args.nixpkgs)
 
     if args.command == 'gen':
-        gen(args, nixpkgs_rev, nixpkgs_sha256)
+        gen(args, *github_rev_and_sha256('nixos', 'nixpkgs', args.nixpkgs))
     elif args.command == 'env':
-        env(args, nixpkgs_rev, nixpkgs_sha256)
+        env(args, nixpkgs_ref=args.nixpkgs)
 
 
 if __name__ == "__main__":
