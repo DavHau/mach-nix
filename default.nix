@@ -1,7 +1,7 @@
 {
   pkgs ? import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; },
-  pypiDataRev ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB.json)).rev,
-  pypiDataSha256 ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB.json)).sha256,
+  pypiDataRev ? ((import ./mach_nix/nix/flake-inputs.nix) "pypi-deps-db").rev,
+  pypiDataSha256 ? ((import ./mach_nix/nix/flake-inputs.nix) "pypi-deps-db").sha256,
   python ? "python3",
   ...
 }:

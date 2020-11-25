@@ -62,8 +62,6 @@ def env(args, nixpkgs_ref):
         with builtins;
         let
           lock = fromTOML (readFile ./lock.toml);
-          machNixRev = lock.rev;
-          machNixSha256 = lock.sha256;
         in rec {{
           pkgs = import (builtins.fetchTarball {{
             name = "nixpkgs";
@@ -71,8 +69,8 @@ def env(args, nixpkgs_ref):
             sha256 = "${{lock.nixpkgs.sha256}}";
           }}) {{ config = {{}}; overlays = []; }};
           mach-nix = import (builtins.fetchTarball {{
-            url = "https://github.com/DavHau/mach-nix/tarball/${{machNixRev}}";
-            sha256 = machNixSha256;
+            url = "https://github.com/DavHau/mach-nix/tarball/${{lock.mach-nix.rev}}";
+            sha256 = lock.mach-nix.sha256;
           }}) {{
             python = "python{py_ver.digits()}";
             inherit pkgs;
@@ -115,8 +113,21 @@ def env(args, nixpkgs_ref):
         dest.write(requirements)
     with open(shell_nix_file, 'w') as shell:
         shell.write(shell_nix_content)
-    print(f"\nInitialized python environment in {target_dir}\n"
-          f"To activate it, execute: 'nix-shell {target_dir}'")
+
+    class c:
+        HEADER = '\033[95m'
+        OKBLUE = '\033[94m'
+        OKCYAN = '\033[96m'
+        OKGREEN = '\033[92m'
+        WARNING = '\033[93m'
+        FAIL = '\033[91m'
+        ENDC = '\033[0m'
+        BOLD = '\033[1m'
+        UNDERLINE = '\033[4m'
+
+    print(f"\nInitialized python environment in:                {c.OKCYAN}{target_dir}{c.ENDC}\n"
+          f"To change python requirements, modify the file:   {c.OKCYAN}{requirements_file}{c.ENDC}\n\n"
+          f"To activate the environment, execute:             {c.BOLD}{c.OKGREEN}nix-shell {target_dir}{c.ENDC}")
 
 
 def update_lock_file(file, owner, project, ref):
@@ -153,7 +164,7 @@ def github_rev_and_sha256(owner, repo, ref):
     return commit, sha256
 
 
-def parse_args(parser: ArgumentParser, nixpkgs_ver_default):
+def parse_args(parser: ArgumentParser, nixpkgs_ref):
     common_arguments = (
         (('-p', '--python'), dict(
             help='select python version (default: 3.7)',
@@ -169,7 +180,7 @@ def parse_args(parser: ArgumentParser, nixpkgs_ver_default):
             help=dedent(
                 f'''select nixpkgs revision. Can be a branch name or tag or revision
                     or json with keys: rev, sha256.'''),
-            default=f"""{str(nixpkgs_ver_default)}""",
+            default=nixpkgs_ref,
             required=False, )),
     )
     parser.add_argument('--version', '-V', help='show program version', action='store_true')
@@ -190,20 +201,16 @@ def parse_args(parser: ArgumentParser, nixpkgs_ver_default):
 
 def main():
     # read nixpkgs json file for revision ref
-    nixpkgs_json = f"""{pwd}/nix/NIXPKGS.json"""
-    with open(nixpkgs_json, 'r') as f:
-        nixpkgs_ver_default = json.load(f)['rev']
+    flakes_lock = f"""{pwd}/../flake.lock"""
+    with open(flakes_lock, 'r') as f:
+        nixpkgs_ref = json.load(f)['nodes']['nixpkgs']['locked']['rev']
 
     parser = ArgumentParser()
-    args = parse_args(parser, nixpkgs_ver_default)
+    args = parse_args(parser, nixpkgs_ref)
 
     if args.version:
-        nixpkgs = json.loads(nixpkgs_ver_default)
         with open(f"{pwd}/VERSION") as f:
-            print(
-                f"mach-nix: {f.read()}" ,
-                "\n" , "mach-nix.nixpkgs" , "revision", nixpkgs["rev"],
-                "\n" , "mach-nix.nixpkgs" , "date    ", nixpkgs["date"])
+            print(f.read())
             exit(0)
 
     if args.command not in ('gen', 'env'):
