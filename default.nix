@@ -45,7 +45,7 @@ let
   _mkPython = caller: args:
     if builtins.isList args then
       (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; })
-        python { extra_pkgs = args; }
+        python { packagesExtra = args; }
     else
       (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; })
         python (l.throwOnDeprecatedArgs caller args);
@@ -82,7 +82,7 @@ rec {
   fetchPypiWheel = pypiFetcher.fetchPypiWheel;
 
   # expose dot interface for flakes cmdline
-  "with" = (withDot (__mkPython "'.with'"))."with";
+  "with" = pythonWith;
   pythonWith = (withDot (__mkPython "'.pythonWith'")).pythonWith;
   shellWith = (withDot (__mkPython "'.shellWith'")).shellWith;
   dockerImageWith = (withDot (__mkPython "'.dockerImageWith'")).dockerImageWith;

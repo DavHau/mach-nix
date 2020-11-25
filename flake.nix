@@ -16,12 +16,13 @@
         devShell = import ./shell.nix {
           inherit pkgs;
         };
-        packages = flake-utils.lib.flattenTree {
-          mach-nix = mach-nix-default.mach-nix;
-          "with" = mach-nix-default.pythonWith;
-          pythonWith = mach-nix-default.pythonWith;
-          shellWith = mach-nix-default.shellWith;
-          dockerImageWith = mach-nix-default.dockerImageWith;
+        packages = flake-utils.lib.flattenTree rec {
+          inherit (mach-nix-default)
+            mach-nix
+            pythonWith
+            shellWith
+            dockerImageWith;
+          "with" = pythonWith;
         };
 
         defaultPackage = packages.mach-nix;
@@ -30,7 +31,19 @@
         defaultApp = { type = "app"; program = "${defaultPackage}/bin/mach-nix"; };
 
         lib = {
-          mkPython = mach-nix-default.mkPython;
+          inherit (mach-nix-default)
+            mkPython
+            mkPythonShell
+            mkDockerImage
+            mkOverlay
+            mkNixpkgs
+            mkPythonOverrides
+
+            buildPythonPackage
+            buildPythonApplication
+            fetchPypiSdist
+            fetchPypiWheel
+            ;
         };
       }
   );
