@@ -38,7 +38,7 @@ rec {
 
     extract = python: src: fail_msg:
     let
-      file_path = "${(import ../../lib/extractor).extract_from_src {
+      file_path = "${(import ../../lib/extractor { inherit pkgs; }).extract_from_src {
           py = python;
           src = src;
         }}/python.json";

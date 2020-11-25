@@ -1,5 +1,5 @@
+{ pkgs ? import <nixpkgs> { config = { allowUnfree = true; }; overlays = []; }, ... }:
 let
-  pkgs = import <nixpkgs> { config = { allowUnfree = true; }; overlays = []; };
   commit = "1434cc0ee2da462f0c719d3a4c0ab4c87d0931e7";
   fetchPypiSrc = builtins.fetchTarball {
    name = "nix-pypi-fetcher";
