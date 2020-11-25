@@ -1,7 +1,7 @@
 {
   pkgs ? import (import ./nixpkgs-src.nix) {},
-  pypi_deps_db_commit ? (builtins.fromJSON (builtins.readFile ./PYPI_DEPS_DB.json)).rev,
-  pypi_deps_db_sha256 ? (builtins.fromJSON (builtins.readFile ./PYPI_DEPS_DB.json)).sha256,
+  pypi_deps_db_commit ? ((import ./flake-inputs.nix) "pypi-deps-db").rev,
+  pypi_deps_db_sha256 ? ((import ./flake-inputs.nix) "pypi-deps-db").sha256,
 }:
 with pkgs.lib;
 let

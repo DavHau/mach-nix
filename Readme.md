@@ -1,3 +1,5 @@
+##### [Beta version](https://github.com/DavHau/mach-nix/tree/conda-beta) with conda support is released. See [Announcement](https://discourse.nixos.org/t/mach-nix-create-python-environments-quick-and-easy/6858/86). Please test!
+
 <p align="center">
 <img width="200" src="https://gist.githubusercontent.com/DavHau/9a66b8c66b798254b714cc3ca44ffda8/raw/ef6b947b3753425118c730a5dfe81084c1bcfe86/logo_small.jpg">  
 </p>
@@ -6,13 +8,14 @@
 Mach-nix makes it easy to create and share reproducible python environments or packages. Existing tools for python package management often either do not achieve reproducibility, are difficult to use, or require additional virtualization layers to make them reliable. Mach-nix aims to solve these problems by providing a simple way to use nix, a revolutionary build system which is known to achieve great reproducibility and portability besides [many other advantages](https://nixos.org/features.html). 
 
 ## Who is this meant for?
- - Anyone who has no idea about nix but wants to maintain python environments for their projects which are reliable and easy to reproduce.
- - Anyone who is already working with nix but wants to reduce the effort needed to create nix expressions for their python projects.
+ - Users without nix experience, who want to maintain python environments for their projects which are reliable and easy to reproduce.
+ - Users already working with nix who want to reduce the effort needed to create nix expressions for their python projects.
 
 ## Other benefits of mach-nix
+ - Use one tool to install packages from 3 different universes: pypi, conda, nixpkgs.
  - Hardware optimizations, like for example SSE/AVX/FMA for tensorflow, are available without the need to manually mess with their build system. (see [nixpkgs provider](#configure-providers))
  - Cross platform support (tested only aarch64)
- - Private packages or packages from other sources can easily be included.
+ - Easily include private packages or packages from other sources.
  - Build time parameters and dependencies of complex python packages can be tweaked without needing to setup any build environment. It requires some knowledge about nix, though. For examples, see [override system](/examples.md/#simplified-overrides-_-argument).
 
 ## Donate
@@ -69,6 +72,7 @@ nix-env -if https://github.com/DavHau/mach-nix/tarball/3.0.2 -A mach-nix
 
 ---
 ### Build a virtualenv-style python environment from a requirements.txt
+!!! The cmdline interface of mach-nix is still experimental. It's recommended to use mach-nix via nix-expression !!! (see: [Usage in Nix Expression](#usage-in-nix-expression))
 ```bash
 mach-nix env ./env -r requirements.txt
 ```

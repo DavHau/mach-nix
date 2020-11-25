@@ -3,8 +3,11 @@
   description = "Create highly reproducible python environments";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.pypi-deps-db = {
+    url = "github:DavHau/pypi-deps-db";
+    flake = false;
+  };
 
   outputs = { self, nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system:
@@ -16,18 +19,35 @@
         devShell = import ./shell.nix {
           inherit pkgs;
         };
-        packages = flake-utils.lib.flattenTree {
-          mach-nix = mach-nix-default.mach-nix;
-          "with" = mach-nix-default.pythonWith;
-          pythonWith = mach-nix-default.pythonWith;
-          shellWith = mach-nix-default.shellWith;
-          dockerImageWith = mach-nix-default.dockerImageWith;
+        packages = flake-utils.lib.flattenTree rec {
+          inherit (mach-nix-default)
+            mach-nix
+            pythonWith
+            shellWith
+            dockerImageWith;
+          "with" = pythonWith;
         };
 
-        defaultPackage = packages."${system}".mach-nix.mach-nix;
+        defaultPackage = packages.mach-nix;
 
         apps.mach-nix = flake-utils.lib.mkApp { drv = packages.mach-nix.mach-nix; };
-        defaultApp = { type = "app"; program = "${defaultPackage."${system}"}/bin/mach-nix"; };
+        defaultApp = { type = "app"; program = "${defaultPackage}/bin/mach-nix"; };
+
+        lib = {
+          inherit (mach-nix-default)
+            mkPython
+            mkPythonShell
+            mkDockerImage
+            mkOverlay
+            mkNixpkgs
+            mkPythonOverrides
+
+            buildPythonPackage
+            buildPythonApplication
+            fetchPypiSdist
+            fetchPypiWheel
+            ;
+        };
       }
   );
 }

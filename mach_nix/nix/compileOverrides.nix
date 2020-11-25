@@ -7,9 +7,9 @@ with builtins;
   tests ? false,  # disable tests wherever possible
   overrides ? [],
   providers ? {},  # re-order to change provider priority or remove providers
-  pypiDataRev ? (builtins.fromJSON (builtins.readFile ./PYPI_DEPS_DB.json)).rev,  # python dependency DB version
+  pypiDataRev ? ((import ./flake-inputs.nix) "pypi-deps-db").rev,  # python dependency DB version
   # Hash obtained using `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
-  pypiDataSha256 ? (builtins.fromJSON (builtins.readFile ./PYPI_DEPS_DB.json)).sha256,
+  pypiDataSha256 ? ((import ./flake-inputs.nix) "pypi-deps-db").sha256,
   condaDataRev ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).rev,
   condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).indexSha256,
   _providerDefaults ?

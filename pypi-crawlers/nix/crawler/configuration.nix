@@ -6,7 +6,7 @@ let
   nixpkgs_src = (import ../../nix/nixpkgs-src.nix).stable;
   db_host = "10.147.19.69";
   extractor_dir = "${../../../lib/extractor}";
-  extractor = import extractor_dir;
+  extractor = import extractor_dir { inherit pkgs; };
   branch = "master";
   enable = true;
   serviceConfig = {

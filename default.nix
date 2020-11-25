@@ -8,8 +8,8 @@
   # dependency databases
   condaDataRev ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/CONDA_CHANNELS.json)).rev,
   condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/CONDA_CHANNELS.json)).indexSha256,
-  pypiDataRev ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB.json)).rev,
-  pypiDataSha256 ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/PYPI_DEPS_DB.json)).sha256,
+  pypiDataRev ? ((import ./mach_nix/nix/flake-inputs.nix) "pypi-deps-db").rev,
+  pypiDataSha256 ? ((import ./mach_nix/nix/flake-inputs.nix) "pypi-deps-db").sha256,
   ...
 }:
 
@@ -55,7 +55,7 @@ let
       machnixArgs = { inherit pkgs condaChannelsExtra condaDataRev condaDataSha256 pypiDataRev pypiDataSha256; };
     in
       if builtins.isList args then
-        (import ./mach_nix/nix/mkPython.nix machnixArgs) python { extra_pkgs = args; }
+        (import ./mach_nix/nix/mkPython.nix machnixArgs) python { packagesExtra = args; }
       else
         (import ./mach_nix/nix/mkPython.nix machnixArgs) python (l.throwOnDeprecatedArgs caller args);
 
@@ -91,7 +91,7 @@ rec {
   fetchPypiWheel = pypiFetcher.fetchPypiWheel;
 
   # expose dot interface for flakes cmdline
-  "with" = (withDot (__mkPython "'.with'"))."with";
+  "with" = pythonWith;
   pythonWith = (withDot (__mkPython "'.pythonWith'")).pythonWith;
   shellWith = (withDot (__mkPython "'.shellWith'")).shellWith;
   dockerImageWith = (withDot (__mkPython "'.dockerImageWith'")).dockerImageWith;
