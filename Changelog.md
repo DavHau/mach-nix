@@ -1,3 +1,25 @@
+# 3.1.0 (27 Sep 2020)
+flakes lib, cli improvements, bugfixes
+
+### Features
+ - expose the following functions via flakes `lib`:
+    - mkPython / mkPythonShell / mkDockerImage / mkOverlay / mkNixpkgs / mkPythonOverrides
+    - buildPythonPackage / buildPythonApplication
+    - fetchPypiSdist / fetchPypiWheel
+ - Properly manage and lock versions of `nixpkgs` and `mach-nix` for environments created via `mach-nix env` command.
+ - Add example on how to use mach-nix with jupyterWith
+
+### Improvements
+ - Improve portability of `mach-nix env` generated environments. Replace the platform specific compiled nix expression with a call to mach-nix itself, which is platform agnostic.
+ - Mach-nix now produces the same result no matter if it is used through flakes or legacy interface. The legacy interface now loads its dependencies via `flakes.lock`.
+
+### Fixes
+ - mkDockerImage produced corrupt images.
+ - non-python packages passed via `packagesExtra` were not available during runtime. Now they are added to the `PATH`.
+ - remove `<nixpkgs>` impurity in the dependency extractor used in buildPythonPackage.
+ 
+
+
 # 3.0.2 (27 Oct 2020)
 bugfixes
 
