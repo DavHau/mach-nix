@@ -72,7 +72,6 @@ nix-env -if https://github.com/DavHau/mach-nix/tarball/3.0.2 -A mach-nix
 
 ---
 ### Build a virtualenv-style python environment from a requirements.txt
-!!! The cmdline interface of mach-nix is still experimental. It's recommended to use mach-nix via nix-expression !!! (see: [Usage in Nix Expression](#usage-in-nix-expression))
 ```bash
 mach-nix env ./env -r requirements.txt
 ```
