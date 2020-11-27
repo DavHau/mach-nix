@@ -8,8 +8,9 @@ on:
     branches: [master, test-ci]
 
 jobs:
-  testSuite:
-    name: Test on Python${{ matrix.python-version  }} - ${{ matrix.os }}
+
+  pipVersion:
+    name: Test Pip version - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       max-parallel: 5
@@ -19,6 +20,7 @@ jobs:
 
 ## tasks per matrix element
     steps:
+
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
@@ -32,9 +34,6 @@ jobs:
       uses: cachix/install-nix-action@v12
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-        #install_url: https://github.com/numtide/nix-flakes-installer/releases/download/nix-3.0pre20201007_5257a25/install
-#        extra_nix_config: |
-#          experimental-features = nix-command flakes
 
     - name: PYTHON - Install dependencies
       run: |
@@ -48,14 +47,45 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    - name: NIX PY - Build + pytest 
+    - name: pip installation
+      run: pip install -e ./
+      shell: bash
+
+    - name: cli test
+      run: |
+        mach-nix --version
+        echo "tensorflow" > reqs.txt
+        mach-nix env ./env -r reqs.txt
+      shell: bash
+
+
+  nixVersion:
+    name: Test Nix version - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      max-parallel: 5
+      matrix:
+        os: [ubuntu-latest, macos-10.14, ]
+        python-version: [3.7]
+    steps:
+
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Install/Setup - NIX
+      uses: cachix/install-nix-action@v12
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+
+    - name: nix-env installation
       run: nix-env -if . -A mach-nix
       shell: bash
 
-#    # run nix tests
-#    - name: Build some python environments
-#      run: |
-#        nix --version
-#        cd tests
-#        nix-build test_*.nix
-#      shell: bash
+    - name: cli-test
+      run: |
+        mach-nix --version
+        echo "tensorflow" > reqs.txt
+        mach-nix env ./env -r reqs.txt
+      shell: bash
+
