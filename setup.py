@@ -19,7 +19,7 @@ setup(
             "mach-nix = mach_nix:main"
         ],
     },
-    package_data={'': ['nix/*', 'VERSION', 'provider_defaults.toml']},
+    package_data={'': ['nix/*', 'VERSION', 'provider_defaults.toml', 'flake.lock']},
     setup_requires=["wheel"],
     install_requires=[
         'distlib ~= 0.3.0',

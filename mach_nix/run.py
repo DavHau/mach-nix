@@ -201,7 +201,7 @@ def parse_args(parser: ArgumentParser, nixpkgs_ref):
 
 def main():
     # read nixpkgs json file for revision ref
-    flakes_lock = f"""{pwd}/../flake.lock"""
+    flakes_lock = f"""{pwd}/flake.lock"""
     with open(flakes_lock, 'r') as f:
         nixpkgs_ref = json.load(f)['nodes']['nixpkgs']['locked']['rev']
 
