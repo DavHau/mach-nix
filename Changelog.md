@@ -2,7 +2,7 @@
 fix cli
 
 ### Fixes
- - Fix missing flakes.lock error when using mach-nix cli.
+ - Fix missing flake.lock error when using mach-nix cli.
 
 
 # 3.1.0 (27 Sep 2020)
