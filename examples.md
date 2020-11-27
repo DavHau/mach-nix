@@ -41,7 +41,7 @@ every mach-nix expression should begin like this:
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "refs/tags/3.1.0";
+    ref = "refs/tags/3.1.1";
   }) {
     # optionally bring your own nixpkgs
     # pkgs = import <nixpkgs> {};
@@ -277,7 +277,7 @@ In this example, mach-nix is used to resolve our python dependencies and provide
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "refs/tags/3.1.0";  # update this version
+    ref = "refs/tags/3.1.1";  # update this version
   }) {
     python = "python37";
   };
