@@ -53,6 +53,7 @@ jobs:
 
     - name: cli test
       run: |
+        export MACHNIX_VERSION=$GITHUB_SHA
         mach-nix --version
         echo "tensorflow" > reqs.txt
         mach-nix env ./env -r reqs.txt
@@ -84,6 +85,7 @@ jobs:
 
     - name: cli-test
       run: |
+        export MACHNIX_VERSION=$GITHUB_SHA
         mach-nix --version
         echo "tensorflow" > reqs.txt
         mach-nix env ./env -r reqs.txt

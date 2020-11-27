@@ -54,10 +54,14 @@ def env(args, nixpkgs_ref):
     requirements_file = f"{target_dir}/requirements.txt"
     shell_nix_file = f"{target_dir}/shell.nix"
 
-    with open(f"{pwd}/VERSION") as f:
-        machnix_version = f.read()
+    machnix_version = os.environ.get("MACHNIX_VERSION", default=None)
+    if machnix_version is None:
+        with open(f"{pwd}/VERSION") as f:
+            machnix_version = f.read()
+
     with open(args.r) as f:
         requirements = f.read().strip()
+
     inputs_nix_content = dedent(f"""
         with builtins;
         let
@@ -154,7 +158,7 @@ def github_rev_and_sha256(owner, repo, ref):
     try:
         res = request.urlopen(f"https://api.github.com/repos/{owner}/{repo}/commits/{ref}").read()
     except HTTPError as e:
-        print(f"Error receiving nixpkgs commit for {ref}: {e.msg}")
+        print(f"Error receiving {repo} revision for {ref}: {e.msg}")
         exit(1)
     commit = json.loads(res)['sha']
     proc = sp.run(
@@ -177,9 +181,7 @@ def parse_args(parser: ArgumentParser, nixpkgs_ref):
             required=True)),
 
         (('--nixpkgs',), dict(
-            help=dedent(
-                f'''select nixpkgs revision. Can be a branch name or tag or revision
-                    or json with keys: rev, sha256.'''),
+            help=dedent('select nixpkgs revision. Can be a branch or tag or revision'),
             default=nixpkgs_ref,
             required=False, )),
     )
