@@ -63,11 +63,11 @@ Table of Contents
 You can either install mach-nix via pip or by using nix in case you already have the nix package manager installed.
 #### Installing via pip
 ```shell
-pip install git+git://github.com/DavHau/mach-nix@3.0.2
+pip install git+git://github.com/DavHau/mach-nix@conda-beta
 ```
 #### Installing via nix
 ```shell
-nix-env -if https://github.com/DavHau/mach-nix/tarball/3.0.2 -A mach-nix
+nix-env -if https://github.com/DavHau/mach-nix/tarball/conda-beta -A mach-nix
 ```
 
 ---
@@ -149,8 +149,7 @@ Functions for building python packages or applications:
 The following 3 providers are available:
   1. **conda**: Provides packages from anaconda.org. Those packages can contain binaries. Some benefits of anaconda are:  
       - Different build variants for packages  
-      - Provides all system dependencies for packages  
-      - Good support for aarch64  
+      - Provides all system dependencies for packages
   1. **wheel**: Provides all linux compatible wheel releases from pypi. If wheels contain binaries, Mach-nix patches them via patchelf to ensure reproducibility. Wheels are very quick to install and work quite reliable.
   1. **sdist**: Provides all setuptools compatible packages from pypi. It still uses nix for building, which allows it to be tweaked in a flexible way. But in some cases problems can occur, if there is not sufficient information available to determine required system depedencies.
   1. **nixpkgs**: Provides packages directly from nixpkgs without modifying their sources. Has only a few versions available, Use this provider if you need to tweak individual build parameters, like `SSE/AVX/FMA` for tensorflow for example.
