@@ -1,11 +1,11 @@
-# 3.1.1 (27 Sep 2020)
+# 3.1.1 (27 Nov 2020)
 fix cli
 
 ### Fixes
  - Fix missing flake.lock error when using mach-nix cli.
 
 
-# 3.1.0 (27 Sep 2020)
+# 3.1.0 (27 Nov 2020)
 flakes lib, cli improvements, bugfixes
 
 ### Features
