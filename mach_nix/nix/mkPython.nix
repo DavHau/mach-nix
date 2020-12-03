@@ -125,10 +125,6 @@ let
           inherit selectPkgs;
           pythonOverrides = all_overrides;
           python = py_final;
-          env = pkgs.mkShell {
-            name = "mach-nix-python-shell";
-            buildInputs = [ final_env extra_pkgs_other ];
-          };
           overlay = self: super:
             let
               py_attr_name = "python${pyver.major}${pyver.minor}";
