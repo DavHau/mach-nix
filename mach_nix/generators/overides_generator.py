@@ -144,12 +144,14 @@ class OverridesGenerator(ExpressionGenerator):
     def _gen_overrideAttrs(
             self, name, ver, circular_deps, nix_name, provider, build_inputs_str, prop_build_inputs_str,
             keep_src=False):
+        # TODO: apply the buildInput replacement to all kinds of buildInputs
         out = f"""
             "{name}" = override python-super.{nix_name} ( oldAttrs: {{
               pname = "{name}";
               version = "{ver}";
               passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "{provider}"; }};
               buildInputs = with python-self; (replace_deps oldAttrs "buildInputs" self) ++ [ {build_inputs_str} ];
+              nativeBuildInputs = with python-self; (replace_deps oldAttrs "nativeBuildInputs" self) ++ [ {build_inputs_str} ];
               propagatedBuildInputs = with python-self; (replace_deps oldAttrs "propagatedBuildInputs" self) ++ [ {prop_build_inputs_str} ];"""
         if not keep_src:
             out += f"""

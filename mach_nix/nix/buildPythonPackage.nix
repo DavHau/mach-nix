@@ -63,8 +63,7 @@ let
     in
     py_final.pkgs."${func}" ( pass_args // {
       propagatedBuildInputs =
-        (result.select_pkgs py_final.pkgs)
-        ++ (if hasAttr "propagatedBuildInputs" args then args.propagatedBuildInputs else []);
+        (result.select_pkgs py_final.pkgs) ++ (args.propagatedBuildInputs or []);
       src = src;
       inherit doCheck pname version;
       passthru = passthru // {
