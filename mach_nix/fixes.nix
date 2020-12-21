@@ -50,6 +50,11 @@ rec {
 #   - pyver (python version used)            #
 ##############################################
 
+  cartopy.add-native-inputs = {
+    _cond = { prov, ver, ... }: prov == "nixpkgs";
+    nativeBuildInputs.add = with pkgs; [ geos ];
+  };
+
   httpx.remove-patches = {
     _cond = { prov, ver, ... }:
       prov != "nixpkgs" &&
