@@ -335,6 +335,7 @@ nixPkgs.mkShell rec {
   '';
 }
 ```
+For more information regarding Jupyter Lab extensions see an other [example](https://discourse.nixos.org/t/anyone-has-a-working-jupyterhub-jupyter-lab-setup/7659/2).
 
 ## Docker
 Docker images can be built by using `mkDockerImage` instead of `mkPython`. It accepts the same arguments.
