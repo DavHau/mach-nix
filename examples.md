@@ -383,7 +383,9 @@ mach-nix.mkPython {
   '';
   packagesExtra = with mach-nix.rPackages; [
     data_table
-  ];
+  ]
+  ++ ( with mach-nix.nixpkgs; [     R     ]) 
+  ;
 }
 ```
 
