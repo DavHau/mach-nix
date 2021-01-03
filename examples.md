@@ -310,6 +310,7 @@ in
 ```nix
 ...
 let
+  nixPkgs = import mach-nix.nixpkgs.path {config= { allowUnfree = true; }; overlays =  [ ]; } ;
   pyEnv = mach-nix.mkPython rec {
 
     requirements =  ''
@@ -323,7 +324,7 @@ let
     providers.shapely = "sdist,nixpkgs";
   };
 in
-mkShell rec {
+nixPkgs.mkShell rec {
 
   buildInputs = [
     pyEnv
