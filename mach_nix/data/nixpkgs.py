@@ -19,7 +19,7 @@ class NixpkgsIndex(UserDict):
     # mapping from pypi name to nix key
     _aliases = dict(
         torch='pytorch',
-        tensorboard='tensorflowtensorboard'
+        tensorboard='tensorflow-tensorboard_2'
     )
 
     def __init__(self, nixpkgs_json_file, **kwargs):
