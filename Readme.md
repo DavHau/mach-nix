@@ -138,8 +138,8 @@ Functions for building python packages or applications:
  - **providers** (set): define provider preferences (see examples below)
  - **packagesExtra** (list) Add extra packages. Can contain tarball-URLs or paths of python source code, packages built via `mach-nix.buildPythonPackage`, or R Packages.
  - **_** (set): use underscore argument to easily modify arbitrary attributes of packages. For example to add build inputs use `_.{package}.buildInputs.add = [...]`. Or to overwrite patches use `_.{package}.patches = [...]`.
- - **overridesPre** (list): (advanced) list of pythonOverrides to apply before the machnix overrides. Use this to include additional packages which can then be selected inside the `requirements`
- - **overridesPost** (list): (advanced) list of pythonOverrides to apply after the machnix overrides. Use this to fixup packages.
+ - **overridesPre** (list): (advanced) list of pythonOverrides to apply before the mach-nix overrides. Use this to include additional packages which can then be selected inside the `requirements`
+ - **overridesPost** (list): (advanced) list of pythonOverrides to apply after the mach-nix overrides. Use this to fixup packages.
  - **tests** (bool): Whether to enable tests (default: false)
  - **_providerDefaults** (set): builtin provider defaults. Disable them by passing {}
  
