@@ -16,7 +16,7 @@ This page contains basic and advanced examples for using mach-nix inside a nix e
   * [Simplified overrides ('_' argument)](#simplified-overrides-_-argument)
      * [General usage](#general-usage)
      * [Example: add missing build inputs](#example-add-missing-build-inputs)
-  * [Overrides (overrides_pre / overrides_post)](#overrides-overrides_pre--overrides_post)
+  * [Overrides (overridesPre / overridesPost)](#overrides-overridesPre--overridesPost)
      * [Include poetry2nix overrides](#include-poetry2nix-overrides)
   * [Tensorflow](#tensorflow)
      * [Tensorflow with SSE/AVX/FMA support](#tensorflow-with-sseavxfma-support)
@@ -184,7 +184,7 @@ mach-nix.mkPython {
 
 ```
 
-## Overrides (overrides_pre / overrides_post)
+## Overrides (overridesPre / overridesPost)
 ### Include poetry2nix overrides
 `imagecodecs` is available via wheel, but if one wants to build it from source, dependencies will be missing since there is no nixpkgs candidate available.
 poetry2nix luckily maintains overrides for this package. They can be included into the mach-nix build like this.
@@ -202,7 +202,7 @@ mach-nix.mkPython rec {
   };
 
   # Import overrides from poetry2nix
-  # Caution! Use poetry2nix overrides only in `overrides_post`, not `overrides_pre`.
+  # Caution! Use poetry2nix overrides only in `overridesPost`, not `overridesPre`.
   overridesPost = [
     (
       import (builtins.fetchurl {
