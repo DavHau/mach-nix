@@ -324,7 +324,7 @@ let
     providers.shapely = "sdist,nixpkgs";
   };
 in
-nixPkgs.mkShell rec {
+mach-nix.nixpkgs.mkShell {
 
   buildInputs = [
     pyEnv
