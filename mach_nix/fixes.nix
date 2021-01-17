@@ -7,7 +7,7 @@ let
 
   # evaluate arbitrary python expression and return json parsed result
   py_eval = str: fromJSON ( readFile (
-    pkgs.runCommand "py-eval-result" { buildInputs = with pkgs; [ python python3Packages.packaging ]; } ''
+    pkgs.runCommand "py-eval-result" { buildInputs = with pkgs; [ python3 python3Packages.packaging ]; } ''
       ${pkgs.python}/bin/python -c "${str}" > $out
     ''));
 
