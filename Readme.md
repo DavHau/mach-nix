@@ -225,5 +225,5 @@ Contributions to this project are welcome in the form of GitHub PRs. If you are 
 ## Alternative / Similar Software:
  - [Poetry](https://python-poetry.org/)
  - [Pipenv](https://github.com/pypa/pipenv)
- - [peotry2nix](https://github.com/nix-community/poetry2nix)
+ - [poetry2nix](https://github.com/nix-community/poetry2nix)
  - [pypi2nix](https://github.com/nix-community/pypi2nix)
