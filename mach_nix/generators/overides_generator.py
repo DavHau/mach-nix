@@ -51,20 +51,43 @@ class OverridesGenerator(ExpressionGenerator):
               pypiFetcher = import pypi_fetcher_src {{ inherit pkgs; }};
               fetchPypi = pypiFetcher.fetchPypi;
               fetchPypiWheel = pypiFetcher.fetchPypiWheel;
-              is_py_module = pkg:
+              isPyModule = pkg:
                 isAttrs pkg && hasAttr "pythonModule" pkg;
               normalizeName = name: (replaceStrings ["_"] ["-"] (toLower name));
-              replace_deps = oldAttrs: inputs_type: self:
-                map (pypkg:
-                  let
-                    pname = normalizeName (get_pname pypkg);
-                  in
-                    if self ? "${{pname}}" && pypkg != self."${{pname}}" then
-                      trace "Updated inherited nixpkgs dep ${{pname}} from ${{pypkg.version}} to ${{self."${{pname}}".version}}"
-                      self."${{pname}}"
+              depNamesOther = [
+                "depsBuildBuild"
+                "depsBuildBuildPropagated"
+                "nativeBuildInputs"
+                "propagatedNativeBuildInputs"
+                "depsBuildTarget"
+                "depsBuildTargetPropagated"
+                "depsHostHost"
+                "depsHostHostPropagated"
+                "depsTargetTarget"
+                "depsTargetTargetPropagated"
+                "checkInputs"
+                "installCheckInputs"
+              ];
+              depNamesAll = depNamesOther ++ [
+                "propagatedBuildInputs"
+                "buildInputs"
+              ];
+              updatePythonDepsRec = newPkgs: pkg:
+                if ! isPyModule pkg then pkg else
+                let
+                  pname = normalizeName (get_pname pkg);
+                  newP =
+                    if newPkgs ? "${{pname}}" && pkg != newPkgs."${{pname}}" then
+                      trace "Updated inherited nixpkgs dep ${{pname}} from ${{pkg.version}} to ${{newPkgs."${{pname}}".version}}"
+                      newPkgs."${{pname}}"
                     else
-                      pypkg
-                ) (oldAttrs."${{inputs_type}}" or []);
+                      pkg;
+                in
+                  newP.overrideAttrs (old: mapAttrs (n: v:
+                    if elem n depNamesAll then
+                      map (p: updatePythonDepsRec newPkgs p) v
+                    else v
+                  ) old);
               override = pkg:
                 if hasAttr "overridePythonAttrs" pkg then
                     pkg.overridePythonAttrs
@@ -146,21 +169,22 @@ class OverridesGenerator(ExpressionGenerator):
             keep_src=False):
         # TODO: apply the buildInput replacement to all kinds of buildInputs
         out = f"""
-            "{name}" = override python-super.{nix_name} ( oldAttrs: {{
-              pname = "{name}";
-              version = "{ver}";
-              passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "{provider}"; }};
-              buildInputs = with python-self; (replace_deps oldAttrs "buildInputs" self) ++ [ {build_inputs_str} ];
-              nativeBuildInputs = with python-self; (replace_deps oldAttrs "nativeBuildInputs" self) ++ [ {build_inputs_str} ];
-              propagatedBuildInputs = with python-self; (replace_deps oldAttrs "propagatedBuildInputs" self) ++ [ {prop_build_inputs_str} ];"""
+            "{name}" = override python-super.{nix_name} ( oldAttrs:
+              (mapAttrs (n: v: if elem n depNamesAll then map (dep: updatePythonDepsRec python-self dep) v else v ) oldAttrs) // {{
+                pname = "{name}";
+                version = "{ver}";
+                passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "{provider}"; }};
+                buildInputs = with python-self; (map (dep: updatePythonDepsRec python-self dep) (oldAttrs."buildInputs" or [])) ++ [ {build_inputs_str} ];
+                propagatedBuildInputs = with python-self; (map (dep: updatePythonDepsRec python-self dep) (oldAttrs."propagatedBuildInputs" or [])) ++ [ {prop_build_inputs_str} ];"""
         if not keep_src:
             out += f"""
-              src = fetchPypi "{name}" "{ver}";"""
+                src = fetchPypi "{name}" "{ver}";"""
         if circular_deps:
             out += f"""
-              pipInstallFlags = "--no-dependencies";"""
+                pipInstallFlags = "--no-dependencies";"""
         out += """
-            });\n"""
+              }
+            );\n"""
         return unindent(out, 8)
 
     def _gen_builPythonPackage(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str):
@@ -218,7 +242,7 @@ class OverridesGenerator(ExpressionGenerator):
             select_pkgs = ps: [
               {pkg_names_str.strip()}
             ];
-            overrides = manylinux1: autoPatchelfHook: merge_with_overr {check} (python-self: python-super: let self = {{
+            overrides = manylinux1: autoPatchelfHook: merge_with_overr {check} (python-self: python-super: {{
           """
         out = unindent(out, 10)
         for pkg in pkgs.values():
@@ -279,7 +303,7 @@ class OverridesGenerator(ExpressionGenerator):
                     prop_build_inputs_str,
                     keep_src=True)
         end_overlay_section = f"""
-                }}; in self);
+                }});
           """
         return out + unindent(end_overlay_section, 14)
 
