@@ -170,7 +170,7 @@ class OverridesGenerator(ExpressionGenerator):
         # TODO: apply the buildInput replacement to all kinds of buildInputs
         out = f"""
             "{name}" = override python-super.{nix_name} ( oldAttrs:
-              (mapAttrs (n: v: if elem n depNamesAll then map (dep: updatePythonDepsRec python-self dep) v else v ) oldAttrs) // {{
+              (mapAttrs (n: v: if elem n depNamesOther then map (dep: updatePythonDepsRec python-self dep) v else v ) oldAttrs) // {{
                 pname = "{name}";
                 version = "{ver}";
                 passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "{provider}"; }};

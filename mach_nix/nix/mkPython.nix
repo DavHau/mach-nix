@@ -123,6 +123,7 @@ let
       self = final_env.overrideAttrs (oa: {
         passthru = oa.passthru // rec {
           inherit selectPkgs;
+          expr = result.expr;
           pythonOverrides = all_overrides;
           python = py_final;
           overlay = self: super:

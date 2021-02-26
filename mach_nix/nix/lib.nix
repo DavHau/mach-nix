@@ -19,7 +19,8 @@ rec {
   # Returns `overrides` and `select_pkgs` which satisfy your requirements
   compileOverrides = args:
     let
-      result = import "${compileExpression args}/share/mach_nix_file.nix" { inherit (args) pkgs python; };
+      file = "${compileExpression args}/share/mach_nix_file.nix";
+      result = import file { inherit (args) pkgs python; };
       manylinux =
         if args.pkgs.stdenv.hostPlatform.system == "x86_64-darwin" then
           []
@@ -28,6 +29,7 @@ rec {
     in {
       overrides = result.overrides manylinux autoPatchelfHook;
       select_pkgs = result.select_pkgs;
+      expr = readFile file;
     };
 
   meets_cond = oa: condition:
