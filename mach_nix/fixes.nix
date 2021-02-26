@@ -55,6 +55,11 @@ rec {
     nativeBuildInputs.add = with pkgs; [ geos ];
   };
 
+  # remove if merged: https://github.com/NixOS/nixpkgs/pull/114384
+  google-auth.six-input-missing = {
+    propagatedBuildInputs.mod = pySelf: _: oldVal: oldVal ++ [ pySelf.six ];
+  };
+
   httpx.remove-patches = {
     _cond = { prov, ver, ... }:
       prov != "nixpkgs" &&
