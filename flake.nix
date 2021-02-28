@@ -10,44 +10,12 @@
   };
 
   outputs = { self, nixpkgs, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-        mach-nix-default = import ./default.nix {inherit pkgs;};
-      in rec
-      {
-        devShell = import ./shell.nix {
-          inherit pkgs;
-        };
-        packages = flake-utils.lib.flattenTree rec {
-          inherit (mach-nix-default)
-            mach-nix
-            pythonWith
-            shellWith
-            dockerImageWith;
-          "with" = pythonWith;
-        };
-
-        defaultPackage = packages.mach-nix;
-
-        apps.mach-nix = flake-utils.lib.mkApp { drv = packages.mach-nix.mach-nix; };
-        defaultApp = { type = "app"; program = "${defaultPackage}/bin/mach-nix"; };
-
-        lib = {
-          inherit (mach-nix-default)
-            mkPython
-            mkPythonShell
-            mkDockerImage
-            mkOverlay
-            mkNixpkgs
-            mkPythonOverrides
-
-            buildPythonPackage
-            buildPythonApplication
-            fetchPypiSdist
-            fetchPypiWheel
-            ;
-        };
-      }
-  );
+    flake-utils.lib.simpleFlake {
+      inherit self nixpkgs;
+      name = "mach-nix";
+      overlay = ./overlay.nix;
+      shell = ./shell.nix;
+    } // {
+      overlay = import ./overlay.nix;
+    };
 }
