@@ -8,11 +8,12 @@ let
 
   mkPython = python:
     {
-      requirements ? "",  # content from a requirements.txt file
-      packagesExtra ? [], # add R-Packages, pkgs from nixpkgs, pkgs built via mach-nix.buildPythonPackage
+      ignoreCollisions ? false,  # ignore collisions on the environment level. 
       overridesPre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overridesPost ? [],  # list of pythonOverrides to apply after the machnix overrides
+      packagesExtra ? [], # add R-Packages, pkgs from nixpkgs, pkgs built via mach-nix.buildPythonPackage
       providers ? {},  # define provider preferences
+      requirements ? "",  # content from a requirements.txt file
       tests ? false,  # Disable tests wherever possible to decrease build time.
       _ ? {},  # simplified overrides
       _providerDefaults ? with builtins; fromTOML (readFile ../provider_defaults.toml),
@@ -115,6 +116,7 @@ let
       py_final = python_pkg.override { packageOverrides = all_overrides;};
       py_final_with_pkgs = py_final.withPackages (ps: selectPkgs ps);
       final_env = py_final_with_pkgs.override (oa: {
+        inherit ignoreCollisions;
         makeWrapperArgs = [
           ''--suffix-each PATH ":" "${toString (map (p: "${p}/bin") extra_pkgs_other)}"''
         ];
