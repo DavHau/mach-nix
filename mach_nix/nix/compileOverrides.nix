@@ -14,7 +14,7 @@ let
   nixpkgs_json = import ./nixpkgs-json.nix {
     inherit overrides pkgs python;
   };
-  builder_python = pkgs.python37.withPackages(ps:
+  builder_python = pkgs.pkgsBuildHost.python37.withPackages(ps:
     (pkgs.lib.attrValues (import ./python-deps.nix {python = pkgs.python37; fetchurl = pkgs.fetchurl; }))
   );
   src = ./../../.;
