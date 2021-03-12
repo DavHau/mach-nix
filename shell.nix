@@ -14,5 +14,6 @@ mkShell {
   ];
   shellHook = ''
     export PYTHONPATH=$(pwd)/
+    git config core.hooksPath ./git-hooks
   '';
 }
