@@ -167,7 +167,6 @@ class OverridesGenerator(ExpressionGenerator):
     def _gen_overrideAttrs(
             self, name, ver, circular_deps, nix_name, provider, build_inputs_str, prop_build_inputs_str,
             keep_src=False):
-        # TODO: apply the buildInput replacement to all kinds of buildInputs
         out = f"""
             "{name}" = override python-super.{nix_name} ( oldAttrs:
               (mapAttrs (n: v: if elem n depNamesOther then map (dep: updatePythonDepsRec python-self dep) v else v ) oldAttrs) // {{

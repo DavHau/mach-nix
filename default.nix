@@ -14,11 +14,6 @@ let
 
   python_machnix = import ./mach_nix/nix/python.nix { inherit pkgs; };
 
-  python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix {
-    python = python_machnix;
-    fetchurl = pkgs.fetchurl;
-  }));
-
   pypiFetcher = (import ./mach_nix/nix/deps-db-and-fetcher.nix {
     inherit pkgs;
     pypi_deps_db_commit = pypiDataRev;
@@ -58,10 +53,15 @@ rec {
     version = builtins.readFile ./mach_nix/VERSION;
     name = "${pname}-${version}";
     src = ./.;
-    propagatedBuildInputs = python_deps;
+    propagatedBuildInputs = pythonDeps;
     checkInputs = [ python_machnix.pkgs.pytest ];
     checkPhase = "pytest";
   };
+
+  pythonDeps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix {
+    python = python_machnix;
+    fetchurl = pkgs.fetchurl;
+  }));
 
   # the main functions
   mkPython = args: __mkPython "mkPython" args;

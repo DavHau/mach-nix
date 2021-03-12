@@ -26,6 +26,14 @@
             shellWith
             dockerImageWith;
           "with" = pythonWith;
+          sdist = pkgs.runCommand "mach-nix-sdist"
+            { buildInputs = mach-nix-default.pythonDeps; }
+            ''
+              mkdir src
+              cp -r ${./.}/* src
+              cd src
+              python setup.py sdist -d $out
+            '';
         };
 
         defaultPackage = packages.mach-nix;
