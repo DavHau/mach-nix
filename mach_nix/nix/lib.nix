@@ -167,7 +167,6 @@ rec {
     let
       moved = {
         pkgs = "pkgs";
-        python = "python";
         pypi_deps_db_commit = "pypiDataRev";
         pypi_deps_db_sha256 = "pypiDataSha256";
       };

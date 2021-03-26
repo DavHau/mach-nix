@@ -1,4 +1,5 @@
 {
+  dataOutdated ? false,
   pkgs ? import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; },
   pypiDataRev ? ((import ./mach_nix/nix/flake-inputs.nix) "pypi-deps-db").rev,
   pypiDataSha256 ? ((import ./mach_nix/nix/flake-inputs.nix) "pypi-deps-db").sha256,
@@ -22,7 +23,19 @@ let
 
   withDot = mkPython: import ./mach_nix/nix/withDot.nix { inherit mkPython pypiFetcher; };
 
-  __buildPython = func: args: _buildPython func args;
+  throwOnOutdatedData = args:
+    if dataOutdated && ! (args.ignoreDataOutdated or false) then
+      throw ''
+        The pypiDataRev seems to be older than the nixpkgs which is currently used.
+        Because of this, mach-nix might lack dependency information for some python packages in nixpkgs.
+        This can degrade the quality of the generated environment or result in failing builds.
+        It is recommended to pass a newer pypiDataRev to mach-nix during import.
+        For flakes users: Update the `pypi-deps-db` input of mach-nix.
+        You can ignore this error by passing 'ignoreDataOutdated = true' to mk* or build* functions
+      ''
+    else args;
+
+  __buildPython = func: args: _buildPython func (throwOnOutdatedData args);
 
   _buildPython = func: args:
     if args ? extra_pkgs || args ? pkgsExtra then
@@ -34,7 +47,7 @@ let
       (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; })
         python func (l.throwOnDeprecatedArgs func args);
 
-  __mkPython = caller: args: _mkPython caller args;
+  __mkPython = caller: args: _mkPython caller (throwOnOutdatedData args);
 
   # (High level API) generates a python environment with minimal user effort
   _mkPython = caller: args:

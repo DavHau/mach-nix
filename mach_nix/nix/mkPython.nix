@@ -6,13 +6,15 @@ let
 
   buildPythonPackageBase = (import ./buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; });
 
-  mkPython = python:
+  mkPython = pythonGlobal:
     {
       ignoreCollisions ? false,  # ignore collisions on the environment level. 
+      ignoreDataOutdated ? false,  # don't fail if pypi data is older than nixpkgs
       overridesPre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overridesPost ? [],  # list of pythonOverrides to apply after the machnix overrides
       packagesExtra ? [], # add R-Packages, pkgs from nixpkgs, pkgs built via mach-nix.buildPythonPackage
       providers ? {},  # define provider preferences
+      python ? pythonGlobal,  # define python version
       requirements ? "",  # content from a requirements.txt file
       tests ? false,  # Disable tests wherever possible to decrease build time.
       _ ? {},  # simplified overrides
@@ -48,8 +50,9 @@ let
               p
         # translate sources to python packages
         else
-          buildPythonPackageBase python "buildPythonPackage" {
-            inherit pkgs providers python pypiDataRev pypiDataSha256 tests _providerDefaults;
+          buildPythonPackageBase python_arg "buildPythonPackage" {
+            inherit pkgs providers pypiDataRev pypiDataSha256 tests _providerDefaults;
+            python = python_arg;
             src = p;
           }
       ) (filter (p: l.is_src p || p ? pythonModule) packagesExtra);

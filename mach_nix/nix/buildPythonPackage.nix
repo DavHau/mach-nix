@@ -4,8 +4,9 @@ with pkgs.lib;
 let
   l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 
-  buildPythonPackageBase = python: func:
+  buildPythonPackageBase = pythonGlobal: func:
     args@{
+      ignoreDataOutdated ? false,  # don't fail if pypi data is older than nixpkgs
       requirements ? null,  # content from a requirements.txt file
       requirementsExtra ? "",  # add additional requirements to the packge
       tests ? false,  # Disable tests wherever possible to decrease build time.
@@ -15,6 +16,7 @@ let
       overridesPost ? [],  # list of pythonOverrides to apply after the machnix overrides
       passthru ? {},
       providers ? {},  # define provider preferences
+      python ? pythonGlobal,  # define python version
       _ ? {},  # simplified overrides
       _providerDefaults ? with builtins; fromTOML (readFile ../provider_defaults.toml),
       _fixes ? import ../fixes.nix {pkgs = pkgs;},
@@ -58,7 +60,8 @@ let
       );};
       pass_args = removeAttrs args (builtins.attrNames ({
         inherit requirementsExtra tests overridesPre overridesPost pkgs providers
-                requirements pypiDataRev pypiDataSha256 python _providerDefaults _ ;
+                requirements pypiDataRev pypiDataSha256 _providerDefaults _ ;
+        python = python_arg;
       }));
     in
     py_final.pkgs."${func}" ( pass_args // {
