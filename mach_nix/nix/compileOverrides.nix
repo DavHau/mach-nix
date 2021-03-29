@@ -5,9 +5,7 @@
   tests ? false,  # disable tests wherever possible
   overrides ? [],
   providers ? {},  # re-order to change provider priority or remove providers
-  pypiDataRev ? ((import ./flake-inputs.nix) "pypi-deps-db").rev,  # python dependency DB version
-  # Hash obtained using `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
-  pypiDataSha256 ? ((import ./flake-inputs.nix) "pypi-deps-db").sha256,
+  pypiData,
   _providerDefaults ? with builtins; fromTOML (readFile ../provider_defaults.toml)
 }:
 let
@@ -20,8 +18,7 @@ let
   src = ./../../.;
   db_and_fetcher = import ./deps-db-and-fetcher.nix {
     inherit pkgs;
-    pypi_deps_db_commit = pypiDataRev;
-    pypi_deps_db_sha256 = pypiDataSha256;
+    deps_db_src = pypiData;
   };
   providers_json = builtins.toJSON ( _providerDefaults // providers);
   mach_nix_file = pkgs.runCommand "mach_nix_file"

@@ -1,6 +1,11 @@
 {
   dataOutdated ? false,
   pkgs ? import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; },
+  pypiData ? builtins.fetchTarball {
+    name = "pypi-deps-db-src";
+    url = "https://github.com/DavHau/pypi-deps-db/tarball/${pypiDataRev}";
+    sha256 = "${pypiDataSha256}";
+  },
   pypiDataRev ? ((import ./mach_nix/nix/flake-inputs.nix) "pypi-deps-db").rev,
   pypiDataSha256 ? ((import ./mach_nix/nix/flake-inputs.nix) "pypi-deps-db").sha256,
   python ? "python3",
@@ -17,8 +22,7 @@ let
 
   pypiFetcher = (import ./mach_nix/nix/deps-db-and-fetcher.nix {
     inherit pkgs;
-    pypi_deps_db_commit = pypiDataRev;
-    pypi_deps_db_sha256 = pypiDataSha256;
+    deps_db_src = pypiData;
   }).pypi_fetcher;
 
   withDot = mkPython: import ./mach_nix/nix/withDot.nix { inherit mkPython pypiFetcher; };
@@ -41,10 +45,10 @@ let
     if args ? extra_pkgs || args ? pkgsExtra then
       throw "'extra_pkgs'/'pkgsExtra' cannot be passed to ${func}. Please pass it to a mkPython call."
     else if isString args || isPath args || pkgs.lib.isDerivation args then
-      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiData; })
         python func { src = args; }
     else
-      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiData; })
         python func (l.throwOnDeprecatedArgs func args);
 
   __mkPython = caller: args: _mkPython caller (throwOnOutdatedData args);
@@ -52,10 +56,10 @@ let
   # (High level API) generates a python environment with minimal user effort
   _mkPython = caller: args:
     if builtins.isList args then
-      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiData; })
         python { packagesExtra = args; }
     else
-      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiDataRev pypiDataSha256; })
+      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiData; })
         python (l.throwOnDeprecatedArgs caller args);
 
 in

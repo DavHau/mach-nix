@@ -4,38 +4,37 @@
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-  # TODO: rename to pypiData with next major release
   inputs.pypi-deps-db = {
     url = "github:DavHau/pypi-deps-db";
     flake = false;
   };
 
   outputs = { self, nixpkgs, flake-utils, ... }@inp:
-    let 
+    with nixpkgs.lib;
+    let
+      dataLastModified = toInt (readFile "${inp.pypi-deps-db}/UNIX_TIMESTAMP");
       dataOutdated =
-        if inp.pypi-deps-db.sourceInfo ? lastModified
-            && inp.nixpkgs.sourceInfo ? lastModified
-            && inp.pypi-deps-db.sourceInfo.lastModified < inp.nixpkgs.sourceInfo.lastModified then
+        if inp.nixpkgs.sourceInfo ? lastModified
+            && dataLastModified < inp.nixpkgs.sourceInfo.lastModified then
           true
         else
           false;
+      usageGen = "usage: nix (build|develop) mach-nix#gen.(python|shell|docker).package1.package2...";
     in
-      flake-utils.lib.eachDefaultSystem (system:
+      (flake-utils.lib.eachDefaultSystem (system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          mach-nix-default = import ./default.nix {inherit pkgs dataOutdated; };
+          mach-nix-default = import ./default.nix {
+            inherit pkgs dataOutdated;
+            pypiData = inp.pypi-deps-db;
+          };
         in rec
         {
           devShell = import ./shell.nix {
             inherit pkgs;
           };
-          packages = flake-utils.lib.flattenTree rec {
-            inherit (mach-nix-default)
-              mach-nix
-              pythonWith
-              shellWith
-              dockerImageWith;
-            "with" = pythonWith;
+          packages = rec {
+            inherit (mach-nix-default) mach-nix;
             sdist = pkgs.runCommand "mach-nix-sdist"
               { buildInputs = mach-nix-default.pythonDeps; }
               ''
@@ -44,6 +43,20 @@
                 cd src
                 python setup.py sdist -d $out
               '';
+            # fake package which contains functions inside passthru
+            gen = pkgs.stdenv.mkDerivation {
+              name = usageGen;
+              src = throw usageGen;
+              passthru = {
+                python = mach-nix-default.pythonWith;
+                shell = mach-nix-defaul.shellWitht;
+                docker = mach-nix-default.dockerImageWith;
+                inherit (mach-nix-default)
+                  pythonWith
+                  shellWith
+                  dockerImageWith;
+              };
+            };
           };
 
           defaultPackage = packages.mach-nix;
@@ -67,5 +80,13 @@
               ;
           };
         }
-      );
+      ))
+
+      // # deprecated usage
+      {
+        pythonWith = {} // throw "\n'pythonWith' is deprecated.\n${usageGen}";
+        "with" = {} // throw "\n'with' is deprecated.\n${usageGen}";
+        shellWith = {} // throw "\n'shellWith' is deprecated.\n${usageGen}";
+        dockerImageWith = {} // throw "\n'dockerImageWith' is deprecated.\n${usageGen}";
+      };
 }

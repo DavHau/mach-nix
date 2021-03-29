@@ -1,10 +1,10 @@
-{ pkgs, pypiDataRev, pypiDataSha256, ... }:
+{ pkgs, pypiData, ... }:
 with builtins;
 with pkgs.lib;
 let
   l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 
-  buildPythonPackageBase = (import ./buildPythonPackage.nix { inherit pkgs pypiDataRev pypiDataSha256; });
+  buildPythonPackageBase = (import ./buildPythonPackage.nix { inherit pkgs pypiData; });
 
   mkPython = pythonGlobal:
     {
@@ -51,7 +51,7 @@ let
         # translate sources to python packages
         else
           buildPythonPackageBase python_arg "buildPythonPackage" {
-            inherit pkgs providers pypiDataRev pypiDataSha256 tests _providerDefaults;
+            inherit pkgs providers pypiData tests _providerDefaults;
             python = python_arg;
             src = p;
           }
@@ -93,7 +93,7 @@ let
 
       py = python_pkg.override { packageOverrides = l.mergeOverrides overridesPre; };
       result = l.compileOverrides {
-        inherit pkgs providers pypiDataRev pypiDataSha256 tests _providerDefaults;
+        inherit pkgs providers pypiData tests _providerDefaults;
         overrides = overridesPre ++ overrides_pre_extra ++ extra_pkgs_py_overrides;
         python = py;
         requirements = l.concat_reqs ([requirements] ++ extra_pkgs_py_reqs ++ [extra_pkgs_r_reqs]);

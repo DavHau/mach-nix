@@ -1,4 +1,4 @@
-{ pkgs, pypiDataRev, pypiDataSha256, ... }:
+{ pkgs, pypiData, ... }:
 with builtins;
 with pkgs.lib;
 let
@@ -50,7 +50,7 @@ let
         + "\n" + requirementsExtra;
       py = python_pkg.override { packageOverrides = l.mergeOverrides overridesPre; };
       result = l.compileOverrides {
-        inherit pkgs providers pypiDataRev pypiDataSha256 tests _providerDefaults;
+        inherit pkgs providers pypiData tests _providerDefaults;
         overrides = overridesPre;
         python = py;
         requirements = reqs;
@@ -60,7 +60,7 @@ let
       );};
       pass_args = removeAttrs args (builtins.attrNames ({
         inherit requirementsExtra tests overridesPre overridesPost pkgs providers
-                requirements pypiDataRev pypiDataSha256 _providerDefaults _ ;
+                requirements pypiData _providerDefaults _ ;
         python = python_arg;
       }));
     in
