@@ -2,11 +2,11 @@ This page contains basic and advanced examples for using mach-nix inside a nix e
 
 
 <!--ts-->
- * [Import mach-nix](#import-mach-nix)
- * [mkPython / mkPythonShell](#mkpython--mkpythonshell)
+  * [Import mach-nix](#import-mach-nix)
+  * [mkPython / mkPythonShell](#mkpython--mkpythonshell)
     * [From a list of requirements](#from-a-list-of-requirements)
     * [Include extra packages.](#include-extra-packages)
- * [buildPythonPackage / buildPythonApplication](#buildpythonpackage--buildpythonapplication)
+  * [buildPythonPackage / buildPythonApplication](#buildpythonpackage--buildpythonapplication)
     * [Build python package from its source code](#build-python-package-from-its-source-code)
     * [buildPythonPackage from GitHub](#buildpythonpackage-from-github)
     * [buildPythonPackage from GitHub with extras](#buildpythonpackage-from-github-with-extras)
@@ -14,24 +14,28 @@ This page contains basic and advanced examples for using mach-nix inside a nix e
     * [buildPythonPackage from GitHub (reproducible source)](#buildpythonpackage-from-github-reproducible-source)
     * [buildPythonPackage from GitHub (manual requirements)](#buildpythonpackage-from-github-manual-requirements)
   * [Simplified overrides ('_' argument)](#simplified-overrides-_-argument)
-     * [General usage](#general-usage)
-     * [Example: add missing build inputs](#example-add-missing-build-inputs)
-  * [Overrides (overridesPre / overridesPost)](#overrides-overridesPre--overridesPost)
-     * [Include poetry2nix overrides](#include-poetry2nix-overrides)
+      * [General usage](#general-usage)
+      * [Example: add missing build inputs](#example-add-missing-build-inputs)
+  * [Overrides (overridesPre / overridesPost)](#overrides-overridespre--overridespost)
+      * [Include poetry2nix overrides](#include-poetry2nix-overrides)
   * [Tensorflow](#tensorflow)
-     * [Tensorflow with SSE/AVX/FMA support](#tensorflow-with-sseavxfma-support)
-     * [Tensorflow via wheel (newer versions, quicker builds)](#tensorflow-via-wheel-newer-versions-quicker-builds)
+      * [Tensorflow with SSE/AVX/FMA support](#tensorflow-with-sseavxfma-support)
+      * [Tensorflow via wheel (newer versions, quicker builds)](#tensorflow-via-wheel-newer-versions-quicker-builds)
   * [PyTorch](#pytorch)
-     * [Recent PyTorch with nixpkgs dependencies, and custom python](#recent-pytorch-with-nixpkgs-dependencies-and-custom-python)
+      * [Recent PyTorch with nixpkgs dependencies, and custom python](#recent-pytorch-with-nixpkgs-dependencies-and-custom-python)
   * [Jupyter](#jupyter)
-     * [...using jupyterWith   mach-nix](#using-jupyterwith--mach-nix)
-     * [...using mach-nix only](#using-mach-nix-only)
+      * [...using jupyterWith + mach-nix](#using-jupyterwith--mach-nix)
+      * [...using mach-nix only](#using-mach-nix-only)
   * [Docker](#docker)
-     * [JupyterLab Docker Image](#jupyterlab-docker-image)
+      * [JupyterLab Docker Image](#jupyterlab-docker-image)
   * [R and Python](#r-and-python)
   * [Raspberry PI / aarch64 SD Image](#raspberry-pi--aarch64-sd-image)
+  * [Troubleshooting](#troubleshooting)
+      * [collision between /nix/store/X and /nix/store/Y](#collision-between-nixstorex-and-nixstorey)
+        * [1. Environment contains different versions of same package.](#1-environment-contains-different-versions-of-same-package)
+        * [2. Different packages contain same named file](#2-different-packages-contain-same-named-file)
 
-<!-- Added by: grmpf, at: Mon 23 Nov 2020 03:10:05 PM +07 -->
+<!-- Added by: grmpf, at: Sat 03 Apr 2021 07:43:39 PM +07 -->
 
 <!--te-->
 
@@ -432,3 +436,56 @@ Or to select a specific channel:
 ```bash
 NIXOS_CONFIG=$PWD/configuration.nix nix build -f default.nix -I nixpkgs=channel:nixos-20.03
 ```
+
+
+## Troubleshooting
+
+### collision between /nix/store/X and /nix/store/Y
+In general, there can be two different reasons for this error:
+#### 1. Environment contains different versions of same package. 
+This is the case, if both store paths, mentioned by the error message, **contain the same package name**. For example:
+```
+collision between
+/nix/store/p3cwaa05gsbssgxfabisaw350yz8gd8i-python3.7-apscheduler-3.6.3/lib/python3.7/site-packages/apscheduler/executors/__pycache__/__init__.cpython-37.pyc
+and
+/nix/store/v1k9fi7vq9cmp3vjrl6pk2gq9cnjayv6-python3.7-apscheduler-3.6.3/lib/python3.7/site-packages/apscheduler/executors/pycache/init.cpython-37.pyc
+```
+Python environments are never allowed to contain two versions of the same package. Therefore, if something like this happens, it is most likely a bug in mach-nix. Please open an issue with the error message and nix expression attached causing the error.
+
+#### 2. Different packages contain same named file
+This is the case, if both store paths, mentioned by the error message, **contain different package names**.
+For example:
+```
+collision between
+/nix/store/zn4ksalrynlx3iwd4d0ldq7aiqn84ysv-python3.8-opencensus-context-0.1.2/lib/python3.8/site-packages/opencensus/common/__pycache__/__init__.cpython-38.pyc
+and
+/nix/store/2cfyjnic605mjr5j7zck88gk7bkqwpim-python3.8-opencensus-0.7.12/lib/python3.8/site-packages/opencensus/common/__pycache__/__init__.cpython-38.pyc
+```
+In this example, both packages `opencensus-context` and `opencensus` contain a file with the exact same import path `[...]/opencensus/common/__pycache__/__init__.cpython-38.pyc`.  
+Would you be installing these two packages via pip, then the later installed package would overwrite the file of the earlier installed package. This leads to undefined behavior, since the outcome dependes on the order of installation which is not necessarily the same across different installations.  
+Still, those collisions are common among some python packages, since pip does not raise an error when this happens, and just blindly overwrites files, leaving package maintainers in the dark about the problem.  
+It should be in the best interest of the packages maintainers to remove these collisions and get rid of undeclared behavior. Therefore it might be a good idea to report the collision issue upstream.
+To fix the immediate error with your current mach-nix environment, you have two options:
+
+1. (recommended) Fix the collision manually by removing the problematic file for one of the packages. Example
+    ```nix
+    mach-nix.mkPython {
+
+      requirements = "...";
+
+      _.{package1}.postInstall = ''
+        rm $out/lib/python*/site-packages/colliding/file.pyc
+      '';
+
+    }
+    ```
+1. (not recommended) Ignore collisions in general
+    ```nix
+    mach-nix.mkPython {
+
+      requirements = "...";
+
+      ignoreCollisions = true;
+
+    }
+    ```
