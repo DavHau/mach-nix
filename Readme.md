@@ -128,6 +128,8 @@ Functions for building python packages or applications:
 1. **buildPythonApplication** - same as **buildPythonPackage**, but package will not be importable by other python packages.
 
 **buildPythonPackage** and **buildPythonApplication** accept the same arguments as their equally named partners in nixpkgs, plus the arguments of **mkPython**. If name/version/requirements arguments are omitted, mach-nix attempts to detect them automatically. See [./examples.md](/examples.md).
+
+_Note that some dependency declaration formats are missing. For a roadmap, please refer to issue [#132](https://github.com/DavHau/mach-nix/issues/132)._
  
 **mkPython** and all other **mk...** functions take exactly the following arguments:
 
