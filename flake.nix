@@ -49,7 +49,7 @@
               src = throw usageGen;
               passthru = {
                 python = mach-nix-default.pythonWith;
-                shell = mach-nix-default.shellWitht;
+                shell = mach-nix-default.shellWith;
                 docker = mach-nix-default.dockerImageWith;
                 inherit (mach-nix-default)
                   pythonWith
