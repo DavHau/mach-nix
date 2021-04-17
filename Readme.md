@@ -69,6 +69,19 @@ pip install git+git://github.com/DavHau/mach-nix@3.2.0
 ```shell
 nix-env -if https://github.com/DavHau/mach-nix/tarball/3.2.0 -A mach-nix
 ```
+or, if you prefer `nix-shell`:
+
++ if [Nix flakes is enabled](https://nixos.wiki/wiki/Flakes#:~:text=Installing%20flakes):
+
+  ```shell
+  nix shell github:DavHau/mach-nix
+  ```
+  
++ otherwise:
+  
+  ```shell
+  nix-shell -p '(callPackage (fetchTarball https://github.com/DavHau/mach-nix/tarball/3.2.0) {}).mach-nix'
+  ```
 
 ---
 ### Build a virtualenv-style python environment from a requirements.txt
