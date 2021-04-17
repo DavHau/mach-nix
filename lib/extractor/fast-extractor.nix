@@ -1,1 +1,1 @@
-(import ./default.nix).extractor-fast
+(import ./default.nix {}).extractor-fast

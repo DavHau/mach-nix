@@ -16,7 +16,7 @@ let
   };
   cd_into_updated_proj_branch = name: dir: branch: email: ''
     if [ ! -e /home/${user}/${dir} ]; then
-      git clone git@github.com:DavHau/${name}.git /home/${user}/${dir}
+      git clone --depth 1 git@github.com:DavHau/${name}.git /home/${user}/${dir}
       cd /home/${user}/${dir}
       git config user.email "${email}"
       git config user.name "DavHau-bot"
