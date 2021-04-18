@@ -59,12 +59,7 @@ in
     pkgs.htop
     pkgs.vim
     pkgs.bmon
-    extractor.py27
-    extractor.py35
-    extractor.py36
-    extractor.py37
-    extractor.py38
-  ];
+  ] ++ extractor.pythonInterpreters;
   nix.maxJobs = 2;
   nix.extraOptions = ''
     http-connections = 300

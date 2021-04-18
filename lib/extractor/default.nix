@@ -1,4 +1,16 @@
-{ pkgs ? import <nixpkgs> { config = { allowUnfree = true; }; overlays = []; }, ... }:
+{
+  pkgs ? import <nixpkgs> { config = { allowUnfree = true; };},
+  lib ? pkgs.lib,
+  pythonInterpreters ? pkgs.useInterpreters or (with pkgs; [
+    python27
+    python35
+    python36
+    python37
+    python38
+  ]),
+  ...
+}:
+with lib;
 let
   commit = "1434cc0ee2da462f0c719d3a4c0ab4c87d0931e7";
   fetchPypiSrc = builtins.fetchTarball {
@@ -76,11 +88,6 @@ let
 
 in
 let
-  py27 = mkPy pkgs.python27;
-  py35 = mkPy pkgs.python35;
-  py36 = mkPy pkgs.python36;
-  py37 = mkPy pkgs.python37;
-  py38 = mkPy pkgs.python38;
   # This is how pip invokes setup.py. We do this manually instead of using pip to increase performance by ~40%
   setuptools_shim = ''
     import sys, setuptools, tokenize; sys.argv[0] = 'setup.py'; __file__='setup.py';
@@ -91,16 +98,18 @@ let
   '';
   script = ''
     mkdir $out
-    echo "python27"
-    out_file=$out/python27.json ${py27}/bin/python -c "${setuptools_shim}" install &> $out/python27.log || true
-    echo "python35"
-    out_file=$out/python35.json ${py35}/bin/python -c "${setuptools_shim}" install &> $out/python35.log || true
-    echo "python36"
-    out_file=$out/python36.json ${py36}/bin/python -c "${setuptools_shim}" install &> $out/python36.log || true
-    echo "python37"
-    out_file=$out/python37.json ${py37}/bin/python -c "${setuptools_shim}" install &> $out/python37.log || true
-    echo "python38"
-    out_file=$out/python38.json ${py38}/bin/python -c "${setuptools_shim}" install &> $out/python38.log || true
+    ${concatStringsSep "\n" (forEach pythonInterpreters (interpreter:
+      let
+        py = mkPy interpreter;
+        verSplit = splitString "." interpreter.version;
+        major = elemAt verSplit 0;
+        minor = elemAt verSplit 1;
+        v = "${major}${minor}";
+      in ''
+        echo "extracting metadata for python${v}"
+        out_file=$out/python${v}.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python${v}.log || true
+      ''
+    ))}
   '';
   script_single = py: ''
     mkdir $out
@@ -119,9 +128,7 @@ let
 in
 with pkgs;
 rec {
-  inherit py27 py35 py36 py37 py38;
-  all = { inherit py27 py35 py36 py37 py38; };
-  inherit machnix_source;
+  inherit machnix_source pythonInterpreters;
   example = extractor {pkg = "requests"; version = "2.22.0";};
   extract_from_src = {py, src}:
     stdenv.mkDerivation ( base_derivation // {
