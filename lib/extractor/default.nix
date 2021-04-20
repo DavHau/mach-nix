@@ -8,6 +8,7 @@
     python37
     python38
   ]),
+  limitPythonVersions ? [],
   ...
 }:
 with lib;
@@ -105,7 +106,8 @@ let
         major = elemAt verSplit 0;
         minor = elemAt verSplit 1;
         v = "${major}${minor}";
-      in ''
+      # only use selected interpreters
+      in optionalString (limitPythonVerions == [] || elem v limitPythonVerions) ''
         echo "extracting metadata for python${v}"
         out_file=$out/python${v}.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python${v}.log || true
       ''
