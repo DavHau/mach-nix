@@ -87,8 +87,6 @@ let
     in
       patchDistutils python_env;
 
-in
-let
   # This is how pip invokes setup.py. We do this manually instead of using pip to increase performance by ~40%
   setuptools_shim = ''
     import sys, setuptools, tokenize; sys.argv[0] = 'setup.py'; __file__='setup.py';
@@ -127,6 +125,24 @@ let
     LANG = "C.utf8";
     installPhase = script pyVersions;
   };
+
+  sanitizeDerivationName = string: lib.pipe string [
+    # Get rid of string context. This is safe under the assumption that the
+    # resulting string is only used as a derivation name
+    unsafeDiscardStringContext
+    # Strip all leading "."
+    (x: elemAt (match "\\.*(.*)" x) 0)
+    # Split out all invalid characters
+    # https://github.com/NixOS/nix/blob/2.3.2/src/libstore/store-api.cc#L85-L112
+    # https://github.com/NixOS/nix/blob/2242be83c61788b9c0736a92bb0b5c7bbfc40803/nix-rust/src/store/path.rs#L100-L125
+    (split "[^[:alnum:]+._?=-]+")
+    # Replace invalid character ranges with a "-"
+    (concatMapStrings (s: if lib.isList s then "-" else s))
+    # Limit to 211 characters (minus 4 chars for ".drv")
+    (x: substring (lib.max (stringLength x - 207) 0) (-1) x)
+    # If the result is empty, replace it with "unknown"
+    (x: if stringLength x == 0 then "unknown" else x)
+  ];
 in
 with pkgs;
 rec {
@@ -145,11 +161,11 @@ rec {
     } // (base_derivation []));
   extractor-fast = {pkg, version, url, sha256, pyVersions ? [], ...}:
     stdenv.mkDerivation ( rec {
-      name = "${pkg}-${version}-requirements";
+      name = sanitizeDerivationName "${pkg}-${version}-requirements";
       src = (pkgs.fetchurl {
         inherit url sha256;
       }).overrideAttrs (_: {
-        name = replaceStrings [" " "%"] ["" ""] _.name;
+        name = sanitizeDerivationName _.name;
       });
     } // (base_derivation pyVersions));
   make-drvs =
