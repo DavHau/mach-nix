@@ -149,8 +149,7 @@ rec {
       src = (pkgs.fetchurl {
         inherit url sha256;
       }).overrideAttrs (_: {
-        name = replaceStrings [" "] [""] _.name;
-        name = replaceStrings ["%"] [""] _.name;
+        name = replaceStrings [" " "%"] ["" ""] _.name;
       });
     } // (base_derivation pyVersions));
   make-drvs =
