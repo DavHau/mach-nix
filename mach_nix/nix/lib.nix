@@ -73,7 +73,7 @@ rec {
     in
       if preProcessedReqs ? python then
         if ! isNull pyStr && pyStr != preProcessedReqs.python then
-          trow ''
+          throw ''
             The specified 'python' conflicts the one specified via 'requirements'.
             Either remove `python=` from your requirements or do not specify 'python' when importing mach-nix
           ''
