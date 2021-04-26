@@ -80,7 +80,7 @@ class NixpkgsIndex(UserDict):
                 return same_ver[0].nix_key
             elif len(same_ver) == 0:
                 highest = self.get_highest_ver(remaining_pkgs).nix_key
-                print(f'Multiple nixkgs attributes found for {name}-{ver}: {[p.nix_key for p in remaining_pkgs]}'
+                print(f'Multiple nixpkgs attributes found for {name}-{ver}: {[p.nix_key for p in remaining_pkgs]}'
                       f"\nPicking '{highest}' as base attribute name.")
                 return highest
             remaining_pkgs = same_ver
