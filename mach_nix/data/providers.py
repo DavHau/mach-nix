@@ -175,13 +175,14 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
     def print_error_no_versions_available(self, pkg_name):
         provider_names = set(self.allowed_providers_for_pkg(pkg_name).keys())
-        error_text = f"\nThe Package '{pkg_name}' is not available from any of the " \
-                     f"selected providers {provider_names}\n for the selected python version"
+        error_text = \
+            f"\nThe Package '{pkg_name}' is not available from any of the selected providers\n" \
+            f"{provider_names} for the selected python version."
         if provider_names != set(self._all_providers.keys()):
             alternative_providers = self.list_all_providers_for_pkg(pkg_name)
             if alternative_providers:
-                error_text += f'... but the package is is available from providers {alternative_providers}\n' \
-                              f"Consider adding them via 'providers='"
+                error_text += f'\nThe package is is available from providers {alternative_providers}\n' \
+                              f"Consider adding them via 'providers='."
         else:
             error_text += \
                 f"\nIf the package's initial release date predates the release date of mach-nix,\n" \
