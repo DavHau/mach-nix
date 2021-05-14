@@ -13,7 +13,6 @@ jobs:
     name: Test Pip version - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
-      max-parallel: 1
       matrix:
         os: [ubuntu-latest, ]
         python-version: [3.7]
@@ -29,6 +28,9 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
+        install_url: https://github.com/numtide/nix-flakes-installer/releases/download/nix-2.4pre20201221_9fab14a/install
+        extra_nix_config: |
+          experimental-features = nix-command flakes
 
     - name: Install/Setup - NIX
       uses: cachix/install-nix-action@v13
@@ -64,7 +66,6 @@ jobs:
     name: Test Nix version - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
-      max-parallel: 1
       matrix:
         os: [ubuntu-latest, ]
         python-version: [3.7]
@@ -78,6 +79,9 @@ jobs:
       uses: cachix/install-nix-action@v13
       with:
         nix_path: nixpkgs=channel:nixos-unstable
+        install_url: https://github.com/numtide/nix-flakes-installer/releases/download/nix-2.4pre20201221_9fab14a/install
+        extra_nix_config: |
+          experimental-features = nix-command flakes
 
     - name: nix-env installation
       run: nix-env -if . -A mach-nix
