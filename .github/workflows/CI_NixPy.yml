@@ -15,7 +15,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        os: [ubuntu-latest, macos-10.14, ]
+        os: [ubuntu-latest, ]
         python-version: [3.7]
 
 ## tasks per matrix element
@@ -67,7 +67,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        os: [ubuntu-latest, macos-10.14, ]
+        os: [ubuntu-latest, ]
         python-version: [3.7]
     steps:
 
