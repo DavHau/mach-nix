@@ -91,8 +91,8 @@ def env(args, nixpkgs_ref):
         with (import ./inputs.nix);
         pkgs.mkShell {{
           buildInputs = [
-            mach-nix.mach-nix
             (import ./python.nix)
+            mach-nix.mach-nix
           ];
         }}
     """)
