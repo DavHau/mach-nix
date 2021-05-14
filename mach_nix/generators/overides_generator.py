@@ -241,7 +241,7 @@ class OverridesGenerator(ExpressionGenerator):
             select_pkgs = ps: [
               {pkg_names_str.strip()}
             ];
-            overrides = manylinux1: autoPatchelfHook: merge_with_overr {check} (python-self: python-super: {{
+            overrides' = manylinux1: autoPatchelfHook: merge_with_overr {check} (python-self: python-super: {{
           """
         out = unindent(out, 10)
         for pkg in pkgs.values():
@@ -316,6 +316,9 @@ class OverridesGenerator(ExpressionGenerator):
         out = self._gen_imports() + self._gen_overrides(pkgs, overrides_keys)
         python_with_packages = f"""
             in
-            {{ inherit overrides select_pkgs; }}
+            {{
+              inherit select_pkgs;
+              overrides = overrides';
+            }}
             """
         return out + unindent(python_with_packages, 12)
