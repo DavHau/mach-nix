@@ -69,6 +69,7 @@ class DependencyProviderBase(ABC):
         self.context = context(py_ver, platform, system)
         self.context_wheel = self.context.copy()
         self.context_wheel['extra'] = None
+        self.py_ver = py_ver
         self.py_ver_digits = py_ver.digits()
         self.platform = platform
         self.system = system
@@ -375,7 +376,7 @@ class WheelDependencyProvider(DependencyProviderBase):
     def _python_requires_ok(self, wheel: WheelRelease):
         if not wheel.requires_python:
             return True
-        ver = parse('.'.join(self.py_ver_digits))
+        ver = parse(str(self.py_ver))
         try:
             parsed_py_requires = list(parse_reqs(f"python{wheel.requires_python}"))
             return bool(filter_versions([ver], parsed_py_requires[0].specs))
