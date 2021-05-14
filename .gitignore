@@ -5,3 +5,4 @@ debug/reqs.txt
 /media/
 result
 debug/overrides.nix
+!.github

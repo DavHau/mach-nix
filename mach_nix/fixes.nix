@@ -55,6 +55,11 @@ rec {
     nativeBuildInputs.add = with pkgs; [ geos ];
   };
 
+  cryptography.no-rust-build = {
+    _cond = { prov, ver, ... }: prov == "sdist" && comp_ver ver "<" "3.4";
+    nativeBuildInputs.mod = old: filter (inp: (inp.name or "") != "cargo-setup-hook.sh") old;
+  };
+
   # remove if merged: https://github.com/NixOS/nixpkgs/pull/114384
   google-auth.six-input-missing = {
     propagatedBuildInputs.mod = pySelf: _: oldVal: oldVal ++ [ pySelf.six ];

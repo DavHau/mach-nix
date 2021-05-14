@@ -4,9 +4,9 @@
 }:
 with builtins;
 let
-  pyEnv = (builtins.getFlake (toString ../.)).packages.x86_64-linux.pythonWith.requests;
-  pyEnvShell = (builtins.getFlake (toString ../.)).packages.x86_64-linux.shellWith.requests;
-  pyEnvDockerImage = (builtins.getFlake (toString ../.)).packages.x86_64-linux.dockerImageWith.requests;
+  pyEnv = (builtins.getFlake (toString ../.)).packages.x86_64-linux.gen.python.requests;
+  pyEnvShell = (builtins.getFlake (toString ../.)).packages.x86_64-linux.gen.shell.requests;
+  pyEnvDockerImage = (builtins.getFlake (toString ../.)).packages.x86_64-linux.gen.docker.requests;
 in
 (map (p:
   if p ? _passthru.python.pkgs.requests then
