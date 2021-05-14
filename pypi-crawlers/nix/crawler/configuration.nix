@@ -160,7 +160,7 @@ in
     '';
   };
   systemd.timers.crawl-sdist = {
-    inherit enable;
+    enable = false;
     wantedBy = [ "timers.target" ];
     timerConfig.OnCalendar = [
       "Mon-Sun *-*-* 4:00:00"
@@ -202,7 +202,7 @@ in
     '';
   };
   systemd.timers.crawl-wheel = {
-    inherit enable;
+    enable = false;
     wantedBy = [ "timers.target" ];
     timerConfig.OnCalendar = [
       "Mon-Sun *-*-* 8:00:00"
