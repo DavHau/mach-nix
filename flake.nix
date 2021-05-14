@@ -62,6 +62,30 @@
           defaultPackage = packages.mach-nix;
 
           apps.mach-nix = flake-utils.lib.mkApp { drv = packages.mach-nix.mach-nix; };
+          apps.extract-reqs = 
+            let 
+              extractor = import ./lib/extractor {
+                inherit pkgs;
+                lib = inp.nixpkgs.lib;
+              };
+            in
+            {
+              type = "app";
+              program = toString (pkgs.writeScript "extract.sh" ''
+                export SRC=$1 
+                nix-build -o reqs -E 'let
+                    pkgs = import <nixpkgs> {};
+                    srcEnv = builtins.getEnv "SRC";
+                    src = pkgs.copyPathToStore srcEnv; 
+                    srcTar = pkgs.runCommand "src.tar.gz" {} "mkdir src && cp -r ''${src}/* src/ && pwd && ls -la && tar -c src | gzip -1 > $out";
+                  in (import ./lib/extractor {}).extract_from_src {
+                    py="python3";
+                    src = srcTar;
+                  }'
+                cat reqs/*
+                rm reqs
+              '');
+            };
           defaultApp = { type = "app"; program = "${defaultPackage}/bin/mach-nix"; };
 
           lib = {
