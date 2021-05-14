@@ -65,7 +65,7 @@ let
 in
 rec {
   # the mach-nix cmdline tool derivation
-  mach-nix = python_machnix.pkgs.buildPythonPackage rec {
+  mach-nix = python_machnix.pkgs.buildPythonApplication rec {
     pname = "mach-nix";
     version = builtins.readFile ./mach_nix/VERSION;
     name = "${pname}-${version}";
