@@ -9,4 +9,9 @@ let
   python = pkgs."${python_attr}";
 in
 
-import ./compileOverrides.nix { inherit requirements pkgs python; }
+import ./compileOverrides.nix {
+  inherit requirements pkgs python;
+  pypiData = (import ./deps-db-and-fetcher.nix {
+    inherit pkgs;
+  }).pypi_deps_db_src;
+}
