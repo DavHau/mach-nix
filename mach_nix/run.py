@@ -162,7 +162,7 @@ def github_rev_and_sha256(owner, repo, ref):
         exit(1)
     commit = json.loads(res)['sha']
     proc = sp.run(
-        f"nix-prefetch-url --unpack https://api.github.com/repos/{owner}/{repo}/tarball/{commit}",
+        f"nix-prefetch-url --unpack https://github.com/{owner}/{repo}/tarball/{commit}",
         shell=True, check=True, stdout=sp.PIPE)
     sha256 = proc.stdout.decode().strip()
     return commit, sha256
