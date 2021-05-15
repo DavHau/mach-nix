@@ -1,4 +1,9 @@
 # python interpreter for dev environment
-import ./mach_nix/nix/python.nix {
+let
   pkgs = import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; };
-}
+  python = pkgs.python37;
+  deps = (pkgs.lib.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = pkgs.fetchurl; }));
+in
+python.withPackages (ps: deps ++ [
+  ps.jupyterlab
+])

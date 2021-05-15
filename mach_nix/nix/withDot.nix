@@ -6,6 +6,7 @@ let
     let
       pyEnvBase = mkPython {
         requirements = foldl' (a: b: a + "\n" + b) "" selected;
+        ignoreCollisions = true;
       };
       attrs_list = map (n:
           { name = n; value = (gen attr (selected ++ [n])); }

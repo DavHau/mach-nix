@@ -47,4 +47,5 @@ rec {
   packaging = python.pkgs.packaging;
   setuptools = python.pkgs.setuptools;
   toml = python.pkgs.toml;
+  wheel = python.pkgs.wheel;
 }

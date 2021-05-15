@@ -205,6 +205,7 @@ class CombinedDependencyProvider(DependencyProviderBase):
                 f"If it still doesn't work, there was probably a problem while crawling pypi.\n" \
                 f"Please open an issue at: https://github.com/DavHau/mach-nix/issues/new\n"
         print(error_text, file=sys.stderr)
+        exit(1)
 
     @cached()
     def all_candidates_sorted(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
@@ -394,7 +395,7 @@ class WheelDependencyProvider(DependencyProviderBase):
     def _python_requires_ok(self, wheel: WheelRelease):
         if not wheel.requires_python:
             return True
-        ver = parse_ver('.'.join(self.py_ver_digits))
+        ver = parse_ver(str(self.py_ver))
         try:
             parsed_py_requires = list(parse_reqs(f"python{wheel.requires_python}"))
             return bool(filter_versions([ver], parsed_py_requires[0]))

@@ -8,7 +8,7 @@ let
     requirements = ''
       requests
     '';
-    extra_pkgs = with mach-nix.rPackages; [
+    packagesExtra = with mach-nix.rPackages; [
       data_table
     ];
   };

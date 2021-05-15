@@ -16,7 +16,7 @@ let
   };
   cd_into_updated_proj_branch = name: dir: branch: email: ''
     if [ ! -e /home/${user}/${dir} ]; then
-      git clone git@github.com:DavHau/${name}.git /home/${user}/${dir}
+      git clone --depth 1 git@github.com:DavHau/${name}.git /home/${user}/${dir}
       cd /home/${user}/${dir}
       git config user.email "${email}"
       git config user.name "DavHau-bot"
@@ -64,12 +64,7 @@ in
     pkgs.htop
     pkgs.vim
     pkgs.bmon
-    extractor.py27
-    extractor.py35
-    extractor.py36
-    extractor.py37
-    extractor.py38
-  ];
+  ] ++ extractor.pythonInterpreters;
   nix.maxJobs = 2;
   nix.extraOptions = ''
     http-connections = 300
@@ -176,7 +171,7 @@ in
     '';
   };
   systemd.timers.crawl-sdist = {
-    inherit enable;
+    enable = false;
     wantedBy = [ "timers.target" ];
     timerConfig.OnCalendar = [
       "Mon-Sun *-*-* 4:00:00"
@@ -221,7 +216,7 @@ in
     '';
   };
   systemd.timers.crawl-wheel = {
-    inherit enable;
+    enable = false;
     wantedBy = [ "timers.target" ];
     timerConfig.OnCalendar = [
       "Mon-Sun *-*-* 8:00:00"

@@ -1,5 +1,11 @@
 {
+  dataOutdated ? false,
   pkgs ? import (import ./mach_nix/nix/nixpkgs-src.nix) { config = {}; overlays = []; },
+  pypiData ? builtins.fetchTarball {
+    name = "pypi-deps-db-src";
+    url = "https://github.com/DavHau/pypi-deps-db/tarball/${pypiDataRev}";
+    sha256 = "${pypiDataSha256}";
+  },
   python ? null,
 
   # add some conda channels
@@ -21,24 +27,30 @@ let
 
   python_machnix = import ./mach_nix/nix/python.nix { inherit pkgs; };
 
-  python_deps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix {
-    python = python_machnix;
-    fetchurl = pkgs.fetchurl;
-  }));
-
   pypiFetcher = (import ./mach_nix/nix/deps-db-and-fetcher.nix {
     inherit pkgs;
-    pypi_deps_db_commit = pypiDataRev;
-    pypi_deps_db_sha256 = pypiDataSha256;
+    deps_db_src = pypiData;
   }).pypi_fetcher;
 
   withDot = mkPython: import ./mach_nix/nix/withDot.nix { inherit mkPython pypiFetcher; };
 
-  __buildPython = func: args: _buildPython func args;
+  throwOnOutdatedData = args:
+    if dataOutdated && ! (args.ignoreDataOutdated or false) then
+      throw ''
+        The pypiDataRev seems to be older than the nixpkgs which is currently used.
+        Because of this, mach-nix might lack dependency information for some python packages in nixpkgs.
+        This can degrade the quality of the generated environment or result in failing builds.
+        It is recommended to pass a newer pypiDataRev to mach-nix during import.
+        For flakes users: Update the `pypi-deps-db` input of mach-nix.
+        You can ignore this error by passing 'ignoreDataOutdated = true' to mk* or build* functions
+      ''
+    else args;
+
+  __buildPython = func: args: _buildPython func (throwOnOutdatedData args);
 
   _buildPython = func: args:
     let
-      machnixArgs = { inherit pkgs condaChannelsExtra condaDataRev condaDataSha256 pypiDataRev pypiDataSha256; };
+      machnixArgs = { inherit pkgs condaChannelsExtra condaDataRev condaDataSha256 pypiData; };
     in
       if args ? extra_pkgs || args ? pkgsExtra then
         throw "'extra_pkgs'/'pkgsExtra' cannot be passed to ${func}. Please pass it to a mkPython call."
@@ -47,12 +59,12 @@ let
       else
         (import ./mach_nix/nix/buildPythonPackage.nix machnixArgs) python func (l.throwOnDeprecatedArgs func args);
 
-  __mkPython = caller: args: _mkPython caller args;
+  __mkPython = caller: args: _mkPython caller (throwOnOutdatedData args);
 
   # (High level API) generates a python environment with minimal user effort
   _mkPython = caller: args:
     let
-      machnixArgs = { inherit pkgs condaChannelsExtra condaDataRev condaDataSha256 pypiDataRev pypiDataSha256; };
+      machnixArgs = { inherit pkgs condaChannelsExtra condaDataRev condaDataSha256 pypiData; };
     in
       if builtins.isList args then
         (import ./mach_nix/nix/mkPython.nix machnixArgs) python { packagesExtra = args; }
@@ -62,15 +74,20 @@ let
 in
 rec {
   # the mach-nix cmdline tool derivation
-  mach-nix = python_machnix.pkgs.buildPythonPackage rec {
+  mach-nix = python_machnix.pkgs.buildPythonApplication rec {
     pname = "mach-nix";
     version = builtins.readFile ./mach_nix/VERSION;
     name = "${pname}-${version}";
     src = ./.;
-    propagatedBuildInputs = python_deps;
+    propagatedBuildInputs = pythonDeps;
     checkInputs = [ python_machnix.pkgs.pytest ];
     checkPhase = "pytest";
   };
+
+  pythonDeps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix {
+    python = python_machnix;
+    fetchurl = pkgs.fetchurl;
+  }));
 
   # the main functions
   mkPython = args: __mkPython "mkPython" args;

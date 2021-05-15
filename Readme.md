@@ -69,6 +69,19 @@ pip install git+git://github.com/DavHau/mach-nix@conda-beta
 ```shell
 nix-env -if https://github.com/DavHau/mach-nix/tarball/conda-beta -A mach-nix
 ```
+or, if you prefer `nix-shell`:
+
++ if [Nix flakes is enabled](https://nixos.wiki/wiki/Flakes#:~:text=Installing%20flakes):
+
+  ```shell
+  nix shell github:DavHau/mach-nix
+  ```
+  
++ otherwise:
+  
+  ```shell
+  nix-shell -p '(callPackage (fetchTarball https://github.com/DavHau/mach-nix/tarball/conda-beta) {}).mach-nix'
+  ```
 
 ---
 ### Build a virtualenv-style python environment from a requirements.txt
@@ -119,15 +132,17 @@ Functions for building python environments:
 1. **mkPython** - builds a python environment for a given `requirements.txt`.
 1. **mkPythonShell** - builds a python environment suitable for nix-shell.
 1. **mkDockerImage** - builds a layered docker image containing a python environment.
-1. **mkNixpkgs** - returns nixpkgs which is conform to the given requirements.
-1. **mkOverlay** - returns an overlay function to make nixpkgs conform to the given requirements  .
+1. **mkNixpkgs** - returns nixpkgs which conform to the given requirements.
+1. **mkOverlay** - returns an overlay function to make nixpkgs conform to the given requirements.
 1. **mkPythonOverrides** - produces pythonOverrides to make python conform to the given requirements.
 
 Functions for building python packages or applications:
 1. **buildPythonPackage** - build a single python package from a source code while automatically detecting requirements.
 1. **buildPythonApplication** - same as **buildPythonPackage**, but package will not be importable by other python packages.
 
-**buildPythonPackage** and **buildPythonApplication** accept the same arguments like their equally named partners in nixpkgs, plus the arguments of **mkPython**. If name/version/requirements arguments are omitted, mach-nix attempts to detect them automatically. See [./examples.md](/examples.md).
+**buildPythonPackage** and **buildPythonApplication** accept the same arguments as their equally named partners in nixpkgs, plus the arguments of **mkPython**. If name/version/requirements arguments are omitted, mach-nix attempts to detect them automatically. See [./examples.md](/examples.md).
+
+_Note that some dependency declaration formats are missing. For a roadmap, please refer to issue [#132](https://github.com/DavHau/mach-nix/issues/132)._
  
 **mkPython** and all other **mk...** functions take exactly the following arguments:
 
@@ -138,8 +153,8 @@ Functions for building python packages or applications:
  - **providers** (set): define provider preferences (see examples below)
  - **packagesExtra** (list) Add extra packages. Can contain tarball-URLs or paths of python source code, packages built via `mach-nix.buildPythonPackage`, or R Packages.
  - **_** (set): use underscore argument to easily modify arbitrary attributes of packages. For example to add build inputs use `_.{package}.buildInputs.add = [...]`. Or to overwrite patches use `_.{package}.patches = [...]`.
- - **overridesPre** (list): (advanced) list of pythonOverrides to apply before the machnix overrides. Use this to include additional packages which can then be selected inside the `requirements`
- - **overridesPost** (list): (advanced) list of pythonOverrides to apply after the machnix overrides. Use this to fixup packages.
+ - **overridesPre** (list): (advanced) list of pythonOverrides to apply before the mach-nix overrides. Use this to include additional packages which can then be selected inside the `requirements`
+ - **overridesPost** (list): (advanced) list of pythonOverrides to apply after the mach-nix overrides. Use this to fixup packages.
  - **tests** (bool): Whether to enable tests (default: false)
  - **_providerDefaults** (set): builtin provider defaults. Disable them by passing {}
  
@@ -162,8 +177,8 @@ Providers can be disabled/enabled/preferred like in the following examples:
 
  - **`"nixpkgs,sdist"`** means, that `nixpkgs` candidates are preferred, but mach-nix falls back to sdist. **`wheel`** is not listed and therefore wheels are disabled.
 
- A full provider config passed to mach-nix looks like this:
- ```nix
+A full provider config passed to mach-nix looks like this:
+```nix
 {
   # The default for all packages which are not specified explicitly
   _default = "nixpkgs,wheel,sdist";
@@ -172,16 +187,16 @@ Providers can be disabled/enabled/preferred like in the following examples:
   numpy = "wheel,sdist";
   tensorflow = "wheel";
 }
- ```
+```
 
 Mach-nix will always satisfy the **requirements.txt** fully with the configured providers or fail with a **ResolutionImpossible** error.
 
-If a mach-nix build fails, Most of the times it can be resolved by just switching the provider of a package, which is simple and doesn't require writing a lot of nix code. For some more complex scenarios, checkout the [./examples.md](/examples.md).
+If a mach-nix build fails, most of the time it can be resolved by just switching the provider of a package, which is simple and doesn't require writing a lot of nix code. For some more complex scenarios, checkout the [./examples.md](/examples.md).
 
 ## Why nix?
- Usually people rely on multiple layers of different package management tools for building their software environments. These tools are often not well integrated with each other and don't offer strong reproducibility. Example: You are on debian/ubuntu and use APT (layer 1) to install python. Then you use venv (layer 2) to overcome some of your layer 1 limitations (not being able to have multiple versions of the same package installed) and afterwards you are using pip (layer 3) to install python packages. You notice that even after pinning all your requirements, your environment behaves differently on your server or your colleagues machine because their underlying system differs from yours. You start using docker (layer 4) to overcome this problem which adds extra complexity to the whole process and gives you some nasty limitations during development. You need to configure your IDE's docker integration and so on. Despite all the effort you put in, still the problem is not fully solved and from time to time your build pipeline just breaks and you need to fix it manually. 
+Usually people rely on multiple layers of different package management tools for building their software environments. These tools are often not well integrated with each other and don't offer strong reproducibility. Example: You are on debian/ubuntu and use APT (layer 1) to install python. Then you use venv (layer 2) to overcome some of your layer 1 limitations (not being able to have multiple versions of the same package installed) and afterwards you are using pip (layer 3) to install python packages. You notice that even after pinning all your requirements, your environment behaves differently on your server or your colleagues machine because their underlying system differs from yours. You start using docker (layer 4) to overcome this problem which adds extra complexity to the whole process and gives you some nasty limitations during development. You need to configure your IDE's docker integration and so on. Despite all the effort you put in, still the problem is not fully solved and from time to time your build pipeline just breaks and you need to fix it manually. 
  
- In contrast to that, the nix package manager provides a from ground up different approach to build software systems. Due to it's purly functional approach, nix doesn't require additional layers to make your software reliable. Software environments built with nix are known to be reproducible, and portable, which makes many processes during development and deployment easier. Mach-nix leverages that potential by abstracting away the complexity involved in building python environments with nix. Basically it just generates nix expressions for you.
+In contrast to that, the nix package manager provides a from ground up different approach to build software systems. Due to its purely functional approach, nix doesn't require additional layers to make your software reliable. Software environments built with nix are known to be reproducible, and portable, which makes many processes during development and deployment easier. Mach-nix leverages that potential by abstracting away the complexity involved in building python environments with nix. Basically it just generates nix expressions for you.
 
 ## How does mach-nix work?
 The general mechanism can be broken down into [Dependency resolution](#dependency-resolution) and [Generating a nix expression](#generating-a-nix-expression):
@@ -228,5 +243,5 @@ Contributions to this project are welcome in the form of GitHub PRs. If you are 
 ## Alternative / Similar Software:
  - [Poetry](https://python-poetry.org/)
  - [Pipenv](https://github.com/pypa/pipenv)
- - [peotry2nix](https://github.com/nix-community/poetry2nix)
+ - [poetry2nix](https://github.com/nix-community/poetry2nix)
  - [pypi2nix](https://github.com/nix-community/pypi2nix)

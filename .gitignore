@@ -1,6 +1,8 @@
-.git/*
+.*/
 **/__pycache__/
 interpreter
-debug/expr.nix
+debug/reqs.txt
 /media/
 result
+debug/overrides.nix
+!.github

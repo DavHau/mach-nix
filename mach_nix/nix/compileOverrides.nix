@@ -7,9 +7,7 @@ with builtins;
   tests ? false,  # disable tests wherever possible
   overrides ? [],
   providers ? {},  # re-order to change provider priority or remove providers
-  pypiDataRev ? ((import ./flake-inputs.nix) "pypi-deps-db").rev,  # python dependency DB version
-  # Hash obtained using `nix-prefetch-url --unpack https://github.com/DavHau/pypi-deps-db/tarball/<pypi_deps_db_commit>`
-  pypiDataSha256 ? ((import ./flake-inputs.nix) "pypi-deps-db").sha256,
+  pypiData,
   condaDataRev ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).rev,
   condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).indexSha256,
   _providerDefaults ?
@@ -46,8 +44,7 @@ let
   nixpkgs_json = import ./nixpkgs-json.nix {
     inherit overrides pkgs python;
   };
-
-  builder_python = pkgs.python37.withPackages(ps:
+  builder_python = pkgs.pkgsBuildHost.python37.withPackages(ps:
     (pkgs.lib.attrValues (import ./python-deps.nix {python = pkgs.python37; fetchurl = pkgs.fetchurl; }))
   );
 
@@ -55,8 +52,7 @@ let
 
   db_and_fetcher = import ./deps-db-and-fetcher.nix {
     inherit pkgs;
-    pypi_deps_db_commit = pypiDataRev;
-    pypi_deps_db_sha256 = pypiDataSha256;
+    deps_db_src = pypiData;
   };
 
   providers_json_file = pkgs.writeText "providers" (builtins.toJSON _providers);

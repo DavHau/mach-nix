@@ -1,3 +1,20 @@
+# 3.2.0 (11 Mar 2021)
+bugfixes, ignoreCollisions
+
+### Features
+ - add argument `ignoreCollisions` to all `mk*` functions
+ - add passthru attribute `expr` to the result of `mkPython`, which is a string containing the internally generated nix expression.
+ - add flake output `sdist` to build pip compatible sdist distribution of mach-nix
+
+### Fixes
+ - Sometimes wrong package versions were inherited when using the `nixpkgs` provider, leading to collision errors or unexpected package versions. Now, python depenencies of `nixpkgs` candidates are automatically replaced recursively.
+ - When cross building, mach-nix attempted to generate the nix expression using the target platform's python interpreter, resulting in failure
+
+### Package Fixes
+ - cartopy: add missing build inputs (geos)
+ - google-auth: add missing dependency `six` when provider is `nixpkgs`
+
+
 # 3.1.1 (27 Nov 2020)
 fix cli
 
@@ -100,7 +117,7 @@ in
  
  - Non-python packages can be passed via `packagesExtra` to include them into the environment.
  
- 
+  the target platform's python interpreter was used to generate the nix expression, resulting in a failing build
 ### Improvements
  - rework the logic for inheriting dependencies from nixpkgs
  - fixes.nix: allow alternative mod function signature with more arguments:  

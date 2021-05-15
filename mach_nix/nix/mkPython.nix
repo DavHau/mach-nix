@@ -1,4 +1,4 @@
-{ condaChannelsExtra, condaDataRev, condaDataSha256, pkgs, pypiDataRev, pypiDataSha256, ... }:
+{ condaChannelsExtra, condaDataRev, condaDataSha256, pkgs, pypiData, ... }:
 
 with builtins;
 with pkgs.lib;
@@ -6,16 +6,19 @@ let
   l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 
   buildPythonPackageBase = (import ./buildPythonPackage.nix {
-    inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs pypiDataRev pypiDataSha256;
+    inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs pypiData;
    });
 
-  mkPython = python:
+  mkPython = pythonGlobal:
     {
-      requirements ? "",  # content from a requirements.txt file
-      packagesExtra ? [], # add R-Packages, pkgs from nixpkgs, pkgs built via mach-nix.buildPythonPackage
+      ignoreCollisions ? false,  # ignore collisions on the environment level.
+      ignoreDataOutdated ? false,  # don't fail if pypi data is older than nixpkgs
       overridesPre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overridesPost ? [],  # list of pythonOverrides to apply after the machnix overrides
+      packagesExtra ? [], # add R-Packages, pkgs from nixpkgs, pkgs built via mach-nix.buildPythonPackage
       providers ? {},  # define provider preferences
+      python ? pythonGlobal,  # define python version
+      requirements ? "",  # content from a requirements.txt file
       tests ? false,  # Disable tests wherever possible to decrease build time.
       _ ? {},  # simplified overrides
       _providerDefaults ?
@@ -52,7 +55,7 @@ let
         else
           buildPythonPackageBase python "buildPythonPackage" {
             inherit condaDataRev condaDataSha256 pkgs providers python
-                    pypiDataRev pypiDataSha256 tests _providerDefaults;
+                    pypiData tests _providerDefaults;
             src = p;
           }
       ) (filter (p: l.is_src p || p ? pythonModule) packagesExtra);
@@ -93,7 +96,7 @@ let
 
       py = python_pkg.override { packageOverrides = l.mergeOverrides overridesPre; };
       result = l.compileOverrides {
-        inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs providers pypiDataRev pypiDataSha256 tests _providerDefaults;
+        inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs providers pypiData tests _providerDefaults;
         overrides = overridesPre ++ overrides_pre_extra ++ extra_pkgs_py_overrides;
         python = py;
         requirements = l.concat_reqs ([requirements] ++ extra_pkgs_py_reqs ++ [extra_pkgs_r_reqs]);
@@ -124,6 +127,7 @@ let
         '' + oa.postBuild;
       });
       final_env = py_final_with_pkgs.override (oa: {
+        inherit ignoreCollisions;
         makeWrapperArgs = [
           ''--suffix-each PATH ":" "${toString (map (p: "${p}/bin") extra_pkgs_other)}"''
           ''--set QT_PLUGIN_PATH ${py_final_with_pkgs}/plugins''
@@ -133,12 +137,9 @@ let
       self = final_env.overrideAttrs (oa: {
         passthru = oa.passthru // rec {
           inherit selectPkgs;
+          expr = result.expr;
           pythonOverrides = all_overrides;
           python = py_final;
-          env = pkgs.mkShell {
-            name = "mach-nix-python-shell";
-            buildInputs = [ final_env extra_pkgs_other ];
-          };
           overlay = self: super:
             let
               py_attr_name = "python${pyver.major}${pyver.minor}";

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+echo -n "$(git branch --show-current)" > ./mach_nix/VERSION
+git add ./mach_nix/VERSION

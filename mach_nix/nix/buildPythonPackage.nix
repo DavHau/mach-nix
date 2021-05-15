@@ -1,13 +1,14 @@
-{ condaChannelsExtra, condaDataRev, condaDataSha256, pkgs, pypiDataRev, pypiDataSha256, ... }:
+{ condaChannelsExtra, condaDataRev, condaDataSha256, pkgs, pypiData, ... }:
 
 with builtins;
 with pkgs.lib;
 let
   l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 
-  buildPythonPackageBase = python: func:
+  buildPythonPackageBase = pythonGlobal: func:
     args@{
-      requirements ? "",  # content from a requirements.txt file
+      ignoreDataOutdated ? false,  # don't fail if pypi data is older than nixpkgs
+      requirements ? null,  # content from a requirements.txt file
       requirementsExtra ? "",  # add additional requirements to the packge
       tests ? false,  # Disable tests wherever possible to decrease build time.
       extras ? [],
@@ -16,6 +17,7 @@ let
       overridesPost ? [],  # list of pythonOverrides to apply after the machnix overrides
       passthru ? {},
       providers ? {},  # define provider preferences
+      python ? pythonGlobal,  # define python version
       _ ? {},  # simplified overrides
       _providerDefaults ?
         if (import ./lib.nix { inherit (pkgs) lib; inherit pkgs; }).isCondaEnvironmentYml requirements then
@@ -33,7 +35,8 @@ let
       # Extract dependencies automatically if 'requirements' is unset
       pname =
         if hasAttr "pname" args then args.pname
-        else l.extract_meta python_pkg src "name" "pname";
+        else l.extract_meta python_
+        pkg src "name" "pname";
       version =
         if hasAttr "version" args then args.version
         else l.extract_meta python_pkg src "version" "version";
@@ -51,7 +54,7 @@ let
       py = python_pkg.override { packageOverrides = l.mergeOverrides overridesPre; };
       result = l.compileOverrides {
         inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs
-                providers pypiDataRev pypiDataSha256 tests _providerDefaults;
+                providers pypiData tests _providerDefaults;
         overrides = overridesPre;
         python = py;
         requirements = reqs;
@@ -65,13 +68,13 @@ let
       );};
       pass_args = removeAttrs args (builtins.attrNames ({
         inherit condaDataRev condaDataSha256 overridesPre overridesPost pkgs providers
-                requirements requirementsExtra pypiDataRev pypiDataSha256 python tests _providerDefaults _ ;
+                requirements requirementsExtra pypiData python tests _providerDefaults _ ;
+        python = python_arg;
       }));
     in
     py_final.pkgs."${func}" ( pass_args // {
       propagatedBuildInputs =
-        (result.select_pkgs py_final.pkgs)
-        ++ (if hasAttr "propagatedBuildInputs" args then args.propagatedBuildInputs else []);
+        (result.select_pkgs py_final.pkgs) ++ (args.propagatedBuildInputs or []);
       src = src;
       inherit doCheck pname version;
       passthru = passthru // {

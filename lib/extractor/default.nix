@@ -1,4 +1,17 @@
-{ pkgs ? import <nixpkgs> { config = { allowUnfree = true; }; overlays = []; }, ... }:
+{
+  pkgs ? import <nixpkgs> { config = { allowUnfree = true; };},
+  lib ? pkgs.lib,
+  pythonInterpreters ? pkgs.useInterpreters or (with pkgs; [
+    python27
+    python35
+    python36
+    python37
+    python38
+  ]),
+  ...
+}:
+with builtins;
+with lib;
 let
   commit = "1434cc0ee2da462f0c719d3a4c0ab4c87d0931e7";
   fetchPypiSrc = builtins.fetchTarball {
@@ -74,71 +87,99 @@ let
     in
       patchDistutils python_env;
 
-in
-let
-  py27 = mkPy pkgs.python27;
-  py35 = mkPy pkgs.python35;
-  py36 = mkPy pkgs.python36;
-  py37 = mkPy pkgs.python37;
-  py38 = mkPy pkgs.python38;
   # This is how pip invokes setup.py. We do this manually instead of using pip to increase performance by ~40%
   setuptools_shim = ''
-    import sys, setuptools, tokenize; sys.argv[0] = 'setup.py'; __file__='setup.py';
+    import sys, setuptools, tokenize, os; sys.argv[0] = 'setup.py'; __file__='setup.py';
     f=getattr(tokenize, 'open', open)(__file__);
     code=f.read().replace('\r\n', '\n');
     f.close();
     exec(compile(code, __file__, 'exec'))
   '';
-  script = ''
+  script = pyVersions: ''
     mkdir $out
-    echo "python27"
-    out_file=$out/python27.json ${py27}/bin/python -c "${setuptools_shim}" install &> $out/python27.log || true
-    echo "python35"
-    out_file=$out/python35.json ${py35}/bin/python -c "${setuptools_shim}" install &> $out/python35.log || true
-    echo "python36"
-    out_file=$out/python36.json ${py36}/bin/python -c "${setuptools_shim}" install &> $out/python36.log || true
-    echo "python37"
-    out_file=$out/python37.json ${py37}/bin/python -c "${setuptools_shim}" install &> $out/python37.log || true
-    echo "python38"
-    out_file=$out/python38.json ${py38}/bin/python -c "${setuptools_shim}" install &> $out/python38.log || true
+    ${concatStringsSep "\n" (forEach pythonInterpreters (interpreter:
+      let
+        py = mkPy interpreter;
+        verSplit = splitString "." interpreter.version;
+        major = elemAt verSplit 0;
+        minor = elemAt verSplit 1;
+        v = "${major}${minor}";
+      # only use selected interpreters
+      in optionalString (pyVersions == [] || elem v pyVersions) ''
+        echo "extracting metadata for python${v}"
+        out_file=$out/python${v}.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python${v}.log || true
+      ''
+    ))}
   '';
   script_single = py: ''
+    chmod +x setup.py || true
     mkdir $out
     echo "extracting dependencies"
     out_file=$out/python.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python.log || true
   '';
-  base_derivation = with pkgs; {
+  base_derivation = pyVersions: with pkgs; {
     buildInputs = [ unzip pkg-config pipenv ];
     phases = ["unpackPhase" "installPhase"];
     # Tells our modified python builtins to dump setup attributes instead of doing an actual installation
     dump_setup_attrs = "y";
     PYTHONIOENCODING = "utf8";  # My gut feeling is that encoding issues might decrease by this
     LANG = "C.utf8";
-    installPhase = script;
+    installPhase = script pyVersions;
   };
+
+  sanitizeDerivationName = string: lib.pipe string [
+    # Get rid of string context. This is safe under the assumption that the
+    # resulting string is only used as a derivation name
+    unsafeDiscardStringContext
+    # Strip all leading "."
+    (x: elemAt (match "\\.*(.*)" x) 0)
+    # Split out all invalid characters
+    # https://github.com/NixOS/nix/blob/2.3.2/src/libstore/store-api.cc#L85-L112
+    # https://github.com/NixOS/nix/blob/2242be83c61788b9c0736a92bb0b5c7bbfc40803/nix-rust/src/store/path.rs#L100-L125
+    (split "[^[:alnum:]+._?=-]+")
+    # Replace invalid character ranges with a "-"
+    (concatMapStrings (s: if lib.isList s then "-" else s))
+    # Limit to 211 characters (minus 4 chars for ".drv")
+    (x: substring (lib.max (stringLength x - 207) 0) (-1) x)
+    # If the result is empty, replace it with "unknown"
+    (x: if stringLength x == 0 then "unknown" else x)
+  ];
 in
 with pkgs;
 rec {
-  inherit py27 py35 py36 py37 py38;
-  all = { inherit py27 py35 py36 py37 py38; };
-  inherit machnix_source;
+  inherit machnix_source pythonInterpreters;
   example = extractor {pkg = "requests"; version = "2.22.0";};
   extract_from_src = {py, src}:
-    stdenv.mkDerivation ( base_derivation // {
+    let 
+      py' = if isString py then pkgs."${py}" else py;
+    in
+    stdenv.mkDerivation ( (base_derivation []) // {
       inherit src;
       name = "package-requirements";
-      installPhase = script_single (mkPy py);
+      installPhase = script_single (mkPy py');
     });
-  extractor = {pkg, version}:
+  extractor = {pkg, version, ...}:
     stdenv.mkDerivation ({
       name = "${pkg}-${version}-requirements";
       src = fetchPypi pkg version;
-    } // base_derivation);
-  extractor-fast = {pkg, version, url, sha256}:
-    stdenv.mkDerivation ({
-      name = "${pkg}-${version}-requirements";
-      src = pkgs.fetchurl {
+    } // (base_derivation []));
+  extractor-fast = {pkg, version, url, sha256, pyVersions ? [], ...}:
+    stdenv.mkDerivation ( rec {
+      name = sanitizeDerivationName "${pkg}-${version}-requirements";
+      src = (pkgs.fetchurl {
         inherit url sha256;
-      };
-    } // base_derivation);
+      }).overrideAttrs (_: {
+        name = sanitizeDerivationName _.name;
+      });
+    } // (base_derivation pyVersions));
+  make-drvs =
+    let
+      jobs = fromJSON (readFile (getEnv "EXTRACTOR_JOBS_JSON_FILE"));
+      results = listToAttrs (map (job:
+        nameValuePair
+          "${job.pkg}#${job.version}"
+          (extractor-fast job).drvPath
+      ) jobs);
+    in toJSON results;
+
 }
