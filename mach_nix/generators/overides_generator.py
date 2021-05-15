@@ -36,7 +36,7 @@ class OverridesGenerator(ExpressionGenerator):
         pkgs = dict(sorted(((p.name, p) for p in pkgs), key=lambda x: x[1].name))
         return self._gen_python_env(pkgs)
 
-    def _gen_imports(self):
+    def _gen_imports(self, all_pnames):
         out = f"""
             {{ pkgs, python, ... }}:
             with builtins;
@@ -72,11 +72,25 @@ class OverridesGenerator(ExpressionGenerator):
                 "propagatedBuildInputs"
                 "buildInputs"
               ];
+              pnamesEnv =
+                genAttrs
+                  [ "{'" "'.join(all_pnames)}" ]
+                  (pname: null);
+              removeUnwantedPythonDeps = pname: propagatedBuildInputs:
+                filter 
+                  (dep:
+                    if ! isPyModule dep || pnamesEnv ? "${{normalizeName (get_pname dep)}}" then
+                      true
+                    else
+                      trace "removing dependency ${{dep.name}} from ${{pname}}" false)
+                  propagatedBuildInputs;
               updatePythonDepsRec = newPkgs: pkg:
                 if ! isPyModule pkg then pkg else
                 let
                   pname = normalizeName (get_pname pkg);
                   newP =
+                    # All packages with a pname that already exists in our overrides must be replaced with our version.
+                    # Otherwise we will have a collision
                     if newPkgs ? "${{pname}}" && pkg != newPkgs."${{pname}}" then
                       trace "Updated inherited nixpkgs dep ${{pname}} from ${{pkg.version}} to ${{newPkgs."${{pname}}".version}}"
                       newPkgs."${{pname}}"
@@ -174,7 +188,9 @@ class OverridesGenerator(ExpressionGenerator):
                 version = "{ver}";
                 passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "{provider}"; }};
                 buildInputs = with python-self; (map (dep: updatePythonDepsRec python-self dep) (oldAttrs."buildInputs" or [])) ++ [ {build_inputs_str} ];
-                propagatedBuildInputs = with python-self; (map (dep: updatePythonDepsRec python-self dep) (oldAttrs."propagatedBuildInputs" or [])) ++ [ {prop_build_inputs_str} ];"""
+                propagatedBuildInputs =  # filter out unwanted dependencies and replace colliding packages recursively
+                  (removeUnwantedPythonDeps "{name}" (map (dep: updatePythonDepsRec python-self dep) (oldAttrs."propagatedBuildInputs" or [])))
+                  ++ ( with python-self; [ {prop_build_inputs_str} ]);"""
         if not keep_src:
             out += f"""
                 src = fetchPypi "{name}" "{ver}";"""
@@ -313,7 +329,8 @@ class OverridesGenerator(ExpressionGenerator):
 
     def _gen_python_env(self, pkgs: Dict[str, ResolvedPkg]):
         overrides_keys = {p.name for p in pkgs.values()}
-        out = self._gen_imports() + self._gen_overrides(pkgs, overrides_keys)
+        all_pnames = list(pkgs.keys())
+        out = self._gen_imports(all_pnames) + self._gen_overrides(pkgs, overrides_keys)
         python_with_packages = f"""
             in
             {{
