@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
-echo -n "$(git branch --show-current)" > ./mach_nix/VERSION
+echo -n "$(git branch --show-current).$(date +"%Y%m%d.%H%M")" > ./mach_nix/VERSION
 git add ./mach_nix/VERSION
