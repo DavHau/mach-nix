@@ -1,3 +1,28 @@
+# 3.3.0 (22 May 2021)
+bugfixes, flakes improvements
+
+### Changes
+ - The flakes cmdline api has been changed. New usage:
+   ```
+   nix (build|shell) mach-nix#gen.(python|docker).package1.package2...
+   ```
+   (Despite this changes being backward incompatible, I did not bump the major version since everything flakes related should be considered experimental anyways)
+
+### Improvements
+ - Mach-nix (used via flakes) will now throw an error if the selected nixpkgs version is newer than the dependency DB since this can cause conflicts in the resulting environment.
+ - When used via flakes, it was impossible to select the python version because the import function is not used anymore. Now `python` can be passed to `mkPython` alternatively.
+- For the flakes cmdline api, collisions are now ignored by default
+
+### Fixes
+ - Generating an environment with a package named `overrides` failed due to a variable name collision in the resulting nix expression.
+ - When used via flakes, the pypiData was downloaded twice, because mach-nix still used the legacy code path for fetching instead of taking the flakes input.
+ - `nix flake show mach-nix` failed because it required IFD for foreign platforms.
+
+### Package Fixes
+ - cryptography: remove rust related hook when version < 3.4
+
+
+
 # 3.2.0 (11 Mar 2021)
 bugfixes, ignoreCollisions
 
