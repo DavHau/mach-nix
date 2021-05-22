@@ -594,7 +594,8 @@ class CondaDependencyProvider(DependencyProviderBase):
         deviated_ver = self.deviated_version(pkg_name, pkg_version, build)
         if build:
             matched = set(fnmatch.filter(self.pkgs[pkg_name][deviated_ver], build))
-            pkgs = [p for p in self.pkgs[pkg_name][deviated_ver].values() if p['build'] in matched]
+            pkgs = \
+                [p for p in self.pkgs[pkg_name][deviated_ver].values() if p['build'] in matched and self.python_ok(p)]
             pkgs.sort(key=lambda p: p['build_number'], reverse=True)
             return pkgs
         compatible = []
