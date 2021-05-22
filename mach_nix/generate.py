@@ -86,8 +86,12 @@ def handle_resolution_impossible(exc: ResolutionImpossible, reqs_str, providers_
         f"Python: {py_ver_str}\n"
         f"Cause: {exc.__context__}\n"
         f"The requirements which caused the error:"
-        f"{causes_str}\n",
-        file=sys.stderr)
+        f"{causes_str}\n"
+        f"\nThe given requirements might contain package versions which are not yet part of the dependency DB\n"
+        f"currently used. The DB can be updated by specifying 'pypiDataRev' when importing mach-nix.\n"
+        f"For examples see: https://github.com/DavHau/mach-nix/blob/master/examples.md\n",
+        file=sys.stderr
+    )
 
 
 if __name__ == "__main__":
