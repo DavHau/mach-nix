@@ -112,7 +112,6 @@ let
       all_overrides = l.mergeOverrides (
         overridesPre ++ overrides_pre_extra
         ++ extra_pkgs_py_overrides
-        ++ [ (import ./mk-python-derivation-overlay.nix pkgs python_pkg) ]
         ++ [ result.overrides ]
         ++ (l.fixes_to_overrides _fixes)
         ++ overrides_post_extra ++ overridesPost

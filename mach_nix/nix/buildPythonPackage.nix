@@ -61,7 +61,6 @@ let
       };
       py_final = python_pkg.override { packageOverrides = l.mergeOverrides (
         overridesPre
-        ++ [ (import ./mk-python-derivation-overlay.nix pkgs python_pkg) ]
         ++ [ result.overrides ]
         ++ (l.fixes_to_overrides _fixes)
         ++ overridesPost ++ (l.simple_overrides _)

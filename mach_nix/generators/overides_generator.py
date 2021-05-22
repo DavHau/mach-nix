@@ -264,7 +264,13 @@ class OverridesGenerator(ExpressionGenerator):
                 url = "{src_url}";
                 sha256 = "{src_sha256}";
               }};
-              format = "condabin";
+              format = "other";
+              nativeBuildInputs = with python.pkgs; [
+                autoPatchelfHook
+                condaUnpackHook
+                condaInstallHook
+              ];
+              buildInputs = pkgs.pythonCondaPackages.condaPatchelfLibs;
               passthru = (get_passthru "{name}" "{nix_name}") // {{ 
                 provider = "conda";
                 allCondaDeps = allCondaDepsRec pSelf;

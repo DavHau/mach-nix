@@ -27,18 +27,22 @@ pkgs: python: with pkgs.lib;
   in
   pySelf: pySuper: {
     buildPythonPackage = makeOverridablePythonPackage (
-      makeOverridable (callPackage ./from-nixpkgs/mk-python-derivation.nix {
+      makeOverridable (callPackage "${pkgs.path}/pkgs/development/interpreters/python/mk-python-derivation.nix" {
         inherit namePrefix;     # We want Python libraries to be named like e.g. "python3.6-${name}"
         inherit toPythonModule; # Libraries provide modules
-        autoPatchelfHook = callPackage ./auto_patchelf_hook.nix {};
+
+        # this prevents infinite recursions when overriding setuptools later
+        setuptools = python.pkgs.setuptools;
       })
     );
 
     buildPythonApplication = makeOverridablePythonPackage (
-      makeOverridable (callPackage ./from-nixpkgs/mk-python-derivation.nix {
+      makeOverridable (callPackage "${pkgs.path}/pkgs/development/interpreters/python/mk-python-derivation.nix" {
         namePrefix = "";        # Python applications should not have any prefix
         toPythonModule = x: x;  # Application does not provide modules.
-        autoPatchelfHook = callPackage ./auto_patchelf_hook.nix {};
+
+        # this prevents infinite recursions when overriding setuptools later
+        setuptools = python.pkgs.setuptools;
       })
     );
   }
