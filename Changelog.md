@@ -6,7 +6,7 @@ bugfixes, improvements
    ```
    nix (build|shell) mach-nix#gen.(python|docker).package1.package2...
    ```
-   (Despite this changes being backward incompatible, I did not bump the major version since everything flakes related should be considered experimental anyways)
+   (Despite this change being backward incompatible, I did not bump the major version since everything flakes related should be considered experimental anyways)
 
 ### Improvements
  - Mach-nix (used via flakes) will now throw an error if the selected nixpkgs version is newer than the dependency DB since this can cause conflicts in the resulting environment.
