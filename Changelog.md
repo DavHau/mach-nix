@@ -1,5 +1,5 @@
 # 3.3.0 (22 May 2021)
-bugfixes, flakes improvements
+bugfixes, improvements
 
 ### Changes
  - The flakes cmdline api has been changed. New usage:
