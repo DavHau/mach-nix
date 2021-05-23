@@ -20,28 +20,36 @@ let
     result = parse('${ver1}') ${op} parse('${ver2}')
     print(json.dumps(result))
   '';
+
+  # prevent the normal fitler from being used
+  filter = raise "Error: only use filterSafe (doesn't crash on null input)";
+
+  # filter function that doesn't crash on 'objects = null'
+  # This is important because null will be returned whenever the attribute to modify doesn't exist
+  filterSafe = func: objects: if isNull objects then [] else builtins.filter func objects;
+
 in
 
 
 ### Put Fixes here
 rec {
 
-###  FORMAT  ############################################################################
-#                                                                                       #
-#   package-to-fix = {                                                                  #
-#     name-of-the-fix = {                                                               #
-#       # optionally limit the fix to a condtion                                        #
-#       _cond = {prov, ver, ... }: some boolean expression;                             #
-#                                                                                       #
-#       # define overrides                                                              #
-#       key-to-override = ...;                                 # replace                #
-#       key-to-override.add = ...;                             # append                 #
-#       key-to-override.mod = oldVal: ...;                     # modify                 #
-#       key-to-override.mod = pySelf: oldAttrs: oldVal: ...;   # modify (more args)     #
-#     };                                                                                #
-#   };                                                                                  #
-#                                                                                       #
-#########################################################################################
+###  FORMAT  ##################################################################################
+#                                                                                             #
+#   package-to-fix = {                                                                        #
+#     name-of-the-fix = {                                                                     #
+#       # optionally limit the fix to a condtion                                              #
+#       _cond = {prov, ver, ... }: some boolean expression;                                   #
+#                                                                                             #
+#       # define overrides                                                                    #
+#       key-to-override = ...;                                 # replace                      #
+#       key-to-override.add = ...;                             # append (list/attrs/string)   #
+#       key-to-override.mod = oldVal: ...;                     # modify                       #
+#       key-to-override.mod = pySelf: oldAttrs: oldVal: ...;   # modify (accessing all pkgs)  #
+#     };                                                                                      #
+#   };                                                                                        #
+#                                                                                             #
+###############################################################################################
 
 ### _cond ####################################
 #  possible arguments:                       #
@@ -57,7 +65,7 @@ rec {
 
   cryptography.no-rust-build = {
     _cond = { prov, ver, ... }: prov == "sdist" && comp_ver ver "<" "3.4";
-    nativeBuildInputs.mod = old: filter (inp: (inp.name or "") != "cargo-setup-hook.sh") old;
+    nativeBuildInputs.mod = old: filterSafe (inp: (inp.name or "") != "cargo-setup-hook.sh") old;
   };
 
   # remove if merged: https://github.com/NixOS/nixpkgs/pull/114384
@@ -83,7 +91,7 @@ rec {
 
   pip.remove-reproducible-patch = {
     _cond = { prov, ver, ... }: prov == "sdist" && comp_ver ver "<" "20.0";
-    patches.mod = oldPatches: filter (patch: ! hasSuffix "reproducible.patch" patch) oldPatches;
+    patches.mod = oldPatches: filterSafe (patch: ! hasSuffix "reproducible.patch" patch) oldPatches;
   };
 
   pyqt5 = {
@@ -91,7 +99,7 @@ rec {
       # fix mach-nix induced problem: mach-nix removes all previous python inputs from propagatedBuildInputs
       _cond = {prov, ... }: prov == "nixpkgs";
       propagatedBuildInputs.mod = pySelf: oldAttrs: oldVal:
-        (filter (p: p.pname != "pyqt5-sip") oldVal) ++ [ pySelf.sip pySelf.dbus-python ];
+        (filterSafe (p: p.pname != "pyqt5-sip") oldVal) ++ [ pySelf.sip pySelf.dbus-python ];
     };
     fix-wheel-inputs = {
       _cond = {prov, ... }: prov == "wheel";
@@ -106,7 +114,7 @@ rec {
       # https://github.com/rpy2/rpy2/commit/39e1cb6fca0d4107f1078727d8670c422e3c6f7f
       prov == "sdist"
       && comp_ver ver ">=" "3.2.6";
-    patches.mod = oldPatches: filter (p: ! hasSuffix "pandas-1.x.patch" p) oldPatches;
+    patches.mod = oldPatches: filterSafe (p: ! hasSuffix "pandas-1.x.patch" p) oldPatches;
   };
 
   tensorflow.rm-tensorboard = {
