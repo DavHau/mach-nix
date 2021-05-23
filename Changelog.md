@@ -11,12 +11,18 @@ bugfixes, flakes improvements
 ### Improvements
  - Mach-nix (used via flakes) will now throw an error if the selected nixpkgs version is newer than the dependency DB since this can cause conflicts in the resulting environment.
  - When used via flakes, it was impossible to select the python version because the import function is not used anymore. Now `python` can be passed to `mkPython` alternatively.
-- For the flakes cmdline api, collisions are now ignored by default
+ - For the flakes cmdline api, collisions are now ignored by default
+ - The simplified override interface did not deal well with non-existent values. 
+    - Now the `.add` directive automatically assumes an empty list/set/string when the attribute to be extended doesn't exist.
+    - Now the `.mod` directive will pass `null` to the given function if the attribute to modify doesn't exist instead.
 
 ### Fixes
  - Generating an environment with a package named `overrides` failed due to a variable name collision in the resulting nix expression.
- - When used via flakes, the pypiData was downloaded twice, because mach-nix still used the legacy code path for fetching instead of taking the flakes input.
+ - When used via flakes, the pypiData was downloaded twice, because the legacy code path for fetching was still used instead of the flakes input.
  - `nix flake show mach-nix` failed because it required IFD for foreign platforms.
+ - For environments generated via `mach-nix env ...` the `python` command referred to the wrong interpreter.
+ - When checking wheels for compatibility, the minor version for python was not respected which could lead to invalid environments.
+ - Some python modules in nixpkgs propagate unnecessary dependencies which could lead to collisions in the final environment. Now mach-nix recursively removes all python dependencies which are not strictly required.
 
 ### Package Fixes
  - cryptography: remove rust related hook when version < 3.4
