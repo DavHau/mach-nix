@@ -21,13 +21,9 @@ let
     inherit pkgs;
   };
 in
-let
-  pypi_deps_db_src = pkgs.buildEnv {
-    name = "pypi-deps-db-src";
-    paths = [ deps_db_src ];
-  };
-in
-{ inherit
+{
+  pypi_deps_db_src = deps_db_src;
+  inherit
     pypi_deps_db_src
     pypi_fetcher_src
 
