@@ -3,7 +3,7 @@
   description = "Create highly reproducible python environments";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.09";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.pypi-deps-db = {
     url = "github:DavHau/pypi-deps-db";
     flake = false;
