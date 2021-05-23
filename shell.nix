@@ -4,7 +4,7 @@
 }:
 with pkgs;
 let
-  python = python37;
+  python = python38;
   machnixDeps = (lib.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = fetchurl; }));
 in
 mkShell {
