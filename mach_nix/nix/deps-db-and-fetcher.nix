@@ -24,11 +24,8 @@ in
 {
   pypi_deps_db_src = deps_db_src;
   inherit
-    pypi_deps_db_src
     pypi_fetcher_src
-
     pypi_fetcher_commit
     pypi_fetcher_sha256
-
     pypi_fetcher;
 }
