@@ -199,10 +199,10 @@ class CombinedDependencyProvider(DependencyProviderBase):
                               f"Consider adding them via 'providers='"
         else:
             error_text += \
-                f"\nIf the package's initial release date predates the release date of mach-nix, " \
-                f"either upgrade mach-nix itself or manually specify 'pypi_deps_db_commit' and\n" \
-                f"'pypi_deps_db_sha256 for a newer commit of https://github.com/DavHau/pypi-deps-db/commits/master\n" \
-                f"If it still doesn't work, there was probably a problem while crawling pypi.\n" \
+                f"\nThe required package might just not yet be part of the dependency DB currently used.\n" \
+                f"The DB can be updated by specifying 'pypiDataRev' when importing mach-nix.\n" \
+                f"For examples see: https://github.com/DavHau/mach-nix/blob/master/examples.md\n" \
+                f"If it still doesn't work, there might have bene an error while building the DB.\n" \
                 f"Please open an issue at: https://github.com/DavHau/mach-nix/issues/new\n"
         print(error_text, file=sys.stderr)
         exit(1)

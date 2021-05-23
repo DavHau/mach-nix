@@ -242,9 +242,9 @@ rec {
   };
 
   combine = pname: key: val1: val2:
-    if isList val2 then val1 ++ val2
-    else if isAttrs val2 then val1 // val2
-    else if isString val2 then val1 + val2
+    if isList val2 then (if ! isNull val1 then val1 else []) ++ val2
+    else if isAttrs val2 then (if ! isNull val1 then val1 else {}) // val2
+    else if isString val2 then (if ! isNull val1 then val1 else "") + val2
     else throw "_.${pname}.${key}.add only accepts list or attrs or string.";
 
   fixes_to_overrides = fixes:
@@ -258,14 +258,14 @@ rec {
               mapAttrs (key: val:
                 trace "\napplying fix '${fix}' (${key}) for ${pkg}:${oa.version}\n" (
                   if isAttrs val && hasAttr "add" val then
-                    combine pkg key oa."${key}" val.add
+                    combine pkg key (oa."${key}" or null) val.add
                   else if isAttrs val && hasAttr "mod" val && isFunction val.mod then
-                    let result = val.mod oa."${key}"; in
+                    let result = val.mod (oa."${key}" or null); in
                       # if the mod function wants more argument, call with more arguments (alternative style)
                       if ! isFunction result then
                         result
                       else
-                          val.mod pySelf oa oa."${key}"
+                          val.mod pySelf oa (oa."${key}" or null)
                   else
                     val
                 )

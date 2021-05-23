@@ -23,6 +23,5 @@ let
 in
 {
  "pythonWith" = gen "" [];
- "shellWith" = gen "env" [];
  "dockerImageWith" = gen "dockerImage" [];
 }

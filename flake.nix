@@ -19,7 +19,7 @@
           true
         else
           false;
-      usageGen = "usage: nix (build|develop) mach-nix#gen.(python|shell|docker).package1.package2...";
+      usageGen = "usage: nix (build|shell) mach-nix#gen.(python|docker).package1.package2...";
     in
       (flake-utils.lib.eachDefaultSystem (system:
         let
@@ -49,11 +49,9 @@
               src = throw usageGen;
               passthru = {
                 python = mach-nix-default.pythonWith;
-                shell = mach-nix-default.shellWith;
                 docker = mach-nix-default.dockerImageWith;
                 inherit (mach-nix-default)
                   pythonWith
-                  shellWith
                   dockerImageWith;
               };
             };

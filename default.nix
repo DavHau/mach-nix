@@ -110,7 +110,6 @@ rec {
   # expose dot interface for flakes cmdline
   "with" = pythonWith;
   pythonWith = (withDot (__mkPython "'.pythonWith'")).pythonWith;
-  shellWith = (withDot (__mkPython "'.shellWith'")).shellWith;
   dockerImageWith = (withDot (__mkPython "'.dockerImageWith'")).dockerImageWith;
 
   # expose mach-nix' nixpkgs
