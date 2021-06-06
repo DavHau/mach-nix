@@ -32,6 +32,7 @@
         {
           devShell = import ./shell.nix {
             inherit pkgs;
+            pypiData = "${inp.pypi-deps-db}";
           };
           packages = rec {
             inherit (mach-nix-default) mach-nix;
@@ -84,6 +85,7 @@
                 rm reqs
               '');
             };
+
           defaultApp = { type = "app"; program = "${defaultPackage}/bin/mach-nix"; };
 
           lib = {

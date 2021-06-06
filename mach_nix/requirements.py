@@ -99,7 +99,7 @@ def parse_spec_part(part):
     return list(specs)
 
 
-extra_name = r"([a-z]|[A-Z]|-|_|\d)+"
+extra_name = r"([a-z]|[A-Z]|-|_|\.|\d)+"
 re_marker_extras = re.compile(rf"extra *== *'?({extra_name})'?")
 
 
@@ -114,14 +114,26 @@ re_reqs = re.compile(
     r"^(([a-z]|[A-Z]|-|_|\d|\.)+)"  # name
     rf"(\[({extra_name},?)+\])?"  # extras
     r"("
-        r" *\(?(([,\|]? *(==|!=|>=|<=|>|<|~=|=)? *(\* |dev|\d(\d|\.|\*|[a-z])*))+(?![_\d]))\)?"  # specs
+        r" *\(?(([,\|]? *(==|!=|>=|<=|>|<|~=|=)? *(\* |dev|-?\w?\d(\d|\.|\*|-|_|[a-z]|[A-Z])*))+(?![_\d]))\)?"  # specs
         r"( *([a-z]|\d|_|\*)+)?"  # build
     r")?"
     r"( *[:;] *(.*))?$")  # marker
 
 
 def parse_reqs_line(line):
-    line = line.strip()
+    line = line.split("#")[0].strip().replace('"', '')
+    if line.endswith("==*"):
+        line = line[:-3]
+
+    # remove ' symbols
+    split = line.split(';')
+    if len(split) > 1:
+        init, marker = split
+        init = init.replace("'", "")
+        line = init + ';' + marker
+    else:
+        line = line.replace("'", "")
+
     match = re.fullmatch(re_reqs, line)
     if not match:
         raise Exception(f"couldn't parse: '{line}'")

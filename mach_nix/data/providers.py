@@ -406,6 +406,7 @@ class WheelDependencyProvider(DependencyProviderBase):
 
 class SdistDependencyProvider(DependencyProviderBase):
     name = 'sdist'
+
     def __init__(self, data_dir: str, *args, **kwargs):
         self.data = LazyBucketDict(data_dir)
         super(SdistDependencyProvider, self).__init__(*args, **kwargs)

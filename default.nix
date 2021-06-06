@@ -80,8 +80,8 @@ rec {
     name = "${pname}-${version}";
     src = ./.;
     propagatedBuildInputs = pythonDeps;
-    checkInputs = [ python_machnix.pkgs.pytest ];
-    checkPhase = "pytest";
+    checkInputs = with pkgs; [ pytestCheckHook ];
+    disabledTests = [ "test_parse_all_pypi_reqs" ];
   };
 
   pythonDeps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix {
