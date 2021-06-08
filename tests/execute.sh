@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-nix-build all-tests.nix --no-out-link --show-trace $@
+ls ./test_* | parallel -a - -j 10 --halt now,fail=1 nix-build --show-trace
