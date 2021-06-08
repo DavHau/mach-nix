@@ -7,8 +7,9 @@ let
 
   buildPythonPackageBase = pythonGlobal: func:
     args@{
+      cudaVersion ? pkgs.cudatoolkit.version,  # max allowed cuda version for conda packages
       ignoreDataOutdated ? false,  # don't fail if pypi data is older than nixpkgs
-      requirements ? null,  # content from a requirements.txt file
+      requirements ? "",  # content from a requirements.txt file
       requirementsExtra ? "",  # add additional requirements to the packge
       tests ? false,  # Disable tests wherever possible to decrease build time.
       extras ? [],
@@ -35,8 +36,7 @@ let
       # Extract dependencies automatically if 'requirements' is unset
       pname =
         if hasAttr "pname" args then args.pname
-        else l.extract_meta python_
-        pkg src "name" "pname";
+        else l.extract_meta python_pkg src "name" "pname";
       version =
         if hasAttr "version" args then args.version
         else l.extract_meta python_pkg src "version" "version";
@@ -67,7 +67,7 @@ let
       );};
       pass_args = removeAttrs args (builtins.attrNames ({
         inherit condaDataRev condaDataSha256 overridesPre overridesPost pkgs providers
-                requirements requirementsExtra pypiData python tests _providerDefaults _ ;
+                requirements requirementsExtra pypiData tests _providerDefaults _ ;
         python = python_arg;
       }));
     in
