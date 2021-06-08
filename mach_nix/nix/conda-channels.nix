@@ -32,25 +32,39 @@ let
     sha256 = condaDataSha256;
   }));
 
-  registryChannels = mapAttrs' (filepath: hash:
+  registryChannels = foldl' (a: b: recursiveUpdate a b) {} (mapAttrsToList (path: sha256:
     let
-      split = splitString "/" filepath;
+      split = splitString "/" path;
       chan = elemAt split 1;
-      sys = removeSuffix ".json" (tail split);
-    in
-      nameValuePair
-        chan
-        (map (sys: (builtins.fetchurl {
-          url = "https://raw.githubusercontent.com/${repoOwner}/${repoName}/${condaDataRev}/${chan}/${sys}.json";
-          sha256 = channelRegistry."./${chan}/${sys}.json";
-        })) [ systemMap."${system}" "noarch" ])
-  ) channelRegistry;
+      file = last split;
+      sys = head (splitString "." file);
+      part = elemAt (splitString "." file) 1;
+    in {
+      "${chan}" = {
+        "${sys}" = {
+          "${part}" = sha256;
+        };
+      };
+    }
+  ) channelRegistry);
 
-  _registryChannels = filterAttrs (chan: json: elem chan usedChannels) registryChannels;
+  channelFiles = chan: flatten (forEach [ systemMap."${system}" "noarch" ] (sys:
+    if registryChannels ? "${chan}"."${sys}" then
+      mapAttrsToList (part: sha256: builtins.fetchurl {
+        url = "https://raw.githubusercontent.com/${repoOwner}/${repoName}/${condaDataRev}/channels/${chan}/${sys}.${part}.json";
+        sha256 = channelRegistry."channels/${chan}/${sys}.${part}.json";
+      }) registryChannels."${chan}"."${sys}"
+    else
+      []
+  ));
+
+  _selectedRegistryChannels =
+
+    genAttrs usedChannels (chan: channelFiles chan);
 
   _condaChannelsExtra = filterAttrs (chan: json: elem chan usedChannels) condaChannelsExtra;
 
-  allCondaChannels = (_registryChannels // _condaChannelsExtra);
+  allCondaChannels = (_selectedRegistryChannels // _condaChannelsExtra);
 
   condaChannelsJson = pkgs.writeText "conda-channels.json" (toJSON allCondaChannels);
 
