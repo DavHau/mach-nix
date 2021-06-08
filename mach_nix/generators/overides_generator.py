@@ -274,10 +274,25 @@ class OverridesGenerator(ExpressionGenerator):
               passthru = (get_passthru "{name}" "{nix_name}") // {{ 
                 provider = "conda";
                 allCondaDeps = allCondaDepsRec pSelf;
+                srcUnpacked = pkgs.runCommand "{name}-src" {{}} ''
+                  mkdir $out && cd $out
+                  ${{pkgs.lbzip2}}/bin/lbzip2 -dc -n $NIX_BUILD_CORES ${{src}} | tar --exclude='info' -x
+                '';
               }};"""
         if circular_deps:
             out += f"""
-              pipInstallFlags = "--no-dependencies";"""
+              pipInstallFlags = "--no-dependencies";
+              preBuild = ''
+                circularDeps="${{
+                  toString (flatten (forEach 
+                    [ "{'" "'.join(circular_deps)}" ]
+                    (pname: python-self."${{pname}}".srcUnpacked or [])
+                  ))
+                }}"
+                echo "adding to search path: $circularDeps"
+                addAutoPatchelfSearchPath $circularDeps
+              '';
+            """
         if prop_build_inputs_str.strip():
             out += f"""
               propagatedBuildInputs = (with python-self; [ {prop_build_inputs_str} ]);"""
@@ -294,7 +309,7 @@ class OverridesGenerator(ExpressionGenerator):
             select_pkgs = ps: [
               {pkg_names_str.strip()}
             ];
-            overrides' = manylinux1: autoPatchelfHook: merge_with_overr {check} (python-self: python-super: {{
+            overrides' = manylinux1: autoPatchelfHook: merge_with_overr {check} (python-self: python-super: let all = {{
           """
         out = unindent(out, 10)
         for pkg in pkgs.values():
@@ -367,7 +382,7 @@ class OverridesGenerator(ExpressionGenerator):
             else:
                 raise Exception("unknown provider")
         end_overlay_section = f"""
-                }});
+                }}; in all);
           """
         return out + unindent(end_overlay_section, 14)
 
