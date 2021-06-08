@@ -11,6 +11,7 @@ let
 
   mkPython = pythonGlobal:
     {
+      cudaVersion ? pkgs.cudatoolkit.version,  # max allowed cuda version for conda packages
       ignoreCollisions ? false,  # ignore collisions on the environment level.
       ignoreDataOutdated ? false,  # don't fail if pypi data is older than nixpkgs
       overridesPre ? [],  # list of pythonOverrides to apply before the machnix overrides

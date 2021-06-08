@@ -1,4 +1,6 @@
 import fnmatch
+from os import environ
+
 import json
 import platform
 import re
@@ -493,11 +495,34 @@ class SdistDependencyProvider(DependencyProviderBase):
         ) for ver, pkg in self._get_candidates(pkg_name).items()]
 
 
+def conda_virtual_packages():
+
+    packages = dict(
+        __glibc=environ.get("MACHNIX_GLIBC_VERSION", platform.libc_ver()[0][1]),
+        __unix=0,
+    )
+
+    # Maximum version of CUDA supported by the display driver.
+    cudaVer = environ.get("MACHNIX_CUDA_VERSION", None)
+    if cudaVer is not None:
+        packages['__cuda'] = cudaVer
+
+    if sys.platform == 'linux':
+        packages['__linux'] = environ.get("MACHNIX_LINUX_VERSION", platform.uname().release)
+
+    if sys.platform == 'darwin':
+        packages['__osx'] = environ.get("MACHNIX_OSX_VERSION", platform.uname().release)
+
+    return packages
+
+
 class CondaDependencyProvider(DependencyProviderBase):
 
     ignored_pkgs = (
         "python"
     )
+
+    virtual_packages = conda_virtual_packages()
 
     def __init__(self, channel, files, py_ver: PyVer, platform, system, *args, **kwargs):
         self.channel = channel
@@ -521,6 +546,21 @@ class CondaDependencyProvider(DependencyProviderBase):
                     continue
                 self.pkgs[name][ver][build] = p
                 self.pkgs[name][ver][build]['fname'] = fname
+
+        # generate packages for virtual packages
+        for pname, ver in self.virtual_packages.items():
+            pname_norm = pname.replace('_', '-').lower()
+            self.pkgs[pname_norm] = {ver: {0: {
+                'build': 0,
+                'build_number': 0,
+                'depends': [],
+                'fname': None,
+                'name': pname_norm,
+                'sha256': None,
+                'subdir': None,
+                'version': ver,
+            }}}
+
         super().__init__(py_ver, platform, system, *args, **kwargs)
 
     @property
@@ -553,6 +593,11 @@ class CondaDependencyProvider(DependencyProviderBase):
                         f"Ignoring conda package {p['name']}:{p['version']} from provider {self.channel} \n"
                         "since it doesn't provide a sha256 sum.\n")
                 else:
+                    if self.channel in ('free', 'intel', 'main', 'r'):
+                        url = f"https://repo.anaconda.com/pkgs/{self.channel}/{p['subdir']}/{p['fname']}"
+                    else:
+                        url = f"https://anaconda.org/{self.channel}/{p['name']}/" \
+                              f"{p['version']}/download/{p['subdir']}/{p['fname']}"
                     candidates.append(Candidate(
                         p['name'],
                         parse_ver(p['version']),
@@ -560,8 +605,7 @@ class CondaDependencyProvider(DependencyProviderBase):
                         build=p['build'],
                         provider_info=ProviderInfo(
                             self,
-                            url=f"https://anaconda.org/{self.channel}/{p['name']}/"
-                                f"{p['version']}/download/{p['subdir']}/{p['fname']}",
+                            url=url,
                             hash=p['sha256']
                         )
                     ))

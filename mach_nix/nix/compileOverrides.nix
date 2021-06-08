@@ -10,6 +10,7 @@ with builtins;
   pypiData,
   condaDataRev ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).rev,
   condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).indexSha256,
+  cudaVersion ? pkgs.cudatoolkit.version,  # max allowed cuda version for conda packages
   _providerDefaults ?
     if (import ./lib.nix { inherit (pkgs) lib; inherit pkgs; }).isCondaEnvironmentYml requirements then
       { _default = []; }
@@ -73,6 +74,7 @@ let
       mkdir -p $out/share
       export out_file=$out/share/mach_nix_file.nix
       export PYTHONPATH=${src}
+      export MACHNIX_CUDA_VERSION=${cudaVersion}
       ${builder_python}/bin/python ${src}/mach_nix/generate.py
     '';
 in
