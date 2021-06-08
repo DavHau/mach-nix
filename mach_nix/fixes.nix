@@ -84,6 +84,15 @@ rec {
     buildInputs.add = with pkgs; [ openldap.dev cyrus_sasl.dev ];
   };
 
+  # libwebp-base depends on libwebp containing redundant binaries
+  libwebp-base.remove-colliding-bin = {
+    _cond = { prov, ... }: prov == "conda";
+    postInstall.add = ''
+      rm -f $out/bin/{webpinfo,webpmux}
+      rm -rf $out/lib
+    '';
+  };
+
   mariadb.add-mariadb-connector-c = {
     _cond = { prov, ... }: prov != "nixpkgs";
     MARIADB_CONFIG = "${pkgs.mariadb-connector-c}/bin/mariadb_config";
