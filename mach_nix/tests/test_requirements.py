@@ -204,13 +204,17 @@ def test_parse_all_pypi_reqs(bucket):
 
 
 def conda_channel_files():
-    with open(environ.get("CONDA_DATA", None)) as f:
+    conda_data = environ.get("CONDA_DATA", None)
+    if not conda_data:
+        return []
+    with open(conda_data) as f:
         data = json.load(f)
     for channel, files in data.items():
         for file in files:
             yield file
 
 
+@pytest.mark.skipif(conda_channel_files() == [], reason="no CONDA_DATA provided")
 @pytest.mark.parametrize("file", conda_channel_files())
 def test_parse_all_conda_reqs(file):
     with open(file) as f:

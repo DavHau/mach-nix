@@ -80,8 +80,12 @@ rec {
     name = "${pname}-${version}";
     src = ./.;
     propagatedBuildInputs = pythonDeps;
-    checkInputs = with pkgs; [ pytestCheckHook ];
-    disabledTests = [ "test_parse_all_pypi_reqs" ];
+    checkInputs = with python_machnix.pkgs; [ pytestCheckHook ];
+    # these tests are expensive and therefore only executed in CI via flakes app 'tests-unit'
+    disabledTests = [
+      "test_parse_all_pypi_reqs"
+      "test_parse_all_conda_reqs"
+    ];
   };
 
   pythonDeps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix {
