@@ -46,5 +46,9 @@ jobs:
       shell: bash
 
     - name: mach-nix evaluation tests
-      run: WORKERS=5 nix run .#tests-all
+      run: |
+        wget https://github.com/DavHau/nix-portable/releases/download/v008/nix-portable
+        chmod +x nix-portable
+        WORKERS=5 ./nix-portable nix run .#tests-all
+      shell: bash
 
