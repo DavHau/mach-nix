@@ -96,5 +96,5 @@ jobs:
       shell: bash
 
     - name: mach-nix evaluation tests
-      run: nix run .#tests-all
+      run: WORKERS=5 nix run .#tests-all
 

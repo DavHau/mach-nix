@@ -77,14 +77,14 @@ class OverridesGenerator(ExpressionGenerator):
                 genAttrs
                   [ "{'" "'.join(all_pnames)}" ]
                   (pname: null);
-              removeUnwantedPythonDeps = pname: propagatedBuildInputs:
+              removeUnwantedPythonDeps = pname: inputs:
                 filter 
                   (dep:
                     if ! isPyModule dep || pnamesEnv ? "${{normalizeName (get_pname dep)}}" then
                       true
                     else
                       trace "removing dependency ${{dep.name}} from ${{pname}}" false)
-                  propagatedBuildInputs;
+                  inputs;
               updatePythonDepsRec = newPkgs: pkg:
                 if ! isPyModule pkg then pkg else
                 let
@@ -103,6 +103,8 @@ class OverridesGenerator(ExpressionGenerator):
                       map (p: updatePythonDepsRec newPkgs p) v
                     else v
                   ) old);
+              updateAndRemoveDepsRec = pythonSelf: name: inputs:
+                removeUnwantedPythonDeps name (map (dep: updatePythonDepsRec pythonSelf dep) inputs);
               override = pkg:
                 if hasAttr "overridePythonAttrs" pkg then
                     pkg.overridePythonAttrs
@@ -189,13 +191,13 @@ class OverridesGenerator(ExpressionGenerator):
             keep_src=False):
         out = f"""
             "{name}" = override python-super.{nix_name} ( oldAttrs:
-              (mapAttrs (n: v: if elem n depNamesOther then map (dep: updatePythonDepsRec python-self dep) v else v ) oldAttrs) // {{
+              (mapAttrs (n: v: if elem n depNamesAll then updateAndRemoveDepsRec python-self "{name}" v else v ) oldAttrs) // {{
                 pname = "{name}";
                 version = "{ver}";
                 passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "{provider}"; }};
                 buildInputs = with python-self; (map (dep: updatePythonDepsRec python-self dep) (oldAttrs."buildInputs" or [])) ++ [ {build_inputs_str} ];
                 propagatedBuildInputs =  # filter out unwanted dependencies and replace colliding packages recursively
-                  (removeUnwantedPythonDeps "{name}" (map (dep: updatePythonDepsRec python-self dep) (oldAttrs."propagatedBuildInputs" or [])))
+                  (oldAttrs."propagatedBuildInputs" or [])
                   ++ ( with python-self; [ {prop_build_inputs_str} ]);"""
         if not keep_src:
             out += f"""
