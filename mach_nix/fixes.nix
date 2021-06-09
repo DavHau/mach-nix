@@ -127,7 +127,7 @@ rec {
   };
 
   tensorflow.rm-tensorboard = {
-    _cond = {prov, ... }: prov != "nixpkgs";
+    _cond = {prov, ... }: ! elem prov [ "nixpkgs" "conda" ];
     postInstall = "rm $out/bin/tensorboard";
   };
 
