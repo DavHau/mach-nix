@@ -1,4 +1,4 @@
-_default =                "conda,wheel,sdist,nixpkgs"
+_default =                "wheel,sdist,nixpkgs"
 
 gdal =                    "nixpkgs"
 pip =                     "nixpkgs,sdist"

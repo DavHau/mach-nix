@@ -6,9 +6,14 @@ let
       import file ({
         inherit mach-nix;
       } // (if conda then (rec {
+        baseArgsMkPython = { _provierDefaults = (fromTOML (readFile ./mach_nix/provider_defaults.toml) // {
+          _default = "conda,wheel,sdist,nixpkgs";
+        }); };
+        baseArgsBuildPythonPackage = baseArgsMkPython;
+      }) else {
         baseArgsMkPython = { _provierDefaults = fromTOML (readFile ./mach_nix/provider_defaults.toml); };
         baseArgsBuildPythonPackage = baseArgsMkPython;
-      }) else {}));
+      }));
 in
 flatten (map (file: makeTests) [
   ./test_alias_dateutil.nix

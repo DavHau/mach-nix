@@ -75,6 +75,10 @@ let
 in
 if missingChannels != [] then
   throw "Conda channels [${toString missingChannels}] are unknown. Use 'condaChannelsExtra' to make them available"
-else
-  trace "using conda channels: ${toString (concatStringsSep ", " (attrNames allCondaChannels))}"
-  { inherit condaChannelsJson; }
+else let
+  channelNames = (attrNames allCondaChannels); in
+  if channelNames != [] then
+    trace "using conda channels: ${toString (concatStringsSep ", " (attrNames allCondaChannels))}"
+    { inherit condaChannelsJson; }
+  else
+    { inherit condaChannelsJson; }
