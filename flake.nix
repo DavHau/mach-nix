@@ -130,8 +130,8 @@
             apps.tests-all = {
               type = "app";
               program = toString (pkgs.writeScript "tests-eval" ''
-                ${apps.tests-unit}
-                ${apps.tests-eval}
+                ${apps.tests-unit.program}
+                ${apps.tests-eval.program}
               '');
             };
 
