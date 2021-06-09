@@ -86,6 +86,55 @@
               '');
             };
 
+            apps.tests-unit = {
+              type = "app";
+              program = toString (pkgs.writeScript "tests-unit" ''
+                export PATH="${pkgs.lib.makeBinPath (with pkgs; [
+                  busybox
+                  (import ./mach_nix/nix/python.nix {
+                    inherit pkgs;
+                    dev = true;
+                  })
+                ])}"
+
+                export PYPI_DATA=${inp.pypi-deps-db}
+                export CONDA_DATA=${(import ./mach_nix/nix/conda-channels.nix {
+                  inherit pkgs;
+                  providers = { _default = [ "conda/main" "conda/r" "conda/conda-forge"]; };
+                }).condaChannelsJson}
+
+                echo "executing unit tests"
+                pytest -n $(nproc) -x ${./.}
+              '');
+            };
+
+            apps.tests-eval = {
+              type = "app";
+              program = toString (pkgs.writeScript "tests-eval" ''
+                export PATH="${pkgs.lib.makeBinPath (with pkgs; [
+                  busybox
+                  git
+                  nixFlakes
+                  parallel
+                ])}"
+
+                cd tests
+                echo "executing evaluation tests (without conda)"
+                ./execute.sh
+
+                echo "executing evaluation tests (with conda)"
+                CONDA_TESTS=y ./execute.sh
+              '');
+            };
+
+            apps.tests-all = {
+              type = "app";
+              program = toString (pkgs.writeScript "tests-eval" ''
+                ${apps.tests-unit}
+                ${apps.tests-eval}
+              '');
+            };
+
           defaultApp = { type = "app"; program = "${defaultPackage}/bin/mach-nix"; };
 
           lib = {

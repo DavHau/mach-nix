@@ -1,3 +1,5 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
-ls ./test_* | parallel -a - -j 10 --halt now,fail=1 nix-build --show-trace
+WORKERS=${WORKERS:-10}
+
+ls ./test_* | parallel -a - -j $WORKERS --halt now,fail=1 nix-build --no-out-link --show-trace

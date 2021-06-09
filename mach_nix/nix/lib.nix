@@ -22,6 +22,12 @@ rec {
 
   isCondaEnvironmentYml = str: hasInfix "\nchannels:\n" str && hasInfix "\ndependencies:\n" str;
 
+  makeProviderDefaults = requirements:
+    if isCondaEnvironmentYml requirements then
+      { _default = []; }
+    else
+      fromTOML (readFile ../provider_defaults.toml);
+
   condaSymlinkJoin = ps:
     let
       dirsForLinking = pkg:

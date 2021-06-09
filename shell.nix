@@ -8,17 +8,20 @@
   },
   ...
 }:
-with pkgs;
 let
-  python = python38;
-  machnixDeps = (lib.attrValues (import ./mach_nix/nix/python-deps.nix { inherit python; fetchurl = fetchurl; }));
+  pythonWithPkgs = import ./mach_nix/nix/python.nix {
+    inherit pkgs;
+    dev = true;
+  };
 in
-mkShell {
-  buildInputs = [
-    (python.withPackages ( ps: with ps; machnixDeps ++ [ pytest_6 pytest-xdist twine ] ))
-    nix-prefetch-git
-    pkgs.parallel
-  ];
+pkgs.mkShell {
+  buildInputs =
+    [ pythonWithPkgs ]
+    ++
+    (with pkgs; [
+      nix-prefetch-git
+      parallel
+    ]);
   shellHook = ''
     export PYTHONPATH=$(pwd)/
     export PYPI_DATA=${pypiData}

@@ -1,9 +1,11 @@
 {
+  baseArgsMkPython ? {},
+  baseArgsBuildPythonPackage ? {},
   mach-nix ? import ../. {},
   ...
 }:
 with builtins;
-mach-nix.mkPython {
+mach-nix.mkPython (baseArgsMkPython // {
   packagesExtra = [
     (mach-nix.buildPythonPackage {
       src = "https://gitlab.com/ae-dir/web2ldap/-/archive/v1.5.97/web2ldap-v1.5.97.tar.gz";
@@ -14,4 +16,4 @@ mach-nix.mkPython {
       };
     })
   ];
-}
+})

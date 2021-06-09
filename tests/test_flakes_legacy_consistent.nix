@@ -1,4 +1,6 @@
 {
+  baseArgsMkPython ? {},
+  baseArgsBuildPythonPackage ? {},
   mach-nix ? import ../. {},
   ...
 }:
@@ -8,9 +10,9 @@ let
   pyFlakes = mkPythonFlakes {
     requirements = "requests";
   };
-  py = mach-nix.mkPython {
+  py = mach-nix.mkPython (baseArgsMkPython // {
     requirements = "requests";
-  };
+  });
 in
 if pyFlakes == py then
     py

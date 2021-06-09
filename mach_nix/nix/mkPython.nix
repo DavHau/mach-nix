@@ -22,11 +22,7 @@ let
       requirements ? "",  # content from a requirements.txt file
       tests ? false,  # Disable tests wherever possible to decrease build time.
       _ ? {},  # simplified overrides
-      _providerDefaults ?
-        if (import ./lib.nix { inherit (pkgs) lib; inherit pkgs; }).isCondaEnvironmentYml requirements then
-          { _default = []; }
-        else
-          fromTOML (readFile ../provider_defaults.toml),
+      _providerDefaults ? l.makeProviderDefaults requirements,
       _fixes ? import ../fixes.nix {pkgs = pkgs;}
     }:
     let

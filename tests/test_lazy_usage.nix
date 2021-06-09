@@ -1,4 +1,6 @@
 {
+  baseArgsMkPython ? {},
+  baseArgsBuildPythonPackage ? {},
   mach-nix ? import ../. {},
   ...
 }:

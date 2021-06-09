@@ -20,11 +20,7 @@ let
       providers ? {},  # define provider preferences
       python ? pythonGlobal,  # define python version
       _ ? {},  # simplified overrides
-      _providerDefaults ?
-        if (import ./lib.nix { inherit (pkgs) lib; inherit pkgs; }).isCondaEnvironmentYml requirements then
-          { _default = []; }
-        else
-          fromTOML (readFile ../provider_defaults.toml),
+      _providerDefaults ? l.makeProviderDefaults requirements,
       _fixes ? import ../fixes.nix {pkgs = pkgs;},
       ...
     }:

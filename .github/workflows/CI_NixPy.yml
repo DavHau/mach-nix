@@ -95,9 +95,6 @@ jobs:
         mach-nix env ./env -r reqs.txt
       shell: bash
 
-    - name: nix expression tests
-      run: |
-        cd ./tests
-        bash execute.sh
-      shell: bash
+    - name: mach-nix evaluation tests
+      run: nix run .#tests-all
 

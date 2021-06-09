@@ -11,11 +11,7 @@ with builtins;
   condaDataRev ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).rev,
   condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./CONDA_CHANNELS.json)).indexSha256,
   cudaVersion ? pkgs.cudatoolkit.version,  # max allowed cuda version for conda packages
-  _providerDefaults ?
-    if (import ./lib.nix { inherit (pkgs) lib; inherit pkgs; }).isCondaEnvironmentYml requirements then
-      { _default = []; }
-    else
-      fromTOML (readFile ../provider_defaults.toml)
+  _providerDefaults ? (import ./lib.nix { inherit (pkgs) lib; inherit pkgs; }).makeProviderDefaults requirements
 }:
 
 with pkgs.lib;
