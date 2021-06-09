@@ -1,3 +1,4 @@
+import json
 from os import environ
 
 import pytest
@@ -51,6 +52,7 @@ from mach_nix.requirements import parse_reqs_line
     , ("zest.releaser[recommended] ; extra == 'maintainer'",
        ('zest.releaser', ('recommended', 'maintainer'), None, None, "extra == 'maintainer'"))
     , ('pytz (>dev)', ('pytz', (), ((('>', 'dev'),),), None, None))
+    , ('libcurl 7.71.1 h20c2e04_1', ('libcurl', (), ((('==', '7.71.1'),),), 'h20c2e04_1', None))
 ])
 def test_parse_requirements(input, exp_output):
     assert parse_reqs_line(input) == exp_output
@@ -83,7 +85,7 @@ def parse_or_ignore_line(line):
         '=',
     ]):
         return
-    if any((x in lineStripped for x in [
+    exclude = (
         "\n",
         "@",
         '&',
@@ -151,7 +153,30 @@ def parse_or_ignore_line(line):
         'numpy==1.18.1=pypi_0',
         'psutil==^5.7.0',
         'Twisted>=Twisted-13.2',
+        'pandas==asa',
+    )
+    if any((x in lineStripped for x in exclude)):
+        return
+    parse_reqs_line(line)
 
+
+def parse_or_ignore_line_conda(line):
+    # lineStripped = line.strip().replace("'", "").replace('"', '')
+    lineStripped = line
+    # if not len(lineStripped):
+    #     return
+    # if line.startswith("#"):
+    #     return
+    if any(lineStripped.startswith(x) for x in [
+
+    ]):
+        return
+    if any(lineStripped.endswith(x) for x in [
+
+    ]):
+        return
+    if any((x in lineStripped for x in [
+        'blas *.* mkl'
     ])):
         return
     parse_reqs_line(line)
@@ -176,4 +201,21 @@ def test_parse_all_pypi_reqs(bucket):
                     for extra, lines in release["extras_require"].items():
                         for line in lines:
                             parse_or_ignore_line(line)
+
+
+def conda_channel_files():
+    with open(environ.get("CONDA_DATA", None)) as f:
+        data = json.load(f)
+    for channel, files in data.items():
+        for file in files:
+            yield file
+
+
+@pytest.mark.parametrize("file", conda_channel_files())
+def test_parse_all_conda_reqs(file):
+    with open(file) as f:
+        cdata = json.load(f)
+    for pname, pdata in cdata['packages'].items():
+        for line in pdata['depends']:
+            parse_or_ignore_line_conda(line)
 

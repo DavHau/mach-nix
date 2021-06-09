@@ -111,17 +111,31 @@ def extras_from_marker(marker):
 
 
 re_reqs = re.compile(
-    r"^(([a-z]|[A-Z]|-|_|\d|\.)+)"  # name
-    rf"(\[({extra_name},?)+\])?"  # extras
+    r"^(?P<name>([a-z]|[A-Z]|-|_|\d|\.)+)"
+    rf"(?P<extras>\[({extra_name},?)+\])?"
     r"("
-        r" *\(?(([,\|]? *(==|!=|>=|<=|>|<|~=|=)? *(\* |dev|-?\w?\d(\d|\.|\*|-|_|[a-z]|[A-Z])*))+(?![_\d]))\)?"  # specs
-        r"( *([a-z]|\d|_|\*)+)?"  # build
+        r"("
+            # conda style single spec + single build
+            r" *(?P<specs_1>(\w|\.|\*|-|!|\+)+)"
+            r" +(?P<build_1>([a-z]|\d|_|\*|\.)+)"
+        r"|"
+            # multiple specs
+            r" *\(?(?P<specs_0>"
+                r"\*"
+                r"|([,\|]? *(==|!=|>=|<=|>|<|~=|=)? *(\* |dev|-?\w?\d(\w|\.|\*|-|\||!|\+)*))+(?![_\d]))\)?"
+            r"(?P<build_0> *([a-z]|\d|_|\*|\.)+)?"
+        r"|"
+            # single spec only
+            r" *(?P<specs_2>(\w|\.|\*|-|!|\+)+)"
+        r")"
     r")?"
-    r"( *[:;] *(.*))?$")  # marker
+    r"( *[:;] *(?P<marker>.*))?$")  # marker
 
 
 def parse_reqs_line(line):
-    line = line.split("#")[0].strip().replace('"', '')
+    if '7.71.1 h20c2e04_1' in line:
+        x=1
+    line = line.split("#")[0].strip()
     if line.endswith("==*"):
         line = line[:-3]
 
@@ -129,24 +143,39 @@ def parse_reqs_line(line):
     split = line.split(';')
     if len(split) > 1:
         init, marker = split
-        init = init.replace("'", "")
+        init = init.replace("'", "").replace('"', '')
         line = init + ';' + marker
     else:
-        line = line.replace("'", "")
+        line = line.replace("'", "").replace('"', '')
 
     match = re.fullmatch(re_reqs, line)
     if not match:
         raise Exception(f"couldn't parse: '{line}'")
-    groups = list(match.groups())
-    name = groups[0]
+    # groups = list(match.groups())
+    name = match.group('name')
 
-    extras = groups[2]
+    extras = match.group('extras')
     if extras:
         extras = tuple(extras.strip('[]').split(','))
     else:
         extras = tuple()
 
-    all_specs = groups[6]
+    # extract specs and build
+    for i in range(2):
+        try:
+            all_specs = match.group(f'specs_{i}')
+            build = match.group(f'build_{i}')
+            if all_specs is not None:
+                break
+        except IndexError:
+            pass
+    else:
+        all_specs = match.group('specs_2')
+        build = None
+
+    if build:
+        build = build.strip()
+
     if all_specs:
         all_specs_raw = all_specs.split('|')
         all_specs = []
@@ -163,11 +192,7 @@ def parse_reqs_line(line):
 
         all_specs = tuple(all_specs)
 
-    build = groups[11]
-    if build:
-        build = build.strip()
-
-    marker = groups[14]
+    marker = match.group('marker')
     if marker:
         extras_marker = extras_from_marker(marker)
         extras = extras + extras_marker
