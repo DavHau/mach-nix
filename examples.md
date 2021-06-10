@@ -45,7 +45,7 @@ every mach-nix expression should begin like this:
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "refs/heads/3.3.0";
+    ref = "refs/tags/3.3.0";
   }) {
     # optionally bring your own nixpkgs
     # pkgs = import <nixpkgs> {};
