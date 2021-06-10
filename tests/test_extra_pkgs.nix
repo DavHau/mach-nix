@@ -1,9 +1,11 @@
 {
+  baseArgsMkPython ? {},
+  baseArgsBuildPythonPackage ? {},
   mach-nix ? import ../. {},
   ...
 }:
 with builtins;
-mach-nix.mkPython {
+mach-nix.mkPython (baseArgsMkPython // {
   requirements = ''
     aiohttp
   '';
@@ -14,4 +16,4 @@ mach-nix.mkPython {
       requirementsExtra = "pytest";
     })
   ];
-}
+})

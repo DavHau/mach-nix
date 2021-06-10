@@ -1,0 +1,22 @@
+diff --git a/conda/models/version.py b/conda/models/version.py
+index 0645b64cc..9d306d31b 100644
+--- a/conda/models/version.py
++++ b/conda/models/version.py
+@@ -43,7 +43,6 @@ class SingleStrArgCachingType(type):
+             return super(SingleStrArgCachingType, cls).__call__(arg)
+ 
+ 
+-@with_metaclass(SingleStrArgCachingType)
+ class VersionOrder(object):
+     """
+     This class implements an order relation between version strings.
+@@ -305,6 +304,9 @@ class VersionOrder(object):
+     def __ge__(self, other):
+         return not (self < other)
+ 
++    def __hash__(self):
++        return hash(self.norm_version)
++
+ 
+ # each token slurps up leading whitespace, which we strip out.
+ VSPEC_TOKENS = (r'\s*\^[^$]*[$]|'  # regexes

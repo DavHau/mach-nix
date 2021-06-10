@@ -1,11 +1,168 @@
-{ lib, pkgs, ... }:
+{
+  pkgs ? import (import ./nixpkgs-src.nix) { config = {}; overlays = []; },
+  ...
+}:
 with builtins;
-with lib;
+with pkgs.lib;
+let
+  nonCondaProviders = [
+    "wheel"
+    "sdist"
+    "nixpkgs"
+  ];
+in
 rec {
+
+  autoPatchelfHook = import ./auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
 
   mergeOverrides = foldl composeExtensions (self: super: { });
 
-  autoPatchelfHook = import ./auto_patchelf_hook.nix {inherit (pkgs) fetchurl makeSetupHook writeText;};
+  fromYAML = str:
+    fromJSON (readFile (pkgs.runCommand "yml" { buildInputs = [pkgs.yq pkgs.jq] ;} ''echo '${escape ["'"] str}' | ${pkgs.yq}/bin/yq . > $out''));
+
+  isCondaEnvironmentYml = str: hasInfix "\nchannels:\n" str && hasInfix "\ndependencies:\n" str;
+
+  makeProviderDefaults = requirements:
+    if isCondaEnvironmentYml requirements then
+      { _default = []; }
+    else
+      fromTOML (readFile ../provider_defaults.toml);
+
+  condaSymlinkJoin = ps:
+    let
+      dirsForLinking = pkg:
+        let
+          dirs = filterAttrs (dir: type:
+            ! elem dir [ "bin" "lib" "shared" ]
+            && type != "regular"
+          ) (readDir "${pkg}");
+        in
+          attrNames dirs;
+
+      linkMap = ps: foldl (dirMap: pkg:
+        dirMap // listToAttrs (map (dir:
+          nameValuePair dir ((dirMap."${dir}" or []) ++ [ pkg ] )
+        ) (dirsForLinking pkg))
+      ) {} ps;
+
+      linkCommand = dir: ps: ''
+        if [ -e "$out/${dir}" ]; then
+          mv "$out/${dir}" "$out/${dir}-self"
+        fi
+        ln -s "${pkgs.symlinkJoin {
+          name = dir;
+          paths = map (p: "${p}/${dir}") ps;
+        }}" "$out/${dir}-deps"
+        rm -f "$out/${dir}"
+        mkdir "$out/${dir}"
+        find "$out/${dir}-deps/" -mindepth 1 -maxdepth 1 -exec sh -c '
+          ln -s "{}" "$out/${dir}/$(basename {})"
+        ' \;
+        if [ -e "$out/${dir}-self" ]; then
+          find "$out/${dir}-self/" -mindepth 1 -maxdepth 1 -exec sh -c '
+            [ ! -e "$out/${dir}/$(basename {})" ] && ln -s "{}" "$out/${dir}/$(basename {})"
+          ' \;
+        fi
+      '';
+      lMap = linkMap ps;
+    in
+      concatStringsSep "\n" (mapAttrsToList (dir: ps: linkCommand dir ps) lMap);
+
+  selectPythonPkg = pkgs: pyStr: requirements:
+    let
+      preProcessedReqs = (preProcessRequirements requirements);
+      python_arg =
+        (if isString pyStr || isNull pyStr then
+          pyStr
+         else
+          throw '''python' must be a string. Example: "python38"'');
+    in
+      if preProcessedReqs ? python then
+        if ! isNull pyStr && pyStr != preProcessedReqs.python then
+          throw ''
+            The specified 'python' conflicts the one specified via 'requirements'.
+            Either remove `python=` from your requirements or do not specify 'python' when importing mach-nix
+          ''
+        else
+          pkgs."${preProcessedReqs.python}"
+      else if isNull pyStr then
+        pkgs.python3
+      else
+        pkgs."${python_arg}" ;
+
+  preProcessRequirements = str:
+    let
+     condaYml2reqs = data:
+      {
+        requirements =
+          concatStringsSep "\n" (flatten (map (d:
+            let
+              split = splitString "=" d;
+              name = elemAt split 0;
+              ver = elemAt split 1;
+              build = elemAt split 2;
+              build'=
+                if isNull (match "py[[:digit:]]+_[[:digit:]]+" build) && isNull (match "[[:digit:]]+" build) then
+                  build
+                else
+                  "*";
+            in
+              if hasPrefix "_" name || elem name [ "python" "conda" ] then
+                []
+              else
+                "${name} ${ver} ${build'}"
+          ) data.dependencies));
+
+        providers = flatten (map (c:
+          if c == "defaults" then
+            [ "conda/main" "conda/r" ]
+          else
+            "conda/" + c
+        ) data.channels);
+      } // (
+        let
+          pyDep = filter (d: hasPrefix "python=" d) data.dependencies;
+        in
+          if pyDep == [] then {}
+          else let
+            pyVer = splitString "." (elemAt (splitString "=" (elemAt pyDep 0)) 1); # example: [ 3 7 2 ]
+          in
+            { python = "python${elemAt pyVer 0}${elemAt pyVer 1}"; }
+      );
+    in
+      if isCondaEnvironmentYml str then
+        condaYml2reqs (fromYAML str)
+      else {
+        requirements = str;
+        providers = [];
+      };
+
+  parseProviders = providers:
+    let
+      # transform strings to lists
+      _providers = mapAttrs (pkg: providers:
+        if isString providers then
+          splitString "," providers
+        else providers
+      ) providers;
+    in
+      # convert "some-conda-channel" to "conda/some-conda-channel"
+      mapAttrs (pkg: providers:
+        flatten (map (p:
+          if elem p nonCondaProviders || hasPrefix "conda/" p then
+            p
+          else if p == "conda" then
+            [ "conda/main" "conda/r" ]
+          else
+            "conda/${p}"
+        ) providers)
+      ) _providers;
+
+  parseProvidersToJson =
+    let
+      providers = (fromJSON (getEnv "providers"));
+    in
+      pkgs.writeText "providers-json" (toJSON (parseProviders providers));
 
   concat_reqs = reqs_list:
     let

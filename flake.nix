@@ -3,7 +3,7 @@
   description = "Create highly reproducible python environments";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "nixpkgs/nixos-unstable";
   inputs.pypi-deps-db = {
     url = "github:DavHau/pypi-deps-db";
     flake = false;
@@ -32,6 +32,7 @@
         {
           devShell = import ./shell.nix {
             inherit pkgs;
+            pypiData = "${inp.pypi-deps-db}";
           };
           packages = rec {
             inherit (mach-nix-default) mach-nix;
@@ -84,6 +85,56 @@
                 rm reqs
               '');
             };
+
+            apps.tests-unit = {
+              type = "app";
+              program = toString (pkgs.writeScript "tests-unit" ''
+                export PATH="${pkgs.lib.makeBinPath (with pkgs; [
+                  busybox
+                  (import ./mach_nix/nix/python.nix {
+                    inherit pkgs;
+                    dev = true;
+                  })
+                ])}"
+
+                export PYPI_DATA=${inp.pypi-deps-db}
+                export CONDA_DATA=${(import ./mach_nix/nix/conda-channels.nix {
+                  inherit pkgs;
+                  providers = { _default = [ "conda/main" "conda/r" "conda/conda-forge"]; };
+                }).condaChannelsJson}
+
+                echo "executing unit tests"
+                pytest -n $(nproc) -x ${./.}
+              '');
+            };
+
+            apps.tests-eval = {
+              type = "app";
+              program = toString (pkgs.writeScript "tests-eval" ''
+                export PATH="${pkgs.lib.makeBinPath (with pkgs; [
+                  busybox
+                  git
+                  nixFlakes
+                  parallel
+                ])}"
+
+                cd tests
+                echo "executing evaluation tests (without conda)"
+                ./execute.sh
+
+                echo "executing evaluation tests (with conda)"
+                CONDA_TESTS=y ./execute.sh
+              '');
+            };
+
+            apps.tests-all = {
+              type = "app";
+              program = toString (pkgs.writeScript "tests-eval" ''
+                ${apps.tests-unit.program}
+                ${apps.tests-eval.program}
+              '');
+            };
+
           defaultApp = { type = "app"; program = "${defaultPackage}/bin/mach-nix"; };
 
           lib = {

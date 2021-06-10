@@ -22,7 +22,11 @@ let
   };
 in
 {
-  pypi_deps_db_src = deps_db_src;
+  # needs to be wrapped in a real derivation otherwise nix-build is not allowed,
+  # which is required for debugging
+  pypi_deps_db_src = pkgs.runCommand "pypi-deps-db" {} ''
+    ln -s ${deps_db_src} $out
+  '';
   inherit
     pypi_fetcher_src
     pypi_fetcher_commit

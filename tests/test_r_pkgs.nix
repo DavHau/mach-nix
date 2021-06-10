@@ -1,17 +1,19 @@
 {
+  baseArgsMkPython ? {},
+  baseArgsBuildPythonPackage ? {},
   mach-nix ? import ../. {},
   ...
 }:
 with builtins;
 let
-  pyEnv = mach-nix.mkPython {
+  pyEnv = mach-nix.mkPython (baseArgsMkPython // {
     requirements = ''
       requests
     '';
     packagesExtra = with mach-nix.rPackages; [
       data_table
     ];
-  };
+  });
 in
 
 if pyEnv ? python.pkgs.requests
