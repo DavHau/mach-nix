@@ -192,16 +192,18 @@ class CombinedDependencyProvider(DependencyProviderBase):
 
     def print_error_no_versions_available(self, pkg_name, extras, build):
         provider_names = set(self.allowed_providers_for_pkg(pkg_name).keys())
-        error_text = f"\nThe Package '{pkg_name}' (build: {build}) is not available from any of the " \
-                     f"selected providers {sorted(provider_names)}\n for the selected python version"
+        error_text = \
+            f"\nThe Package '{pkg_name}' (build: {build}) is not available from any of the " \
+            f"selected providers {sorted(provider_names)}\n for the selected python version"
         if provider_names != set(self._all_providers.keys()):
             alternative_providers = self.list_all_providers_for_pkg(pkg_name, extras, build)
             if alternative_providers:
-                error_text += f'... but the package is is available from providers {alternative_providers}\n' \
-                              f"Consider adding them via 'providers='"
+                error_text += \
+                    f'\nThe package is is available from providers {alternative_providers}\n' \
+                    f"Consider adding them via 'providers='."
         else:
             error_text += \
-                f"\nThe required package might just not yet be part of the dependency DB currently used.\n" \
+                f"\nThe required package might just not (yet) be part of the dependency DB currently used.\n" \
                 f"The DB can be updated by specifying 'pypiDataRev' when importing mach-nix.\n" \
                 f"For examples see: https://github.com/DavHau/mach-nix/blob/master/examples.md\n" \
                 f"If it still doesn't work, there might have bene an error while building the DB.\n" \
