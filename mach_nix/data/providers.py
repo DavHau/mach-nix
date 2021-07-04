@@ -300,6 +300,9 @@ class WheelDependencyProvider(DependencyProviderBase):
                 re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux2014_{self.platform}"),
                 re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux2010_{self.platform}"),
                 re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux1_{self.platform}"),
+                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux_2_5_{self.platform}"),
+                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux_2_12_{self.platform}"),
+                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux_2_17_{self.platform}"),
                 re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-linux_{self.platform}"),
                 re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-any"),
             )

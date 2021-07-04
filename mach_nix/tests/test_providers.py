@@ -13,6 +13,10 @@ from mach_nix.versions import PyVer
     (True, '3.6.0', 'PyQt5-5.15.1-5.15.1-cp35.cp36.cp37-abi3-manylinux2014_x86_64.whl', "linux", "x86_64"),
     (True, '3.7.0', 'PyQt5-5.15.1-5.15.1-cp35.cp36.cp37-abi3-manylinux2014_x86_64.whl', "linux", "x86_64"),
     (False, '3.8.0', 'PyQt5-5.15.1-5.15.1-cp35.cp36.cp37-abi3-manylinux2014_x86_64.whl', "linux", "x86_64"),
+    # manylinux_${GLIBCMAJOR}_${GLIBCMINOR}
+    (True, '3.9.0', 'pymaid-1.0.0a1-cp39-cp39-manylinux_2_5_x86_64.whl', "linux", "x86_64"),
+    # combination of manylinux GLIBC* and YEAR formats
+    (True, '3.6.0', 'tokenizers-0.10.3-cp36-cp36m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl', "linux", "x86_64"),
     # none-any wheels for py2 + py3
     (True, '2.7.0', 'requests-2.24.0-py2.py3-none-any.whl', "linux", "x86_64"),
     (True, '3.8.0', 'requests-2.24.0-py2.py3-none-any.whl', "linux", "x86_64"),
