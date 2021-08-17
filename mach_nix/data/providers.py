@@ -503,7 +503,7 @@ class SdistDependencyProvider(DependencyProviderBase):
 def conda_virtual_packages():
 
     packages = dict(
-        __glibc=environ.get("MACHNIX_GLIBC_VERSION", platform.libc_ver()[0][1]),
+        __glibc=environ.get("MACHNIX_GLIBC_VERSION", platform.libc_ver()[1]),
         __unix=0,
     )
 
