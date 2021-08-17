@@ -46,6 +46,10 @@ let
                 but the environment is based on python ${pyver.major}.${pyver.minor}.
                 Please build ${p.pname} with 'python = "python${pyver.major}${pyver.minor}"'.
               ''
+            else if (toJSON p.passthru.providers) != (toJSON providers) then
+              throw ''
+                ${p.name} built via `packagesExtra` must use the same provider as specified for mkPython
+              ''
             else
               p
         # translate sources to python packages
@@ -65,6 +69,7 @@ let
           if hasAttr "requirements" p then p.requirements
           else throw "Packages passed via 'packagesExtra' must be built via mach-nix.buildPythonPackage"
         ) extra_pkgs_python;
+
       extra_pkgs_r_reqs = if extra_pkgs_r == [] then "" else ''
         rpy2
         ipython

@@ -74,7 +74,7 @@ let
       inherit doCheck pname version;
       passthru = passthru // {
         requirements = reqs;
-        inherit overridesPre overridesPost _;
+        inherit overridesPre overridesPost providers _;
       };
     });
 in
