@@ -1,14 +1,18 @@
-{ pkgs, pypiData, ... }:
+{ condaChannelsExtra, condaDataRev, condaDataSha256, pkgs, pypiData, ... }:
+
 with builtins;
 with pkgs.lib;
 let
   l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 
-  buildPythonPackageBase = (import ./buildPythonPackage.nix { inherit pkgs pypiData; });
+  buildPythonPackageBase = (import ./buildPythonPackage.nix {
+    inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs pypiData;
+   });
 
   mkPython = pythonGlobal:
     {
-      ignoreCollisions ? false,  # ignore collisions on the environment level. 
+      cudaVersion ? pkgs.cudatoolkit.version,  # max allowed cuda version for conda packages
+      ignoreCollisions ? false,  # ignore collisions on the environment level.
       ignoreDataOutdated ? false,  # don't fail if pypi data is older than nixpkgs
       overridesPre ? [],  # list of pythonOverrides to apply before the machnix overrides
       overridesPost ? [],  # list of pythonOverrides to apply after the machnix overrides
@@ -18,15 +22,11 @@ let
       requirements ? "",  # content from a requirements.txt file
       tests ? false,  # Disable tests wherever possible to decrease build time.
       _ ? {},  # simplified overrides
-      _providerDefaults ? with builtins; fromTOML (readFile ../provider_defaults.toml),
+      _providerDefaults ? l.makeProviderDefaults requirements,
       _fixes ? import ../fixes.nix {pkgs = pkgs;}
     }:
     let
-      python_arg =
-        (if isString python then python else throw '''python' must be a string. Example: "python38"'');
-    in
-    let
-      python_pkg = pkgs."${python_arg}";
+      python_pkg = l.selectPythonPkg pkgs python requirements;
       pyver = l.get_py_ver python_pkg;
       # and separate pkgs into groups
       extra_pkgs_python = map (p:
@@ -50,9 +50,9 @@ let
               p
         # translate sources to python packages
         else
-          buildPythonPackageBase python_arg "buildPythonPackage" {
-            inherit pkgs providers pypiData tests _providerDefaults;
-            python = python_arg;
+          buildPythonPackageBase python "buildPythonPackage" {
+            inherit condaDataRev condaDataSha256 pkgs providers python
+                    pypiData tests _providerDefaults;
             src = p;
           }
       ) (filter (p: l.is_src p || p ? pythonModule) packagesExtra);
@@ -93,7 +93,7 @@ let
 
       py = python_pkg.override { packageOverrides = l.mergeOverrides overridesPre; };
       result = l.compileOverrides {
-        inherit pkgs providers pypiData tests _providerDefaults;
+        inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs providers pypiData tests _providerDefaults;
         overrides = overridesPre ++ overrides_pre_extra ++ extra_pkgs_py_overrides;
         python = py;
         requirements = l.concat_reqs ([requirements] ++ extra_pkgs_py_reqs ++ [extra_pkgs_r_reqs]);
@@ -117,11 +117,16 @@ let
         ++ [ override_selectPkgs ]
       );
       py_final = python_pkg.override { packageOverrides = all_overrides;};
-      py_final_with_pkgs = py_final.withPackages (ps: selectPkgs ps);
+      py_final_with_pkgs = (py_final.withPackages (ps: selectPkgs ps)).overrideAttrs (oa:{
+        postBuild = ''
+          ${l.condaSymlinkJoin (flatten (map (p: p.allCondaDeps or []) (selectPkgs py_final.pkgs))) }
+        '' + oa.postBuild;
+      });
       final_env = py_final_with_pkgs.override (oa: {
         inherit ignoreCollisions;
         makeWrapperArgs = [
           ''--suffix-each PATH ":" "${toString (map (p: "${p}/bin") extra_pkgs_other)}"''
+          ''--set QT_PLUGIN_PATH ${py_final_with_pkgs}/plugins''
         ];
       });
     in let

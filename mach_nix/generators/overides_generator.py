@@ -1,7 +1,8 @@
 import json
 from typing import Dict, List
 
-from mach_nix.data.providers import WheelDependencyProvider, SdistDependencyProvider, NixpkgsDependencyProvider
+from mach_nix.data.providers import WheelDependencyProvider, SdistDependencyProvider, NixpkgsDependencyProvider, \
+    CondaDependencyProvider
 from mach_nix.data.nixpkgs import NixpkgsIndex
 from mach_nix.generators import ExpressionGenerator
 from mach_nix.resolver import ResolvedPkg
@@ -36,7 +37,7 @@ class OverridesGenerator(ExpressionGenerator):
         pkgs = dict(sorted(((p.name, p) for p in pkgs), key=lambda x: x[1].name))
         return self._gen_python_env(pkgs)
 
-    def _gen_imports(self):
+    def _gen_imports(self, all_pnames):
         out = f"""
             {{ pkgs, python, ... }}:
             with builtins;
@@ -72,11 +73,25 @@ class OverridesGenerator(ExpressionGenerator):
                 "propagatedBuildInputs"
                 "buildInputs"
               ];
+              pnamesEnv =
+                genAttrs
+                  [ "{'" "'.join(all_pnames)}" ]
+                  (pname: null);
+              removeUnwantedPythonDeps = pname: inputs:
+                filter 
+                  (dep:
+                    if ! isPyModule dep || pnamesEnv ? "${{normalizeName (get_pname dep)}}" then
+                      true
+                    else
+                      trace "removing dependency ${{dep.name}} from ${{pname}}" false)
+                  inputs;
               updatePythonDepsRec = newPkgs: pkg:
                 if ! isPyModule pkg then pkg else
                 let
                   pname = normalizeName (get_pname pkg);
                   newP =
+                    # All packages with a pname that already exists in our overrides must be replaced with our version.
+                    # Otherwise we will have a collision
                     if newPkgs ? "${{pname}}" && pkg != newPkgs."${{pname}}" then
                       trace "Updated inherited nixpkgs dep ${{pname}} from ${{pkg.version}} to ${{newPkgs."${{pname}}".version}}"
                       newPkgs."${{pname}}"
@@ -88,6 +103,10 @@ class OverridesGenerator(ExpressionGenerator):
                       map (p: updatePythonDepsRec newPkgs p) v
                     else v
                   ) old);
+              updateAndRemoveDepsRec = pythonSelf: name: inputs:
+                removeUnwantedPythonDeps name (map (dep: updatePythonDepsRec pythonSelf dep) inputs);
+              cleanPythonDerivationInputs = pythonSelf: name: oldAttrs:
+                mapAttrs (n: v: if elem n depNamesAll then updateAndRemoveDepsRec pythonSelf name v else v ) oldAttrs;
               override = pkg:
                 if hasAttr "overridePythonAttrs" pkg then
                     pkg.overridePythonAttrs
@@ -123,6 +142,11 @@ class OverridesGenerator(ExpressionGenerator):
                     in
                       if result.success then result.value else {{}}
                   else {{}};
+              allCondaDepsRec = pkg:
+                let directCondaDeps = 
+                  filter (p: p ? provider && p.provider == "conda") (pkg.propagatedBuildInputs or []);
+                in
+                  directCondaDeps ++ filter (p: ! directCondaDeps ? p) (map (p: p.allCondaDeps) directCondaDeps);
               tests_on_off = enabled: pySelf: pySuper:
                 let
                   mod = {{
@@ -169,12 +193,15 @@ class OverridesGenerator(ExpressionGenerator):
             keep_src=False):
         out = f"""
             "{name}" = override python-super.{nix_name} ( oldAttrs:
-              (mapAttrs (n: v: if elem n depNamesOther then map (dep: updatePythonDepsRec python-self dep) v else v ) oldAttrs) // {{
+              # filter out unwanted dependencies and replace colliding packages recursively
+              let cleanedAttrs = cleanPythonDerivationInputs python-self "{name}" oldAttrs; in cleanedAttrs // {{
                 pname = "{name}";
                 version = "{ver}";
                 passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "{provider}"; }};
-                buildInputs = with python-self; (map (dep: updatePythonDepsRec python-self dep) (oldAttrs."buildInputs" or [])) ++ [ {build_inputs_str} ];
-                propagatedBuildInputs = with python-self; (map (dep: updatePythonDepsRec python-self dep) (oldAttrs."propagatedBuildInputs" or [])) ++ [ {prop_build_inputs_str} ];"""
+                buildInputs = with python-self; (map (dep: updatePythonDepsRec python-self dep) (cleanedAttrs.buildInputs or [])) ++ [ {build_inputs_str} ];
+                propagatedBuildInputs = 
+                  (cleanedAttrs.propagatedBuildInputs or [])
+                  ++ ( with python-self; [ {prop_build_inputs_str} ]);"""
         if not keep_src:
             out += f"""
                 src = fetchPypi "{name}" "{ver}";"""
@@ -186,7 +213,7 @@ class OverridesGenerator(ExpressionGenerator):
             );\n"""
         return unindent(out, 8)
 
-    def _gen_builPythonPackage(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str):
+    def _gen_buildPythonPackage(self, name, ver, circular_deps, nix_name, build_inputs_str, prop_build_inputs_str):
         out = f"""
             "{name}" = python-self.buildPythonPackage {{
               pname = "{name}";
@@ -232,6 +259,52 @@ class OverridesGenerator(ExpressionGenerator):
             };\n"""
         return unindent(out, 8)
 
+    def _gen_conda_buildPythonPackage(
+            self, name, ver, circular_deps, nix_name, prop_build_inputs_str, src_url, src_sha256):
+        out = f"""
+            "{name}" = let pSelf = python-self.buildPythonPackage rec {{
+              pname = "{name}";
+              version = "{ver}";
+              src = builtins.fetchurl {{
+                url = "{src_url}";
+                sha256 = "{src_sha256}";
+              }};
+              format = "other";
+              nativeBuildInputs = with python.pkgs; [
+                autoPatchelfHook
+                condaUnpackHook
+                condaInstallHook
+              ];
+              buildInputs = pkgs.pythonCondaPackages.condaPatchelfLibs;
+              passthru = (get_passthru "{name}" "{nix_name}") // {{ 
+                provider = "conda";
+                allCondaDeps = allCondaDepsRec pSelf;
+                srcUnpacked = pkgs.runCommand "{name}-src" {{}} ''
+                  mkdir $out && cd $out
+                  ${{pkgs.lbzip2}}/bin/lbzip2 -dc -n $NIX_BUILD_CORES ${{src}} | tar --exclude='info' -x
+                '';
+              }};"""
+        if circular_deps:
+            out += f"""
+              pipInstallFlags = "--no-dependencies";
+              preBuild = ''
+                circularDeps="${{
+                  toString (flatten (forEach 
+                    [ "{'" "'.join(circular_deps)}" ]
+                    (pname: python-self."${{pname}}".srcUnpacked or [])
+                  ))
+                }}"
+                echo "adding to search path: $circularDeps"
+                addAutoPatchelfSearchPath $circularDeps
+              '';
+            """
+        if prop_build_inputs_str.strip():
+            out += f"""
+              propagatedBuildInputs = (with python-self; [ {prop_build_inputs_str} ]);"""
+        out += """
+            }; in pSelf;\n"""
+        return unindent(out, 8)
+
     def _gen_overrides(self, pkgs: Dict[str, ResolvedPkg], overrides_keys):
         pkg_names_str = "".join(
             (f"ps.\"{name}\"\n{' ' * 14}"
@@ -241,7 +314,7 @@ class OverridesGenerator(ExpressionGenerator):
             select_pkgs = ps: [
               {pkg_names_str.strip()}
             ];
-            overrides = manylinux1: autoPatchelfHook: merge_with_overr {check} (python-self: python-super: {{
+            overrides' = manylinux1: autoPatchelfHook: merge_with_overr {check} (python-self: python-super: let all = {{
           """
         out = unindent(out, 10)
         for pkg in pkgs.values():
@@ -266,16 +339,16 @@ class OverridesGenerator(ExpressionGenerator):
                 if self.nixpkgs.exists(pkg.name):
                     out += self._gen_overrideAttrs(
                         pkg.name,
-                        pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver),
+                        pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver, pkg.build),
                         pkg.removed_circular_deps,
                         nix_name,
                         'sdist',
                         build_inputs_str,
                         prop_build_inputs_str)
                 else:
-                    out += self._gen_builPythonPackage(
+                    out += self._gen_buildPythonPackage(
                         pkg.name,
-                        pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver),
+                        pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver, pkg.build),
                         pkg.removed_circular_deps,
                         nix_name,
                         build_inputs_str,
@@ -284,11 +357,21 @@ class OverridesGenerator(ExpressionGenerator):
             elif isinstance(pkg.provider_info.provider, WheelDependencyProvider):
                 out += self._gen_wheel_buildPythonPackage(
                     pkg.name,
-                    pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver),
+                    pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver, pkg.build),
                     pkg.removed_circular_deps,
                     self._get_ref_name(pkg.name, pkg.ver),
                     prop_build_inputs_str,
                     pkg.provider_info.wheel_fname)
+            # CONDA
+            elif isinstance(pkg.provider_info.provider, CondaDependencyProvider):
+                out += self._gen_conda_buildPythonPackage(
+                    pkg.name,
+                    pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver, pkg.build),
+                    pkg.removed_circular_deps,
+                    self._get_ref_name(pkg.name, pkg.ver),
+                    prop_build_inputs_str,
+                    pkg.provider_info.url,
+                    pkg.provider_info.hash)
             # NIXPKGS
             elif isinstance(pkg.provider_info.provider, NixpkgsDependencyProvider):
                 nix_name = self.nixpkgs.find_best_nixpkgs_candidate(pkg.name, pkg.ver)
@@ -301,8 +384,10 @@ class OverridesGenerator(ExpressionGenerator):
                     build_inputs_str,
                     prop_build_inputs_str,
                     keep_src=True)
+            else:
+                raise Exception("unknown provider")
         end_overlay_section = f"""
-                }});
+                }}; in all);
           """
         return out + unindent(end_overlay_section, 14)
 
@@ -313,9 +398,13 @@ class OverridesGenerator(ExpressionGenerator):
 
     def _gen_python_env(self, pkgs: Dict[str, ResolvedPkg]):
         overrides_keys = {p.name for p in pkgs.values()}
-        out = self._gen_imports() + self._gen_overrides(pkgs, overrides_keys)
+        all_pnames = list(pkgs.keys())
+        out = self._gen_imports(all_pnames) + self._gen_overrides(pkgs, overrides_keys)
         python_with_packages = f"""
             in
-            {{ inherit overrides select_pkgs; }}
+            {{
+              inherit select_pkgs;
+              overrides = overrides';
+            }}
             """
         return out + unindent(python_with_packages, 12)

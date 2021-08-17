@@ -3,7 +3,7 @@
   description = "Create highly reproducible python environments";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "nixpkgs/nixos-unstable";
   inputs.pypi-deps-db = {
     url = "github:DavHau/pypi-deps-db";
     flake = false;
@@ -19,7 +19,7 @@
           true
         else
           false;
-      usageGen = "usage: nix (build|develop) mach-nix#gen.(python|shell|docker).package1.package2...";
+      usageGen = "usage: nix (build|shell) mach-nix#gen.(python|docker).package1.package2...";
     in
       (flake-utils.lib.eachDefaultSystem (system:
         let
@@ -32,6 +32,7 @@
         {
           devShell = import ./shell.nix {
             inherit pkgs;
+            pypiData = "${inp.pypi-deps-db}";
           };
           packages = rec {
             inherit (mach-nix-default) mach-nix;
@@ -49,11 +50,9 @@
               src = throw usageGen;
               passthru = {
                 python = mach-nix-default.pythonWith;
-                shell = mach-nix-default.shellWith;
                 docker = mach-nix-default.dockerImageWith;
                 inherit (mach-nix-default)
                   pythonWith
-                  shellWith
                   dockerImageWith;
               };
             };
@@ -62,6 +61,80 @@
           defaultPackage = packages.mach-nix;
 
           apps.mach-nix = flake-utils.lib.mkApp { drv = packages.mach-nix.mach-nix; };
+          apps.extract-reqs = 
+            let 
+              extractor = import ./lib/extractor {
+                inherit pkgs;
+                lib = inp.nixpkgs.lib;
+              };
+            in
+            {
+              type = "app";
+              program = toString (pkgs.writeScript "extract.sh" ''
+                export SRC=$1 
+                nix-build -o reqs -E 'let
+                    pkgs = import <nixpkgs> {};
+                    srcEnv = builtins.getEnv "SRC";
+                    src = pkgs.copyPathToStore srcEnv; 
+                    srcTar = pkgs.runCommand "src.tar.gz" {} "mkdir src && cp -r ''${src}/* src/ && pwd && ls -la && tar -c src | gzip -1 > $out";
+                  in (import ./lib/extractor {}).extract_from_src {
+                    py="python3";
+                    src = srcTar;
+                  }'
+                cat reqs/*
+                rm reqs
+              '');
+            };
+
+            apps.tests-unit = {
+              type = "app";
+              program = toString (pkgs.writeScript "tests-unit" ''
+                export PATH="${pkgs.lib.makeBinPath (with pkgs; [
+                  busybox
+                  (import ./mach_nix/nix/python.nix {
+                    inherit pkgs;
+                    dev = true;
+                  })
+                ])}"
+
+                export PYPI_DATA=${inp.pypi-deps-db}
+                export CONDA_DATA=${(import ./mach_nix/nix/conda-channels.nix {
+                  inherit pkgs;
+                  providers = { _default = [ "conda/main" "conda/r" "conda/conda-forge"]; };
+                }).condaChannelsJson}
+
+                echo "executing unit tests"
+                pytest -n $(nproc) -x ${./.}
+              '');
+            };
+
+            apps.tests-eval = {
+              type = "app";
+              program = toString (pkgs.writeScript "tests-eval" ''
+                export PATH="${pkgs.lib.makeBinPath (with pkgs; [
+                  busybox
+                  git
+                  nixFlakes
+                  parallel
+                ])}"
+
+                cd tests
+                echo "executing evaluation tests (without conda)"
+                ./execute.sh
+
+                echo "executing evaluation tests (with conda)"
+                CONDA_TESTS=y ./execute.sh
+              '');
+            };
+
+            apps.tests-all = {
+              type = "app";
+              program = toString (pkgs.writeScript "tests-eval" ''
+                ${apps.tests-unit.program}
+                ${apps.tests-eval.program}
+              '');
+            };
+
           defaultApp = { type = "app"; program = "${defaultPackage}/bin/mach-nix"; };
 
           lib = {

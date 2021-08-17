@@ -1,17 +1,19 @@
 {
+  baseArgsMkPython ? {},
+  baseArgsBuildPythonPackage ? {},
   mach-nix ? import ../. {},
   ...
 }:
 with builtins;
-mach-nix.mkPython {
+mach-nix.mkPython (baseArgsMkPython // {
   requirements = ''
     aiohttp
   '';
-  extra_pkgs = [
+  packagesExtra = [
     "https://github.com/psf/requests/tarball/v2.24.0"
     (mach-nix.buildPythonPackage {
       src = "https://github.com/django/django/tarball/3.1";
-      add_requirements = "pytest";
+      requirementsExtra = "pytest";
     })
   ];
-}
+})

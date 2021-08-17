@@ -1,10 +1,20 @@
 {
   pkgs ? import (import ./nixpkgs-src.nix) { config = {}; overlays = []; },
+  dev ? false,
+  extraModules ? [],
   ...
 }:
-with pkgs;
 let
-  python = python37;
-  python_deps = (lib.attrValues (import ./python-deps.nix { inherit python; fetchurl = fetchurl; }));
+  lib = pkgs.lib;
+  python = pkgs.python38;
+  pythonDeps = (lib.attrValues (import ./python-deps.nix { inherit python; fetchurl = pkgs.fetchurl; }));
+  pythonDepsDev = with python.pkgs; [
+    pytest_6
+    pytest-xdist
+  ];
 in
-python.withPackages ( ps: python_deps )
+python.withPackages ( ps:
+  pythonDeps
+  ++ (lib.optionals dev pythonDepsDev)
+  ++ extraModules
+)

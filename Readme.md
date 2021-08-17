@@ -1,11 +1,9 @@
-##### [Beta version](https://github.com/DavHau/mach-nix/tree/conda-beta) with conda support is released. See [Announcement](https://discourse.nixos.org/t/mach-nix-create-python-environments-quick-and-easy/6858/86). Please test!
-
 <p align="center">
 <img width="200" src="https://gist.githubusercontent.com/DavHau/9a66b8c66b798254b714cc3ca44ffda8/raw/ef6b947b3753425118c730a5dfe81084c1bcfe86/logo_small.jpg">  
 </p>
 
 ## mach-nix - Create highly reproducible python environments
-Mach-nix makes it easy to create and share reproducible python environments or packages. Existing tools for python package management often either do not achieve reproducibility, are difficult to use, or require additional virtualization layers to make them reliable. Mach-nix aims to solve these problems by providing a simple way to use nix, a revolutionary build system which is known to achieve great reproducibility and portability besides [many other advantages](https://nixos.org/features.html). 
+Mach-nix makes it easy to create and share reproducible python environments or packages. Existing tools for python package management often suffer from reproducibility and complexity issues, requiring a multitude of tools and additional virtualization layers to work sufficiently. Mach-nix aims to solve these problems by providing a simple way to use nix, a revolutionary build system which is known to achieve great reproducibility and portability besides [many other advantages](https://nixos.org/features.html). 
 
 ## Who is this meant for?
  - Users without nix experience, who want to maintain python environments for their projects which are reliable and easy to reproduce.
@@ -29,45 +27,37 @@ Table of Contents
 =================
 <!--ts-->
   * [mach-nix - Create highly reproducible python environments](#mach-nix---create-highly-reproducible-python-environments)
-  * [Who is this meant for?](#who-is-this-meant-for)
-  * [Other benefits of mach-nix](#other-benefits-of-mach-nix)
-  * [Donate](#donate)
-  * [Table of Contents](#table-of-contents)
-  * [Usage from cmdline](#usage-from-cmdline)
-     * [Installation](#installation)
-        * [Installing via pip](#installing-via-pip)
-        * [Installing via nix](#installing-via-nix)
-     * [Build a virtualenv-style python environment from a requirements.txt](#build-a-virtualenv-style-python-environment-from-a-requirementstxt)
-     * [Generate a nix expression from a requirements.txt](#generate-a-nix-expression-from-a-requirementstxt)
-  * [Usage in Nix Expression](#usage-in-nix-expression)
-     * [Basic](#basic)
-     * [Advanced](#advanced)
-        * [Required Arguments:](#required-arguments)
-        * [Optional Arguments:](#optional-arguments)
-        * [Configure Providers](#configure-providers)
-  * [Why nix?](#why-nix)
-  * [How does mach-nix work?](#how-does-mach-nix-work)
-     * [Dependency resolution](#dependency-resolution)
-     * [Generating a nix expression](#generating-a-nix-expression)
-  * [Contributing](#contributing)
-  * [Limitations](#limitations)
-  * [Alternative / Similar Software:](#alternative--similar-software)
+      * [Who is this meant for?](#who-is-this-meant-for)
+      * [Other benefits of mach-nix](#other-benefits-of-mach-nix)
+      * [Donate](#donate)
+   * [Table of Contents](#table-of-contents)
+      * [Usage from cmdline](#usage-from-cmdline)
+         * [Installation](#installation)
+         * [Build a virtualenv-style python environment from a requirements.txt](#build-a-virtualenv-style-python-environment-from-a-requirementstxt)
+         * [Generate a nix expression from a requirements.txt](#generate-a-nix-expression-from-a-requirementstxt)
+      * [Usage in Nix Expression](#usage-in-nix-expression)
+         * [Basic](#basic)
+         * [Advanced](#advanced)
+            * [Required Arguments:](#required-arguments)
+            * [Optional Arguments:](#optional-arguments)
+            * [Configure Providers](#configure-providers)
+      * [Why nix?](#why-nix)
+      * [How does mach-nix work?](#how-does-mach-nix-work)
+         * [Dependency resolution](#dependency-resolution)
+         * [Generating a nix expression](#generating-a-nix-expression)
+      * [Contributing](#contributing)
+      * [Limitations](#limitations)
+      * [Alternative / Similar Software:](#alternative--similar-software)
 
-<!-- Added by: grmpf, at: Sat 03 Oct 2020 05:03:43 PM +07 -->
+<!-- Added by: grmpf, at: Wed 09 Jun 2021 06:19:21 PM +07 -->
 
 <!--te-->
 
 ## Usage from cmdline
 
 ### Installation
-You can either install mach-nix via pip or by using nix in case you already have the nix package manager installed.
-#### Installing via pip
 ```shell
-pip install git+git://github.com/DavHau/mach-nix@3.2.0
-```
-#### Installing via nix
-```shell
-nix-env -if https://github.com/DavHau/mach-nix/tarball/3.2.0 -A mach-nix
+nix-env -if https://github.com/DavHau/mach-nix/tarball/3.3.0 -A mach-nix
 ```
 or, if you prefer `nix-shell`:
 
@@ -80,7 +70,7 @@ or, if you prefer `nix-shell`:
 + otherwise:
   
   ```shell
-  nix-shell -p '(callPackage (fetchTarball https://github.com/DavHau/mach-nix/tarball/3.2.0) {}).mach-nix'
+  nix-shell -p '(callPackage (fetchTarball https://github.com/DavHau/mach-nix/tarball/3.3.0) {}).mach-nix'
   ```
 
 ---
@@ -112,7 +102,7 @@ You can call mach-nix directly from a nix expression
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix/";
-    ref = "refs/tags/3.2.0";
+    ref = "refs/tags/3.3.0";
   }) {};
 in
 mach-nix.mkPython {
@@ -161,18 +151,21 @@ _Note that some dependency declaration formats are missing. For a roadmap, pleas
 #### Configure Providers
 **Providers** allow you to configure the origin for your packages on a granular basis.
 
-The following 3 providers are available since version 2.0.0:
-  1. **nixpkgs**: Provides packages directly from nixpkgs without modifying their sources. Has only a few versions available, but has a high success rate and all the nix supported features, like `SSE/AVX/FMA` for tensorflow for example.
-  2. **sdist**: Provides all package versions available from pypi which support setuptools and builds them via nixpkgs overlays wherever possible to resolve external dependencies. It still supports the nixpkgs specific features no matter which package version is selected. But chances are higher for a build to fail than with the **nixpkgs** provider.
-  3. **wheel**: Provides all linux compatible wheel releases from pypi. Wheels can contain binaries. Mach-nix autopatches them to work on nix. Wheels are super quick to install and work quite reliable. Therefore this provider is preferred by default.
+The following 3 providers are available:
+  1. **conda**: Provides packages from anaconda.org. Those packages can contain binaries. Some benefits of anaconda are:  
+      - Different build variants for packages  
+      - Provides all system dependencies for packages
+  1. **wheel**: Provides all linux compatible wheel releases from pypi. If wheels contain binaries, Mach-nix patches them via patchelf to ensure reproducibility. Wheels are very quick to install and work quite reliable.
+  1. **sdist**: Provides all setuptools compatible packages from pypi. It still uses nix for building, which allows it to be tweaked in a flexible way. But in some cases problems can occur, if there is not sufficient information available to determine required system depedencies.
+  1. **nixpkgs**: Provides packages directly from nixpkgs without modifying their sources. Has only a few versions available, Use this provider if you need to tweak individual build parameters, like `SSE/AVX/FMA` for tensorflow for example.
 
 Mach-nix builds environments by mixing packages from all 3 providers. You decide which providers should be preferred for which packages, or which providers shouldn't be used at all.
-The default preferred order of providers is `wheel`, `sdist`, `nixpkgs`.
+The default preferred order of providers is `conda`, `wheel`, `sdist`, `nixpkgs`.
 
 Providers can be disabled/enabled/preferred like in the following examples:
  - A provider specifier like **`"wheel,sdist,nixpkgs"`** means, that the resolver will first try to satisfy the requirements with candidates from the wheel provider. If a resolution is impossible or a package doesn't provide a wheel release, it falls back to sdist/nixpkgs for a minimal number of packages. In general it will choose as many packages from wheel as possible, then sdist, then nixpkgs.
 
- - **`"nixpkgs,sdist"`** means, that `nixpkgs` candidates are preferred, but mach-nix falls back to build from source (sdist). **`wheel`** is not listed and therefore wheels are disabled.
+ - **`"nixpkgs,sdist"`** means, that `nixpkgs` candidates are preferred, but mach-nix falls back to sdist. **`wheel`** is not listed and therefore wheels are disabled.
 
 A full provider config passed to mach-nix looks like this:
 ```nix
@@ -193,7 +186,7 @@ If a mach-nix build fails, most of the time it can be resolved by just switching
 ## Why nix?
 Usually people rely on multiple layers of different package management tools for building their software environments. These tools are often not well integrated with each other and don't offer strong reproducibility. Example: You are on debian/ubuntu and use APT (layer 1) to install python. Then you use venv (layer 2) to overcome some of your layer 1 limitations (not being able to have multiple versions of the same package installed) and afterwards you are using pip (layer 3) to install python packages. You notice that even after pinning all your requirements, your environment behaves differently on your server or your colleagues machine because their underlying system differs from yours. You start using docker (layer 4) to overcome this problem which adds extra complexity to the whole process and gives you some nasty limitations during development. You need to configure your IDE's docker integration and so on. Despite all the effort you put in, still the problem is not fully solved and from time to time your build pipeline just breaks and you need to fix it manually. 
  
-In contrast to that, the nix package manager provides a from ground up different approach to build software systems. Due to its purely functional approach, nix doesn't require additional layers to make your software reliable. Software environments built with nix are known to be reproducible, and portable, which makes many processes during development and deployment easier. Mach-nix leverages that potential by abstracting away the complexity involved in building python environments with nix. Basically it just generates nix expressions for you.
+In contrast to that, the nix package manager provides a from ground up different approach to build software systems. Due to its purely functional approach, nix doesn't require additional layers to make your software reliable. Software environments built with nix are known to be reproducible and portable, which makes many processes during development and deployment easier. Mach-nix leverages that potential by abstracting away the complexity involved in building python environments with nix. Under the hood it just generates and evaluates nix expressions for you.
 
 ## How does mach-nix work?
 The general mechanism can be broken down into [Dependency resolution](#dependency-resolution) and [Generating a nix expression](#generating-a-nix-expression):

@@ -3,9 +3,8 @@ from collections import UserDict
 from dataclasses import dataclass
 from typing import List
 
-from packaging.version import Version, parse
-
 from mach_nix.cache import cached
+from mach_nix.versions import parse_ver, Version
 
 
 @dataclass
@@ -48,7 +47,7 @@ class NixpkgsIndex(UserDict):
     def get_all_candidates(self, name) -> List[NixpkgsPyPkg]:
         result = []
         for ver, nix_keys in self.data[name].items():
-            result += [NixpkgsPyPkg(name, nix_key, parse(ver)) for nix_key in nix_keys]
+            result += [NixpkgsPyPkg(name, nix_key, parse_ver(ver)) for nix_key in nix_keys]
         return result
 
     def get_highest_ver(self, pkgs: List[NixpkgsPyPkg]):
@@ -59,9 +58,9 @@ class NixpkgsIndex(UserDict):
 
     @staticmethod
     def is_same_ver(ver1, ver2, ver_idx):
-        if any(not ver.release or len(ver.release) <= ver_idx for ver in (ver1, ver2)):
+        if any(len(ver.version) <= ver_idx for ver in (ver1, ver2)):
             return False
-        return ver1.release[ver_idx] == ver2.release[ver_idx]
+        return ver1.version[ver_idx] == ver2.version[ver_idx]
 
     @cached(lambda args: (args[1], args[2]))
     def find_best_nixpkgs_candidate(self, name, ver):

@@ -1,10 +1,12 @@
 {
+  baseArgsMkPython ? {},
+  baseArgsBuildPythonPackage ? {},
   mach-nix ? import ../. {},
   ...
 }:
 with builtins;
-mach-nix.mkPython {
-  extra_pkgs = [
+mach-nix.mkPython (baseArgsMkPython // {
+  packagesExtra = [
     (mach-nix.buildPythonPackage {
       src = "https://gitlab.com/ae-dir/web2ldap/-/archive/v1.5.97/web2ldap-v1.5.97.tar.gz";
       _.ldap0.buildInputs = with mach-nix.nixpkgs; [ openldap.dev cyrus_sasl.dev ];
@@ -14,4 +16,4 @@ mach-nix.mkPython {
       };
     })
   ];
-}
+})

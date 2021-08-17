@@ -71,6 +71,7 @@ def save_pkg_meta(name, pkgs_dict):
     releases_dict = {}
     # iterate over versions of current package
     for release_ver, release in meta['releases'].items():
+        release_ver = release_ver.strip()
         sdists = filter(lambda file: file['packagetype'] in ["sdist"], release)
         sdist = select_favorite_sdist_release(sdists)
         wheels = list(filter(lambda file: file['packagetype'] in ["bdist_wheel"], release))

@@ -1,7 +1,21 @@
+with builtins;
 let
   mach-nix = import ../. {};
+  conda = (getEnv "CONDA_TESTS") != "";
+  makeTest = file:
+      import file ({
+        inherit mach-nix;
+      } // (if conda then (rec {
+        baseArgsMkPython = { _provierDefaults = (fromTOML (readFile ./mach_nix/provider_defaults.toml) // {
+          _default = "conda,wheel,sdist,nixpkgs";
+        }); };
+        baseArgsBuildPythonPackage = baseArgsMkPython;
+      }) else {
+        baseArgsMkPython = { _provierDefaults = fromTOML (readFile ./mach_nix/provider_defaults.toml); };
+        baseArgsBuildPythonPackage = baseArgsMkPython;
+      }));
 in
-map (file: import file { inherit mach-nix; }) [
+flatten (map (file: makeTests) [
   ./test_alias_dateutil.nix
   ./test_circular_deps.nix
   ./test_dot_in_name.nix
@@ -18,4 +32,4 @@ map (file: import file { inherit mach-nix; }) [
   ./test_r_pkgs.nix
   ./test_underscore_override.nix
   ./test_underscore_override_extra.nix
-]
+])

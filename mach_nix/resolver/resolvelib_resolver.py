@@ -1,32 +1,23 @@
-from dataclasses import dataclass
 from typing import Iterable, List
 
 import resolvelib
-from packaging.version import Version
 
-from mach_nix.data.providers import DependencyProviderBase
 from mach_nix.data.nixpkgs import NixpkgsIndex
-from mach_nix.requirements import Requirement
-from mach_nix.resolver import Resolver, ResolvedPkg
-from mach_nix.versions import filter_versions
+from mach_nix.data.providers import DependencyProviderBase, Candidate
 from mach_nix.deptree import remove_circles_and_print
-
-
-@dataclass
-class Candidate:
-    name: str
-    ver: Version
-    extras: tuple
+from mach_nix.requirements import Requirement, filter_versions
+from mach_nix.resolver import Resolver, ResolvedPkg
 
 
 # Implement logic so the resolver understands the requirement format.
 class Provider:
     def __init__(self, nixpkgs: NixpkgsIndex, deps_db: DependencyProviderBase):
         self.nixpkgs = nixpkgs
-        self.deps_db = deps_db
+        self.provider = deps_db
 
     def get_extras_for(self, dependency):
-        return tuple(sorted(dependency.extras))
+        # return selected extras
+        return tuple(sorted(dependency.selected_extras))
 
     def get_base_requirement(self, candidate):
         return Requirement("{}=={}".format(candidate.name, candidate.ver))
@@ -38,17 +29,14 @@ class Provider:
         return len(candidates)
 
     def find_matches(self, req):
-        all = self.deps_db.available_versions(req.key)
-        matching_versions = filter_versions(all, req.specs)
-        return [Candidate(name=req.name, ver=ver, extras=req.extras) for ver in matching_versions]
+        return self.provider.find_matches(req)
 
-    def is_satisfied_by(self, requirement, candidate):
-        if not set(requirement.extras).issubset(set(candidate.extras)):
-            return False
-        return bool(len(list(filter_versions([candidate.ver], requirement.specs))))
+    def is_satisfied_by(self, requirement, candidate: Candidate):
+        res = bool(len(list(filter_versions([candidate.ver], requirement))))
+        return res
 
     def get_dependencies(self, candidate):
-        install_requires, setup_requires = self.deps_db.get_pkg_reqs(candidate.name, candidate.ver, candidate.extras)
+        install_requires, setup_requires = self.provider.get_pkg_reqs(candidate)
         deps = install_requires + setup_requires
         return deps
 
@@ -63,14 +51,17 @@ class ResolvelibResolver(Resolver):
         result = resolvelib.Resolver(Provider(self.nixpkgs, self.deps_provider), reporter).resolve(reqs, max_rounds=1000)
         nix_py_pkgs = []
         for name in result.graph._forwards.keys():
-            if name is None:
+            if name is None or name.startswith('-'):
                 continue
-            ver = result.mapping[name].ver
-            install_requires, setup_requires = self.deps_provider.get_pkg_reqs(
-                name, ver, extras=result.mapping[name].extras)
-            provider_info = self.deps_provider.get_provider_info(name, ver)
-            prop_build_inputs = list({req.key for req in install_requires})
-            build_inputs = list({req.key for req in setup_requires})
+            candidate = result.mapping[name]
+            ver = candidate.ver
+            install_requires, setup_requires = self.deps_provider.get_pkg_reqs(candidate)
+            prop_build_inputs = list(filter(
+                lambda name: not name.startswith('-'),
+                list({req.key for req in install_requires})))
+            build_inputs = list(filter(
+                lambda name: not name.startswith('-'),
+                list({req.key for req in setup_requires})))
             is_root = name in result.graph._forwards[None]
             nix_py_pkgs.append(ResolvedPkg(
                 name=name,
@@ -78,8 +69,9 @@ class ResolvelibResolver(Resolver):
                 build_inputs=build_inputs,
                 prop_build_inputs=prop_build_inputs,
                 is_root=is_root,
-                provider_info=provider_info,
-                extras_selected=list(result.mapping[name].extras)
+                provider_info=candidate.provider_info,
+                extras_selected=list(result.mapping[name].selected_extras),
+                build=candidate.build
             ))
         remove_circles_and_print(nix_py_pkgs, self.nixpkgs)
         return nix_py_pkgs

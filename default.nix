@@ -6,9 +6,16 @@
     url = "https://github.com/DavHau/pypi-deps-db/tarball/${pypiDataRev}";
     sha256 = "${pypiDataSha256}";
   },
+  python ? null,
+
+  # add some conda channels
+  condaChannelsExtra ? {},
+
+  # dependency databases
+  condaDataRev ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/CONDA_CHANNELS.json)).rev,
+  condaDataSha256 ? (builtins.fromJSON (builtins.readFile ./mach_nix/nix/CONDA_CHANNELS.json)).indexSha256,
   pypiDataRev ? ((import ./mach_nix/nix/flake-inputs.nix) "pypi-deps-db").rev,
   pypiDataSha256 ? ((import ./mach_nix/nix/flake-inputs.nix) "pypi-deps-db").sha256,
-  python ? "python3",
   ...
 }:
 
@@ -42,37 +49,43 @@ let
   __buildPython = func: args: _buildPython func (throwOnOutdatedData args);
 
   _buildPython = func: args:
-    if args ? extra_pkgs || args ? pkgsExtra then
-      throw "'extra_pkgs'/'pkgsExtra' cannot be passed to ${func}. Please pass it to a mkPython call."
-    else if isString args || isPath args || pkgs.lib.isDerivation args then
-      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiData; })
-        python func { src = args; }
-    else
-      (import ./mach_nix/nix/buildPythonPackage.nix { inherit pkgs pypiData; })
-        python func (l.throwOnDeprecatedArgs func args);
+    let
+      machnixArgs = { inherit pkgs condaChannelsExtra condaDataRev condaDataSha256 pypiData; };
+    in
+      if args ? extra_pkgs || args ? pkgsExtra then
+        throw "'extra_pkgs'/'pkgsExtra' cannot be passed to ${func}. Please pass it to a mkPython call."
+      else if isString args || isPath args || pkgs.lib.isDerivation args then
+        (import ./mach_nix/nix/buildPythonPackage.nix machnixArgs) python func { src = args; }
+      else
+        (import ./mach_nix/nix/buildPythonPackage.nix machnixArgs) python func (l.throwOnDeprecatedArgs func args);
 
   __mkPython = caller: args: _mkPython caller (throwOnOutdatedData args);
 
   # (High level API) generates a python environment with minimal user effort
   _mkPython = caller: args:
-    if builtins.isList args then
-      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiData; })
-        python { packagesExtra = args; }
-    else
-      (import ./mach_nix/nix/mkPython.nix { inherit pkgs pypiData; })
-        python (l.throwOnDeprecatedArgs caller args);
+    let
+      machnixArgs = { inherit pkgs condaChannelsExtra condaDataRev condaDataSha256 pypiData; };
+    in
+      if builtins.isList args then
+        (import ./mach_nix/nix/mkPython.nix machnixArgs) python { packagesExtra = args; }
+      else
+        (import ./mach_nix/nix/mkPython.nix machnixArgs) python (l.throwOnDeprecatedArgs caller args);
 
 in
 rec {
   # the mach-nix cmdline tool derivation
-  mach-nix = python_machnix.pkgs.buildPythonPackage rec {
+  mach-nix = python_machnix.pkgs.buildPythonApplication rec {
     pname = "mach-nix";
     version = builtins.readFile ./mach_nix/VERSION;
     name = "${pname}-${version}";
     src = ./.;
     propagatedBuildInputs = pythonDeps;
-    checkInputs = [ python_machnix.pkgs.pytest ];
-    checkPhase = "pytest";
+    checkInputs = with python_machnix.pkgs; [ pytestCheckHook ];
+    # these tests are expensive and therefore only executed in CI via flakes app 'tests-unit'
+    disabledTests = [
+      "test_parse_all_pypi_reqs"
+      "test_parse_all_conda_reqs"
+    ];
   };
 
   pythonDeps = (builtins.attrValues (import ./mach_nix/nix/python-deps.nix {
@@ -101,7 +114,6 @@ rec {
   # expose dot interface for flakes cmdline
   "with" = pythonWith;
   pythonWith = (withDot (__mkPython "'.pythonWith'")).pythonWith;
-  shellWith = (withDot (__mkPython "'.shellWith'")).shellWith;
   dockerImageWith = (withDot (__mkPython "'.dockerImageWith'")).dockerImageWith;
 
   # expose mach-nix' nixpkgs

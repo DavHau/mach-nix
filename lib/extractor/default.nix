@@ -89,7 +89,7 @@ let
 
   # This is how pip invokes setup.py. We do this manually instead of using pip to increase performance by ~40%
   setuptools_shim = ''
-    import sys, setuptools, tokenize; sys.argv[0] = 'setup.py'; __file__='setup.py';
+    import sys, setuptools, tokenize, os; sys.argv[0] = 'setup.py'; __file__='setup.py';
     f=getattr(tokenize, 'open', open)(__file__);
     code=f.read().replace('\r\n', '\n');
     f.close();
@@ -112,6 +112,7 @@ let
     ))}
   '';
   script_single = py: ''
+    chmod +x setup.py || true
     mkdir $out
     echo "extracting dependencies"
     out_file=$out/python.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python.log || true
@@ -149,10 +150,13 @@ rec {
   inherit machnix_source pythonInterpreters;
   example = extractor {pkg = "requests"; version = "2.22.0";};
   extract_from_src = {py, src}:
+    let 
+      py' = if isString py then pkgs."${py}" else py;
+    in
     stdenv.mkDerivation ( (base_derivation []) // {
       inherit src;
       name = "package-requirements";
-      installPhase = script_single (mkPy py);
+      installPhase = script_single (mkPy py');
     });
   extractor = {pkg, version, ...}:
     stdenv.mkDerivation ({

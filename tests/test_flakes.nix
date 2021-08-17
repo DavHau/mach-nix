@@ -1,12 +1,13 @@
 {
+  baseArgsMkPython ? {},
+  baseArgsBuildPythonPackage ? {},
   mach-nix ? import ../. {},
   ...
 }:
 with builtins;
 let
-  pyEnv = (builtins.getFlake (toString ../.)).packages.x86_64-linux.pythonWith.requests;
-  pyEnvShell = (builtins.getFlake (toString ../.)).packages.x86_64-linux.shellWith.requests;
-  pyEnvDockerImage = (builtins.getFlake (toString ../.)).packages.x86_64-linux.dockerImageWith.requests;
+  pyEnv = (builtins.getFlake (toString ../.)).packages.x86_64-linux.gen.python.requests;
+  pyEnvDockerImage = (builtins.getFlake (toString ../.)).packages.x86_64-linux.gen.docker.requests;
 in
 (map (p:
   if p ? _passthru.python.pkgs.requests then
@@ -15,7 +16,7 @@ in
     throw "Error"
 ) [pyEnv pyEnvDockerImage])
 ++ [
-  (if ! pyEnvShell ? _passthru.python.pkgs.requests then
+  (if ! pyEnv ? _passthru.python.pkgs.requests then
     throw "Error with shell"
   else
     mach-nix.nixpkgs.hello)

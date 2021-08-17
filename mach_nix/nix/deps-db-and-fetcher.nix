@@ -21,18 +21,15 @@ let
     inherit pkgs;
   };
 in
-let
-  pypi_deps_db_src = pkgs.buildEnv {
-    name = "pypi-deps-db-src";
-    paths = [ deps_db_src ];
-  };
-in
-{ inherit
-    pypi_deps_db_src
+{
+  # needs to be wrapped in a real derivation otherwise nix-build is not allowed,
+  # which is required for debugging
+  pypi_deps_db_src = pkgs.runCommand "pypi-deps-db" {} ''
+    ln -s ${deps_db_src} $out
+  '';
+  inherit
     pypi_fetcher_src
-
     pypi_fetcher_commit
     pypi_fetcher_sha256
-
     pypi_fetcher;
 }
