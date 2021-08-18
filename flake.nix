@@ -90,12 +90,13 @@
               type = "app";
               program = toString (pkgs.writeScript "tests-unit" ''
                 export PATH="${pkgs.lib.makeBinPath (with pkgs; [
-                  busybox
                   (import ./mach_nix/nix/python.nix {
                     inherit pkgs;
                     dev = true;
                   })
-                ])}"
+                ]
+                ++ lib.optional (stdenv.isLinux) busybox
+                )}"
 
                 export PYPI_DATA=${inp.pypi-deps-db}
                 export CONDA_DATA=${(import ./mach_nix/nix/conda-channels.nix {
@@ -112,11 +113,12 @@
               type = "app";
               program = toString (pkgs.writeScript "tests-eval" ''
                 export PATH="${pkgs.lib.makeBinPath (with pkgs; [
-                  busybox
                   git
                   nixFlakes
                   parallel
-                ])}"
+                ]
+                ++ lib.optional (stdenv.isLinux) busybox
+                )}"
 
                 cd tests
                 echo "executing evaluation tests (without conda)"
