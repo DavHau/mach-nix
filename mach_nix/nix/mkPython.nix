@@ -152,9 +152,9 @@ let
               name = "mach-nix-python";
               tag = "latest";
               contents = [
-                pkgs.busybox
                 self
-              ] ++ extra_pkgs_other;
+              ] ++ extra_pkgs_other
+              ++ pkgs.lib.optional (pkgs.stdenv.isLinux) busybox;
               config = {
                 Cmd = [ "${self}/bin/python" ];
               };
