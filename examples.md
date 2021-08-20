@@ -44,7 +44,7 @@ every mach-nix expression should begin like this:
 ```nix
 let
   mach-nix = import (builtins.fetchGit {
-    url = "https://github.com/DavHau/mach-nix/";
+    url = "https://github.com/DavHau/mach-nix";
     ref = "refs/tags/3.3.0";
   }) {
     # optionally bring your own nixpkgs
@@ -280,7 +280,7 @@ In this example, mach-nix is used to resolve our python dependencies and provide
 ```nix
 let
   mach-nix = import (builtins.fetchGit {
-    url = "https://github.com/DavHau/mach-nix/";
+    url = "https://github.com/DavHau/mach-nix";
     ref = "refs/heads/3.3.0";  # update this version
   }) {
     python = "python37";
@@ -402,7 +402,7 @@ For the SD-image, create a configuration.nix file which adds the mach-nix tool a
 
 let
   machNix = import (builtins.fetchGit {
-    url = "https://github.com/DavHau/mach-nix/";
+    url = "https://github.com/DavHau/mach-nix";
     ref = "refs/tags/put_version_here";
   }) { inherit pkgs; };
 

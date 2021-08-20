@@ -101,7 +101,7 @@ You can call mach-nix directly from a nix expression
 ```nix
 let
   mach-nix = import (builtins.fetchGit {
-    url = "https://github.com/DavHau/mach-nix/";
+    url = "https://github.com/DavHau/mach-nix";
     ref = "refs/tags/3.3.0";
   }) {};
 in
