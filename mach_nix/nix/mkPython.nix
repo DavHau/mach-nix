@@ -23,7 +23,8 @@ let
       tests ? false,  # Disable tests wherever possible to decrease build time.
       _ ? {},  # simplified overrides
       _providerDefaults ? l.makeProviderDefaults requirements,
-      _fixes ? import ../fixes.nix {pkgs = pkgs;}
+      _fixes ? import ../fixes.nix {pkgs = pkgs;},
+      postBuild ? "", # Commands to run after building environment
     }:
     let
       python_pkg = l.selectPythonPkg pkgs python requirements;
@@ -120,7 +121,7 @@ let
       py_final_with_pkgs = (py_final.withPackages (ps: selectPkgs ps)).overrideAttrs (oa:{
         postBuild = ''
           ${l.condaSymlinkJoin (flatten (map (p: p.allCondaDeps or []) (selectPkgs py_final.pkgs))) }
-        '' + oa.postBuild;
+        '' + oa.postBuild + postBuild;
       });
       final_env = py_final_with_pkgs.override (oa: {
         inherit ignoreCollisions;
