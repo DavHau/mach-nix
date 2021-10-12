@@ -1,6 +1,7 @@
 import json
 from os import environ
 
+from packaging.requirements import Requirement
 import pytest
 
 from mach_nix.data.bucket_dict import LazyBucketDict
@@ -57,9 +58,10 @@ from mach_nix.requirements import parse_reqs_line
 def test_parse_requirements(input, exp_output):
     assert parse_reqs_line(input) == exp_output
 
-
 # Pypi packages contain a lot of invalid requirement syntax.
-# All corrupted patterns are listed here.
+# All lines that can't be parsed by packaging are ignored.
+# Additionally, some syntax that we don't currently support
+# are ignored.
 # All other lines must be parsed without errors.
 def parse_or_ignore_line(line):
     lineStripped = line.strip().replace("'", "").replace('"', '')
@@ -67,96 +69,21 @@ def parse_or_ignore_line(line):
         return
     if line.startswith("#"):
         return
-    if any(lineStripped.startswith(x) for x in [
-        '3>',
-    ]):
-        return
-    if any(lineStripped.endswith(x) for x in [
-        # theoretically some of these are valid legacy versions,
-        # but no sane package uses those anyways
-        '==trunk',
-        '=master',
-        '==edge',
-        '==Windows',
-        '==spdy',
-        '>=pyparsing',
-        '>=pandas',
-        '>',
-        '=',
-    ]):
-        return
-    exclude = (
-        "\n",
+    # We don't currently support requirements with these.
+    unsupported = (
         "@",
-        '&',
-        'numpy>=1.14.4+mkl',
-        '!',
-        '+',
-        '>~',
-        '],',
-        '>>',
-        '<.',
-        '>.',
-        '>>=',
-        '>-=',
-        '>==',
-        '>i=',
-        '>=>',
-        '>=^',
-        '===',
-        '=.',
-        '>=X.Y',
-        "pytest-remotedata>=0.3.1'",
-        'asv_utils>=dev-20110615-01',
-        'scipy>=O.19',  # this is a capital 'o' not a '0'
-        'boto3>=boto3-1.17.57',
-        'scikit-learn>=0.24.1mdf_connect_client>=0.3.8',
-        '=version=',
-        'rasterio>=1.0a10[s3]',
-        'docker>=3.5.0jupyter_client>=5.2.0',
-        'pytest==cov-2.5.1',
-        'requests>',
-        'pyhive>=0.3.0[Hive]',
-        'pyhive>=0.3.0[Presto]',
-        'python>dateutil==2.7.5',
-        'Flask>PyMongo==2.3.0',
-        'Flask>RESTful==0.3.7',
-        'connexion==2.7.0connexion[openapi-ui]==0.0.6flask==1.1.1Flask-SQLAlchemy==2.4.4'
-            'flask-marshmallowmarshmallowmarshmallow-sqlalchemyWerkzeug',
-        'orthauth>=0.0.13[yaml]',
-        'tensorflow>=2.4.0ray[tune]',
-        'Twisted>=17[tls]',
-        'numpy >= numpy==1.17.2',
-        'pandas==pandas-0.24.2',
-        'dapr-dev>=dapr-dev-0.6.0a0.dev67',
-        'Twisted>=17[tls]',
-        'aiida-core<=0.12.3[atomic_tools]',
-        'certifi>=certifi-2018.8.24',
-        'Unidecode==1.1.1]',
-        'django-nose==commit.7fd013209',
-        'testflows.core>=testflows.core-1.6.200713.1230254',
-        'gym>=0.9.1[all]',
-        'aiida_core>=0.12.0[atomic_tools]',
-        'dnspython<2requests[security]',
-        'aiohttp>aiohttp>3.6.2',
-        'sqlalchemy>=1.2.12[postgresql]',
-        'bw2io>=RC3',
-        'twisted>=twisted-13.2',
-        'pyodbc==virtuoso-2.1.9-beta14',
-        'cairocffi>=0.7[xcb]',
-        'PySide2>=2.0.0~alpha0',
-        'keyboard==0.13.3=pypi_0',
-        'numpy>=numpy==1.17.2',
-        'aiida-core>=1.0.0b1[atomic_tools]',
-        'aiohttp>aiohttp>=3.6.2',
-        'cairocffi>=0.9[xcb]',
-        'numpy==1.18.1=pypi_0',
-        'psutil==^5.7.0',
-        'Twisted>=Twisted-13.2',
-        'pandas==asa',
+        "===",
     )
-    if any((x in lineStripped for x in exclude)):
+    if any((x in lineStripped for x in unsupported)):
         return
+    # We turn the DeprecationWarning raised by
+    # packaging.specifier.LegacySpecifier into an error in
+    # test_parse_all_pypi_reqs below, so this will raise in
+    # that case.
+    try:
+        Requirement(line)
+    except Exception:
+        return False
     parse_reqs_line(line)
 
 
@@ -182,6 +109,11 @@ def parse_or_ignore_line_conda(line):
     parse_reqs_line(line)
 
 
+# Constructing a packaging.specifiers.LegacySpecifier
+# issues a warning containing "LegacyVersion". We
+# turn it into an error here, so we can treat it as
+# unparseable.
+@pytest.mark.filterwarnings("error:.*LegacyVersion.*:DeprecationWarning")
 @pytest.mark.parametrize("bucket", LazyBucketDict.bucket_keys())
 def test_parse_all_pypi_reqs(bucket):
     data_dir = environ.get("PYPI_DATA", default=None)
