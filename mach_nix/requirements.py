@@ -5,7 +5,6 @@ import distlib.markers
 import pkg_resources
 from conda.models.version import ver_eval
 from distlib.markers import DEFAULT_CONTEXT
-from pkg_resources._vendor.packaging.specifiers import SpecifierSet
 
 from mach_nix.cache import cached
 from mach_nix.versions import PyVer, Version, parse_ver
@@ -41,17 +40,6 @@ class Requirement:
 
     def __hash__(self):
         return hash((self.name, self.specs, self.build))
-
-
-class RequirementOld(pkg_resources.Requirement):
-    def __init__(self, line, build=None):
-        self.build = build
-        super(Requirement, self).__init__(line)
-        self.name = self.name.lower().replace('_', '-')
-        self.specifier = SpecifierSet(','.join(f"{op}{ver}" for op, ver in self.specs))
-
-    def __hash__(self):
-        return hash((super().__hash__(), self.build))
 
 
 def filter_reqs_by_eval_marker(reqs: Iterable[Requirement], context: dict, selected_extras=None):

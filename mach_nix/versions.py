@@ -1,10 +1,9 @@
 import sys
 import traceback
-from typing import Iterable
 
 import packaging.version
 from conda.common.compat import with_metaclass
-from conda.models.version import ver_eval, VersionOrder, SingleStrArgCachingType
+from conda.models.version import VersionOrder, SingleStrArgCachingType
 
 
 @with_metaclass(SingleStrArgCachingType)
@@ -16,6 +15,7 @@ class PyVer(VersionOrder):
     def __init__(self, vstr):
         self.pypa_ver = packaging.version.Version(vstr)
         super(PyVer, self).__init__(vstr)
+
     def nix(self):
         res = 'python'
         res += str(self.pypa_ver.release[0])
@@ -42,10 +42,6 @@ def parse_ver(ver_str) -> Version:
     return Version(ver_str)
 
 
-def ver_better_than_other(v: Version, o: Version) -> bool:
-    return ver_eval(v, f">{o}")
-
-
 def ver_sort_key(ver: Version):
     """
     For sorting versions by preference in reversed order. (last elem == highest preference)
@@ -65,7 +61,3 @@ def ver_sort_key(ver: Version):
                     is_pre = 1
                     break
     return not is_dev, not is_pre, ver
-
-
-def best_version(versions: Iterable[Version]) -> Version:
-    return sorted(versions)[-1]
