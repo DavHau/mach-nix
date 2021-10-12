@@ -435,12 +435,16 @@ class SdistDependencyProvider(DependencyProviderBase):
                 pyvers = self.data[key][pyvers]
             # in case pyver is a string, it is a reference to another pyver which we need to resolve
             if self.py_ver_digits in pyvers:
-                pyver = pyvers[self.py_ver_digits]
+                pkg_data = pyvers[self.py_ver_digits]
+                if isinstance(pkg_data, str):
+                    pkg_data = pyvers[pkg_data]
+                if 'python_requires' in pkg_data:
+                    specs = ",".join(pkg_data['python_requires'])
+                    parsed_py_requires = list(parse_reqs(f"python{specs}"))
+                    if not filter_versions([self.py_ver_parsed], parsed_py_requires[0]):
+                        continue
                 parsed_ver = parse_ver(ver)
-                if isinstance(pyver, str):
-                    candidates[parsed_ver] = pyvers[pyver]
-                else:
-                    candidates[parsed_ver] = pyvers[self.py_ver_digits]
+                candidates[parsed_ver] = pkg_data
         return candidates
 
     def deviated_version(self, pkg_name, normalized_version: Version, build):
