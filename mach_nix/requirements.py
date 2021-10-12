@@ -97,7 +97,7 @@ def extras_from_marker(marker):
         return tuple(group[0] for group in matches)
     return tuple()
 
-
+re_spec_part = r"( *(==|!=|>=|<=|>|<|~=|=)? *(\* |dev|-?\w?\d(\w|\.|\*|-|\||!|\+)*))"
 re_reqs = re.compile(
     r"^(?P<name>([a-z]|[A-Z]|-|_|\d|\.)+)"
     rf"(?P<extras>\[({extra_name},?)+\])?"
@@ -110,7 +110,7 @@ re_reqs = re.compile(
             # multiple specs
             r" *\(?(?P<specs_0>"
                 r"\*"
-                r"|([,\|]? *(==|!=|>=|<=|>|<|~=|=)? *(\* |dev|-?\w?\d(\w|\.|\*|-|\||!|\+)*))+(?![_\d]))\)?"
+                rf"|{re_spec_part}([,\|]{re_spec_part})*(?![_\d]))\)?"
             r"(?P<build_0> *([a-z]|\d|_|\*|\.)+)?"
         r"|"
             # single spec only

@@ -54,6 +54,7 @@ from mach_nix.requirements import parse_reqs_line
        ('zest.releaser', ('recommended', 'maintainer'), None, None, "extra == 'maintainer'"))
     , ('pytz (>dev)', ('pytz', (), ((('>', 'dev'),),), None, None))
     , ('libcurl 7.71.1 h20c2e04_1', ('libcurl', (), ((('==', '7.71.1'),),), 'h20c2e04_1', None))
+    , ('ixmp ==0.1.3 1', ('ixmp', (), ((('==', '0.1.3'),),), '1', None))
 ])
 def test_parse_requirements(input, exp_output):
     assert parse_reqs_line(input) == exp_output
