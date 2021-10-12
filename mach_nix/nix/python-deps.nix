@@ -1,23 +1,5 @@
 {python, fetchurl, ...}:
 rec {
-  conda = python.pkgs.buildPythonPackage rec {
-    pname = "conda";
-    version = "4.9.0";
-    src = builtins.fetchurl {
-      url = "https://github.com/conda/conda/archive/4.9.0.tar.gz";
-      sha256 = "1flvvkc2i6yd6h9n22i6ic9nkwvyqs381qgwfkvz0pvxg4fw7a8q";
-    };
-    doCheck = false;
-    propagatedBuildInputs = with python.pkgs; [ pycosat requests ruamel_yaml ];
-    patches = [ ./conda_hashable_versionOrder.patch ];
-    postPatch = ''
-      echo '
-      def get_version(dunder_file):
-        return "${version}"
-      ' >> conda/_vendor/auxlib/packaging.py
-      cat conda/_vendor/auxlib/packaging.py
-    '';
-  };
   distlib = python.pkgs.buildPythonPackage {
     name = "distlib-0.3.0";
     src = fetchurl {
