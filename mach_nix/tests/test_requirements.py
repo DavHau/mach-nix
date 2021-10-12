@@ -52,7 +52,7 @@ from mach_nix.requirements import parse_reqs_line
     , ('gitpython >=3.0.8,3.0.*', ('gitpython', (), ((('>=', '3.0.8'), ('==', '3.0.*')),), None, None))
     , ("zest.releaser[recommended] ; extra == 'maintainer'",
        ('zest.releaser', ('recommended', 'maintainer'), None, None, "extra == 'maintainer'"))
-    , ('pytz (>dev)', ('pytz', (), ((('>', 'dev'),),), None, None))
+    , ('pytz (>dev)', ('pytz', (), (), None, None))
     , ('libcurl 7.71.1 h20c2e04_1', ('libcurl', (), ((('==', '7.71.1'),),), 'h20c2e04_1', None))
     , ('ixmp ==0.1.3 1', ('ixmp', (), ((('==', '0.1.3'),),), '1', None))
 ])

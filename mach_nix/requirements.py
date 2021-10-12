@@ -60,6 +60,7 @@ def filter_reqs_by_eval_marker(reqs: Iterable[Requirement], context: dict, selec
 
 all_ops = {'==', '!=', '<=', '>=', '<', '>', '~=', ';'}
 
+re_pytz = re.compile(r"pytz>dev|pytz\(>dev\)")
 
 @cached(lambda args: tuple(args[0]) if isinstance(args[0], list) else args[0])
 def parse_reqs(strs):
@@ -97,7 +98,7 @@ def extras_from_marker(marker):
         return tuple(group[0] for group in matches)
     return tuple()
 
-re_spec_part = r"( *(==|!=|>=|<=|>|<|~=|=)? *(\* |dev|-?\w?\d(\w|\.|\*|-|\||!|\+)*))"
+re_spec_part = r"( *(==|!=|>=|<=|>|<|~=|=)? *(\* |-?\w?\d(\w|\.|\*|-|\||!|\+)*))"
 re_reqs = re.compile(
     r"^(?P<name>([a-z]|[A-Z]|-|_|\d|\.)+)"
     rf"(?P<extras>\[({extra_name},?)+\])?"
@@ -121,6 +122,13 @@ re_reqs = re.compile(
 
 
 def parse_reqs_line(line):
+    # We special case `pytz>dev` since several packages have that requirement.
+    # The intent is to accept any version, but the versioning scheme used by versions prior to 2013.6
+    # were detected as pre-releases.
+    # See https://github.com/pypa/pip/issues/974#issuecomment-22641489
+    if line == 'pytz>dev' or line == 'pytz (>dev)':
+        return ("pytz", (), (), None, None)
+
     line = line.split("#")[0].strip()
     if line.endswith("==*"):
         line = line[:-3]
