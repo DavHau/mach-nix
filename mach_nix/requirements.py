@@ -163,7 +163,15 @@ def parse_reqs_line(line):
         all_specs_raw = all_specs.split('|')
         all_specs = []
         for specs in all_specs_raw:
-            all_specs.append(SpecifierSet(specs))
+            parts = specs.split(',')
+            parsed_parts = []
+            for part in parts:
+                if not re.search(r"==|!=|>=|<=|>|<|~=|=", part):
+                    part = '==' + part
+                elif re.fullmatch(r"=\d(\d|\.|\*|[a-z])*", part):
+                    part = '=' + part
+                parsed_parts.append(part)
+            all_specs.append(SpecifierSet(",".join(parsed_parts)))
 
         all_specs = tuple(all_specs)
 

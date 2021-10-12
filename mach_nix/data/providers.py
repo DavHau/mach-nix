@@ -84,7 +84,6 @@ class DependencyProviderBase(ABC):
         self.context_wheel = self.context.copy()
         self.context_wheel['extra'] = None
         self.py_ver = py_ver
-        self.py_ver_parsed = parse_ver(py_ver.python_full_version())
         self.py_ver_digits = py_ver.digits()
         self.platform = platform
         self.system = system
@@ -292,8 +291,8 @@ class WheelDependencyProvider(DependencyProviderBase):
     def __init__(self, data_dir: str, *args, **kwargs):
         super(WheelDependencyProvider, self).__init__(*args, **kwargs)
         self.data = LazyBucketDict(data_dir)
-        maj = self.py_ver_digits[0]  # major version
-        min = self.py_ver_digits[1]  # minor version
+        maj = self.py_ver.version.release[0]  # major version
+        min = self.py_ver.version.release[1]  # minor version
         cp_abi = f"cp{maj}{min}mu" if int(maj) == 2 else f"cp{maj}{min}m?"
         if self.system == "linux":
             self.preferred_wheels = (
@@ -402,7 +401,7 @@ class WheelDependencyProvider(DependencyProviderBase):
     def _python_requires_ok(self, wheel: WheelRelease):
         if not wheel.requires_python:
             return True
-        ver = parse_ver(str(self.py_ver))
+        ver = self.py_ver.version
         try:
             parsed_py_requires = list(parse_reqs(f"python{wheel.requires_python}"))
             return bool(filter_versions([ver], parsed_py_requires[0]))
@@ -441,7 +440,7 @@ class SdistDependencyProvider(DependencyProviderBase):
                 if 'python_requires' in pkg_data:
                     specs = ",".join(pkg_data['python_requires'])
                     parsed_py_requires = list(parse_reqs(f"python{specs}"))
-                    if not filter_versions([self.py_ver_parsed], parsed_py_requires[0]):
+                    if not filter_versions([self.py_ver.version], parsed_py_requires[0]):
                         continue
                 parsed_ver = parse_ver(ver)
                 candidates[parsed_ver] = pkg_data
@@ -639,7 +638,7 @@ class CondaDependencyProvider(DependencyProviderBase):
                 return False
             if dep.startswith("python "):
                 req = next(iter(parse_reqs([dep])))
-                if not filter_versions([self.py_ver_parsed], req):
+                if not filter_versions([self.py_ver.version], req):
                     return False
         return True
 
