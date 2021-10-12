@@ -73,7 +73,7 @@ class NixpkgsIndex(UserDict):
             return pkgs[0].nix_key
         # try to find nixpkgs candidate with closest version
         remaining_pkgs = pkgs
-        for i in range(7):  # usually there are not more than 4 parts in a version
+        for i in range(len(ver.version)):
             same_ver = list(filter(lambda p: self.is_same_ver(ver, p.ver, i), remaining_pkgs))
             if len(same_ver) == 1:
                 return same_ver[0].nix_key
