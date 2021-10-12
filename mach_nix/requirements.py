@@ -3,11 +3,11 @@ from typing import Iterable, Tuple, List
 
 import distlib.markers
 import pkg_resources
-from conda.models.version import ver_eval
 from distlib.markers import DEFAULT_CONTEXT
+from packaging.specifiers import SpecifierSet
 
 from mach_nix.cache import cached
-from mach_nix.versions import PyVer, Version, parse_ver
+from mach_nix.versions import PyVer, Version
 
 
 def context(py_ver: PyVer, platform: str, system: str):
@@ -75,17 +75,6 @@ def parse_reqs(strs):
             except StopIteration:
                 return
         yield Requirement(*parse_reqs_line(line))
-
-
-re_specs = re.compile(r"(==|!=|>=|<=|>|<|~=)(.*)")
-
-
-def parse_spec_part(part):
-    specs = []
-    op, ver = re.fullmatch(re_specs, part.strip()).groups()
-    ver = ver.strip()
-    specs.append((op, ver))
-    return list(specs)
 
 
 extra_name = r"([a-z]|[A-Z]|-|_|\.|\d)+"
@@ -174,15 +163,7 @@ def parse_reqs_line(line):
         all_specs_raw = all_specs.split('|')
         all_specs = []
         for specs in all_specs_raw:
-            parts = specs.split(',')
-            parsed_parts = []
-            for part in parts:
-                if not re.search(r"==|!=|>=|<=|>|<|~=|=", part):
-                    part = '==' + part
-                elif re.fullmatch(r"=\d(\d|\.|\*|[a-z])*", part):
-                    part = '=' + part
-                parsed_parts += parse_spec_part(part)
-            all_specs.append(tuple(parsed_parts))
+            all_specs.append(SpecifierSet(specs))
 
         all_specs = tuple(all_specs)
 
@@ -203,18 +184,13 @@ def filter_versions(
     which are allowed according to the given specifiers
     """
     assert isinstance(versions, list)
-    versions = list(versions)
     if not req.specs:
-        return versions
-    all_versions = []
+        # We filter version with an empty specifier set, since that will filter
+        # out prerelease, if there are any other releases.
+        return SpecifierSet().filter(versions)
+    matched_versions = []
     for specs in req.specs:
-        for op, ver in specs:
-            if op == '==':
-                if str(ver) == "*":
-                    return versions
-                elif '*' in str(ver):
-                    op = '='
-            ver = parse_ver(ver)
-            versions = list(filter(lambda v: ver_eval(v, f"{op}{ver}"), versions))
-        all_versions += list(versions)
-    return all_versions
+        matched_versions.extend(
+            specs.filter(versions)
+        )
+    return matched_versions

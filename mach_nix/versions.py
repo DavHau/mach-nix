@@ -2,14 +2,10 @@ import sys
 import traceback
 
 import packaging.version
-from conda.common.compat import with_metaclass
-from conda.models.version import VersionOrder, SingleStrArgCachingType
+from packaging.version import parse as parse_ver, Version
+from conda.models.version import VersionOrder
 
-
-@with_metaclass(SingleStrArgCachingType)
-class Version(VersionOrder):
-    pass
-
+__all__ = ['parse_ver', 'Version', 'PyVer']
 
 class PyVer(VersionOrder):
     def __init__(self, vstr):
@@ -36,28 +32,3 @@ class PyVer(VersionOrder):
             traceback.print_exc()
             print("Error: please specify full python version including bugfix version (like 3.7.5)", file=sys.stderr)
             exit(1)
-
-
-def parse_ver(ver_str) -> Version:
-    return Version(ver_str)
-
-
-def ver_sort_key(ver: Version):
-    """
-    For sorting versions by preference in reversed order. (last elem == highest preference)
-    """
-    is_dev = 0
-    is_pre = 0
-    for component in ver.version:
-        if len(component) > 1:
-            for elem in component:
-                if not isinstance(elem, str):
-                    continue
-                if 'dev' in elem.lower():
-                    is_dev = 1
-                    break
-                # contains letters == pre-release
-                if elem.lower().islower():
-                    is_pre = 1
-                    break
-    return not is_dev, not is_pre, ver

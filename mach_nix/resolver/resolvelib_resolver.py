@@ -10,7 +10,7 @@ from mach_nix.resolver import Resolver, ResolvedPkg
 
 
 # Implement logic so the resolver understands the requirement format.
-class Provider:
+class Provider(resolvelib.providers.AbstractProvider):
     def __init__(self, nixpkgs: NixpkgsIndex, deps_db: DependencyProviderBase):
         self.nixpkgs = nixpkgs
         self.provider = deps_db

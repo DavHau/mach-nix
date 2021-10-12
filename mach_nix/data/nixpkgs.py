@@ -57,10 +57,18 @@ class NixpkgsIndex(UserDict):
         return max(pkgs, key=lambda p: (p.ver, -name_difference(p)))
 
     @staticmethod
-    def is_same_ver(ver1, ver2, ver_idx):
-        if any(len(ver.version) <= ver_idx for ver in (ver1, ver2)):
-            return False
-        return ver1.version[ver_idx] == ver2.version[ver_idx]
+    def is_same_ver(ver1, ver2, prefix_len):
+        """
+        Check if the given versions share a common prefix of length `prefix_len`.
+
+        This ignores any epoch or pre/post-release versions. For the epoch,
+        it is likely that the nixpkg version doesn't include the epoch, and
+        just has the release version.
+        """
+        def prefix(ver):
+            # Return a version prefix of the given length, padded with 0s.
+            return ver.release[:prefix_len] + (0,) * max(0, prefix_len - len(ver.release))
+        return prefix(ver1) == prefix(ver2)
 
     @cached(lambda args: (args[1], args[2]))
     def find_best_nixpkgs_candidate(self, name, ver):
@@ -73,7 +81,7 @@ class NixpkgsIndex(UserDict):
             return pkgs[0].nix_key
         # try to find nixpkgs candidate with closest version
         remaining_pkgs = pkgs
-        for i in range(len(ver.version)):
+        for i in range(1, len(ver.release)):
             same_ver = list(filter(lambda p: self.is_same_ver(ver, p.ver, i), remaining_pkgs))
             if len(same_ver) == 1:
                 return same_ver[0].nix_key

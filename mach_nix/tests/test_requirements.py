@@ -2,6 +2,7 @@ import json
 from os import environ
 
 from packaging.requirements import Requirement
+from packaging.specifiers import SpecifierSet
 import pytest
 
 from mach_nix.data.bucket_dict import LazyBucketDict
@@ -54,7 +55,7 @@ from mach_nix.requirements import parse_reqs_line
        ('zest.releaser', ('recommended', 'maintainer'), None, None, "extra == 'maintainer'"))
     , ('pytz (>dev)', ('pytz', (), (), None, None))
     , ('libcurl 7.71.1 h20c2e04_1', ('libcurl', (), ((('==', '7.71.1'),),), 'h20c2e04_1', None))
-    , ('ixmp ==0.1.3 1', ('ixmp', (), ((('==', '0.1.3'),),), '1', None))
+    , ('ixmp ==0.1.3 1', ('ixmp', (), (SpecifierSet('==0.1.3',),), '1', None))
 ])
 def test_parse_requirements(input, exp_output):
     assert parse_reqs_line(input) == exp_output
@@ -155,4 +156,3 @@ def test_parse_all_conda_reqs(file):
     for pname, pdata in cdata['packages'].items():
         for line in pdata['depends']:
             parse_or_ignore_line_conda(line)
-

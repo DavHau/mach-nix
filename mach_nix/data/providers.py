@@ -14,7 +14,7 @@ import distlib.markers
 from pkg_resources import RequirementParseError
 
 from mach_nix.requirements import filter_reqs_by_eval_marker, Requirement, parse_reqs, context, filter_versions
-from mach_nix.versions import PyVer, ver_sort_key, parse_ver, Version
+from mach_nix.versions import PyVer, parse_ver, Version
 from .bucket_dict import LazyBucketDict
 from .nixpkgs import NixpkgsIndex
 from ..cache import cached
@@ -98,7 +98,7 @@ class DependencyProviderBase(ABC):
 
     def all_candidates_sorted(self, name, extras=None, build=None) -> Iterable[Candidate]:
         candidates = list(self.all_candidates(name, extras, build))
-        candidates.sort(key=lambda c: (ver_sort_key(c.ver)))
+        candidates.sort(key=lambda c: c.ver)
         return candidates
 
     @property
