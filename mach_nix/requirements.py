@@ -133,8 +133,6 @@ re_reqs = re.compile(
 
 
 def parse_reqs_line(line):
-    if '7.71.1 h20c2e04_1' in line:
-        x=1
     line = line.split("#")[0].strip()
     if line.endswith("==*"):
         line = line[:-3]
