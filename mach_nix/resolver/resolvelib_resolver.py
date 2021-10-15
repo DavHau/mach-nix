@@ -73,6 +73,7 @@ class ResolvelibResolver(Resolver):
             nix_py_pkgs.append(ResolvedPkg(
                 name=name,
                 ver=ver,
+                raw_version=candidate.raw_version,
                 build_inputs=build_inputs,
                 prop_build_inputs=prop_build_inputs,
                 is_root=is_root,

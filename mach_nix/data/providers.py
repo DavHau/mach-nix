@@ -8,7 +8,7 @@ import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import List, Optional, Tuple, Iterable
+from typing import Any, Iterable, List, Optional, Tuple
 
 import distlib.markers
 from pkg_resources import RequirementParseError
@@ -24,6 +24,7 @@ from ..cache import cached
 class Candidate:
     name: str
     ver: Version
+    raw_version: str
     selected_extras: tuple
     provider_info: 'ProviderInfo'
     build: str = None
@@ -35,6 +36,7 @@ class ProviderInfo:
     wheel_fname: str = None  # only required for wheel
     url: str = None
     hash: str = None
+    data: Any = None  # Provider specific data
 
     def toDict(self):
         return dict(
@@ -113,16 +115,6 @@ class DependencyProviderBase(ABC):
     def name(self):
         pass
 
-    def get_reqs_for_extras(self, pkg_name, pkg_ver, extras):
-        install_reqs_wo_extras, _ = self.get_pkg_reqs(pkg_name, pkg_ver)
-        install_reqs_w_extras, _ = self.get_pkg_reqs(pkg_name, pkg_ver, extras=extras)
-        if install_reqs_wo_extras is None:
-            install_reqs_wo_extras = []
-        if install_reqs_w_extras is None:
-            install_reqs_w_extras = []
-        install_reqs = set(install_reqs_w_extras) - set(install_reqs_wo_extras)
-        return list(install_reqs)
-
     def unify_key(self, key: str) -> str:
         return key.replace('_', '-').lower()
 
@@ -137,11 +129,6 @@ class DependencyProviderBase(ABC):
 
     @abstractmethod
     def all_candidates(self, name, extras=None, build=None) -> Iterable[Candidate]:
-        pass
-
-    @abstractmethod
-    def deviated_version(self, pkg_name, normalized_version: Version, build):
-        # returns version like originally specified by package maintainer without normalization
         pass
 
 
@@ -184,15 +171,8 @@ class CombinedDependencyProvider(DependencyProviderBase):
         selected_providers = ((name, p) for name, p in self._all_providers.items() if name in provider_keys)
         return dict(sorted(selected_providers, key=lambda x: provider_keys.index(x[0])))
 
-    def get_provider(self, pkg_name, pkg_version, build) -> DependencyProviderBase:
-        for type, provider in self.allowed_providers_for_pkg(pkg_name).items():
-            if pkg_version in (c.ver for c in provider.all_candidates(pkg_name, build=build)):
-                return provider
-
     def get_pkg_reqs(self, c: Candidate) -> Tuple[Optional[List[Requirement]], Optional[List[Requirement]]]:
-        for provider in self.allowed_providers_for_pkg(c.name).values():
-            if c in provider.all_candidates(c.name, c.selected_extras, c.build):
-                return provider.get_pkg_reqs(c)
+        return c.provider_info.provider.get_pkg_reqs(c)
 
     def list_all_providers_for_pkg(self, pkg_name, extras, build):
         result = []
@@ -236,9 +216,6 @@ class CombinedDependencyProvider(DependencyProviderBase):
     def all_candidates(self, name, extras=None, build=None) -> Iterable[Candidate]:
         return self.all_candidates_sorted(name, extras, build)
 
-    def deviated_version(self, pkg_name, pkg_version: Version, build):
-        self.get_provider(pkg_name, pkg_version, build).deviated_version(pkg_name, pkg_version, build)
-
 
 class NixpkgsDependencyProvider(DependencyProviderBase):
     name = 'nixpkgs'
@@ -256,20 +233,19 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
         self.sdist_provider = sdist_provider
 
     def get_pkg_reqs(self, c: Candidate) -> Tuple[Optional[List[Requirement]], Optional[List[Requirement]]]:
-        if not self.nixpkgs.exists(c.name, c.ver):
-            raise Exception(f"Cannot find {c.name}:{c.ver} in nixpkgs")
         requirements = self.nixpkgs.get_requirements(c.name, c.ver)
         if requirements is not None:
             return list(parse_reqs(requirements)), None
-        install_reqs, setup_reqs = [], []
-        try:
-            return self.sdist_provider.get_pkg_reqs(c)
-        except PackageNotFound:
-            try:
-                # wheel provider only knows install deps
-                return self.wheel_provider.get_pkg_reqs(c)[0], None
-            except:
-                return None, None
+
+        for provider in (self.sdist_provider, self.wheel_provider):
+            candidates = [
+                candidate
+                for candidate in provider.all_candidates(c.name)
+                if candidate.ver == c.ver
+            ]
+            if len(candidates) > 0:
+                return provider.get_pkg_reqs(candidates[0])
+        return None, None
 
     def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
         if build:
@@ -280,13 +256,10 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
         return [Candidate(
             pkg_name,
             p.ver,
+            str(p.ver),
             extras,
             provider_info=ProviderInfo(self)
         ) for p in self.nixpkgs.get_all_candidates(name)]
-
-    def deviated_version(self, pkg_name, normalized_version: Version, build):
-        # not necessary for nixpkgs provider since source doesn't need to be fetched
-        return str(normalized_version)
 
 
 @dataclass
@@ -338,23 +311,21 @@ class WheelDependencyProvider(DependencyProviderBase):
         return [Candidate(
             w.name,
             parse_ver(w.ver),
+            w.ver,
             extras,
-            provider_info=ProviderInfo(provider=self, wheel_fname=w.fn)
+            provider_info=ProviderInfo(provider=self, wheel_fname=w.fn, data=w)
         ) for w in self._suitable_wheels(pkg_name)]
 
     def get_pkg_reqs(self, c: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
         """
         Get requirements for package
         """
-        reqs_raw = self._choose_wheel(c.name, c.ver).requires_dist
+        reqs_raw = c.provider_info.data.requires_dist
         if reqs_raw is None:
             reqs_raw = []
         # handle extras by evaluationg markers
         install_reqs = list(filter_reqs_by_eval_marker(parse_reqs(reqs_raw), self.context_wheel, c.selected_extras))
-        return install_reqs, []
-
-    def deviated_version(self, pkg_name, pkg_version: Version, build):
-        return self._choose_wheel(pkg_name, pkg_version).ver
+        return install_reqs, None
 
     def _all_releases(self, pkg_name):
         name = self.unify_key(pkg_name)
@@ -460,20 +431,12 @@ class SdistDependencyProvider(DependencyProviderBase):
                     parsed_py_requires = list(parse_reqs(f"python{specs}"))
                     if not filter_versions([self.py_ver.version], parsed_py_requires[0]):
                         continue
-                parsed_ver = parse_ver(ver)
-                candidates[parsed_ver] = pkg_data
+                candidates[ver] = pkg_data
         return candidates
 
-    def deviated_version(self, pkg_name, normalized_version: Version, build):
-        for raw_ver in self.data[normalize_name(pkg_name)].keys():
-            if parse_ver(raw_ver) == normalized_version:
-                return raw_ver
-        raise Exception(
-            f"Something went wrong while trying to find the deviated version for {pkg_name}:{normalized_version}")
-
-    def get_reqs_for_extras(self, pkg_name, pkg_ver: Version, extras):
-        name = self.unify_key(pkg_name)
-        pkg = self._get_candidates(name)[pkg_ver]
+    def _get_reqs_for_extras(self, pkg, extras):
+        if extras is None:
+            return []
         extras = set(extras)
         requirements = []
         if 'extras_require' in pkg:
@@ -491,9 +454,7 @@ class SdistDependencyProvider(DependencyProviderBase):
         """
         Get requirements for package
         """
-        if c.ver not in self._get_candidates(c.name):
-            raise PackageNotFound(c.name, c.ver, self.name)
-        pkg = self._get_candidates(c.name)[c.ver]
+        pkg = c.provider_info.data
         requirements = dict(
             setup_requires=[],
             install_requires=[]
@@ -507,7 +468,7 @@ class SdistDependencyProvider(DependencyProviderBase):
                 requirements[t] = list(filter_reqs_by_eval_marker(reqs, self.context))
         # even if no extras are selected we need to collect reqs for extras,
         # because some extras consist of only a marker which needs to be evaluated
-        requirements['install_requires'] += self.get_reqs_for_extras(c.name, c.ver, c.selected_extras)
+        requirements['install_requires'] += self._get_reqs_for_extras(pkg, c.selected_extras)
         return requirements['install_requires'], requirements['setup_requires']
 
     def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
@@ -515,9 +476,10 @@ class SdistDependencyProvider(DependencyProviderBase):
             return []
         return [Candidate(
             pkg_name,
+            parse_ver(ver),
             ver,
             extras,
-            provider_info=ProviderInfo(self)
+            provider_info=ProviderInfo(self, data=pkg)
         ) for ver, pkg in self._get_candidates(pkg_name).items()]
 
 
@@ -598,17 +560,15 @@ class CondaDependencyProvider(DependencyProviderBase):
         return f"conda/{self.channel}"
 
     def get_pkg_reqs(self, c: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
-        name = normalize_name(c.name)
-        deviated_ver = self.deviated_version(name, c.ver, c.build)
-        candidate = self.pkgs[name][deviated_ver][c.build]
+        candidate = c.provider_info.data
         depends = list(filter(
             lambda d: d.split()[0] not in self.ignored_pkgs,
-           # lambda d: d.split()[0] not in self.ignored_pkgs and not d.startswith('_'),
+            # lambda d: d.split()[0] not in self.ignored_pkgs and not d.startswith('_'),
             candidate['depends']
             # always add optional dependencies to ensure constraints are applied
             + (candidate['constrains'] if 'constrains' in candidate else [])
         ))
-        return list(parse_reqs(depends)), []
+        return list(parse_reqs(depends)), None
 
     @cached()
     def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
@@ -617,7 +577,7 @@ class CondaDependencyProvider(DependencyProviderBase):
             return []
         candidates = []
         for ver in self.pkgs[pkg_name].keys():
-            for p in self.compatible_builds(pkg_name, parse_ver(ver), build):
+            for p in self.compatible_builds(pkg_name, ver, build):
                 if 'sha256' not in p:
                     print(
                         f"Ignoring conda package {p['name']}:{p['version']} from provider {self.channel} \n"
@@ -631,12 +591,14 @@ class CondaDependencyProvider(DependencyProviderBase):
                     candidates.append(Candidate(
                         p['name'],
                         parse_ver(p['version']),
+                        p['version'],
                         selected_extras=tuple(),
                         build=p['build'],
                         provider_info=ProviderInfo(
                             self,
                             url=url,
-                            hash=p['sha256']
+                            hash=p['sha256'],
+                            data=p,
                         )
                     ))
                     if 'collisions' in p:

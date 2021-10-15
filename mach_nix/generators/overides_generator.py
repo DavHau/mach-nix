@@ -1,5 +1,5 @@
 import json
-from typing import Dict, List
+from typing import Dict
 
 from mach_nix.data.providers import WheelDependencyProvider, SdistDependencyProvider, NixpkgsDependencyProvider, \
     CondaDependencyProvider
@@ -348,7 +348,7 @@ class OverridesGenerator(ExpressionGenerator):
                 if self.nixpkgs.exists(pkg.name):
                     out += self._gen_overrideAttrs(
                         pkg.name,
-                        pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver, pkg.build),
+                        pkg.raw_version,
                         pkg.removed_circular_deps,
                         nix_name,
                         'sdist',
@@ -357,7 +357,7 @@ class OverridesGenerator(ExpressionGenerator):
                 else:
                     out += self._gen_buildPythonPackage(
                         pkg.name,
-                        pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver, pkg.build),
+                        pkg.raw_version,
                         pkg.removed_circular_deps,
                         nix_name,
                         build_inputs_str,
@@ -366,7 +366,7 @@ class OverridesGenerator(ExpressionGenerator):
             elif isinstance(pkg.provider_info.provider, WheelDependencyProvider):
                 out += self._gen_wheel_buildPythonPackage(
                     pkg.name,
-                    pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver, pkg.build),
+                    pkg.raw_version,
                     pkg.removed_circular_deps,
                     self._get_ref_name(pkg.name, pkg.ver),
                     prop_build_inputs_str,
@@ -375,7 +375,7 @@ class OverridesGenerator(ExpressionGenerator):
             elif isinstance(pkg.provider_info.provider, CondaDependencyProvider):
                 out += self._gen_conda_buildPythonPackage(
                     pkg.name,
-                    pkg.provider_info.provider.deviated_version(pkg.name, pkg.ver, pkg.build),
+                    pkg.raw_version,
                     pkg.removed_circular_deps,
                     self._get_ref_name(pkg.name, pkg.ver),
                     prop_build_inputs_str,

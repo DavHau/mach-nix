@@ -28,7 +28,7 @@ def mark_removed_circular_dep(pkgs: Dict[str, ResolvedPkg], G: DiGraph, node, re
 
 
 def remove_dependecy(pkgs: Dict[str, ResolvedPkg], G: DiGraph, node_from, node_to):
-    if node_to in pkgs[node_from].build_inputs:
+    if pkgs[node_from].build_inputs is not None and node_to in pkgs[node_from].build_inputs:
         raise Exception(
             f"Fata error: cycle detected in setup requirements\n"
             f"Cannot fix automatically.\n{[node_from, node_to]}")
@@ -75,7 +75,7 @@ def remove_circles_and_print(pkgs: Iterable[ResolvedPkg], nixpkgs: NixpkgsIndex)
 
         def name(self, node_name):
             if node_name in self.visited:
-                if indexed_pkgs[node_name].build_inputs + indexed_pkgs[node_name].prop_build_inputs == []:
+                if indexed_pkgs[node_name].build_inputs or indexed_pkgs[node_name].prop_build_inputs:
                     return make_name(indexed_pkgs[node_name], nixpkgs)
                 return f"{make_name(indexed_pkgs[node_name], nixpkgs)} -> ..."
             return make_name(indexed_pkgs[node_name], nixpkgs)

@@ -13,6 +13,7 @@ from json import JSONEncoder
 class ResolvedPkg(JSONEncoder):
     name: str
     ver: Version
+    raw_version: str
     build_inputs: Optional[List[str]]
     prop_build_inputs: Optional[List[str]]
     is_root: bool
