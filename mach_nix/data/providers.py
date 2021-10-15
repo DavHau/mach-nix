@@ -98,16 +98,21 @@ class DependencyProviderBase(ABC):
         self.platform = platform
         self.system = system
 
-    @cached()
-    def find_matches(self, req) -> List[Candidate]:
-        all = list(self.all_candidates_sorted(req.key, req.extras, req.build))
-        matching_versions = set(filter_versions([c.ver for c in all], req))
+    @cached(keyfunc=lambda args: (args[0], tuple(args[1])))
+    def find_matches(self, reqs) -> List[Candidate]:
+        extras = tuple({extra for req in reqs for extra in req.extras})
+        builds = tuple({req.build for req in reqs if req.build is not None})
+        all = list(self.all_candidates_sorted(reqs[0].key, extras, builds))
+        matching_versions = [c.ver for c in all]
+        for req in reqs:
+            matching_versions = filter_versions(matching_versions, req)
+        matching_versions = set(matching_versions)
         matching_candidates = [c for c in all if c.ver in matching_versions]
         return matching_candidates
 
-    def all_candidates_sorted(self, name, extras=None, build=None) -> Iterable[Candidate]:
-        candidates = list(self.all_candidates(name, extras, build))
-        candidates.sort(key=lambda c: c.ver)
+    def all_candidates_sorted(self, name, extras, builds) -> Iterable[Candidate]:
+        candidates = list(self.all_candidates(name, extras, builds))
+        candidates.sort(key=lambda c: c.ver, reverse=True)
         return candidates
 
     @property
@@ -128,7 +133,7 @@ class DependencyProviderBase(ABC):
         pass
 
     @abstractmethod
-    def all_candidates(self, name, extras=None, build=None) -> Iterable[Candidate]:
+    def all_candidates(self, name, extras, builds) -> Iterable[Candidate]:
         pass
 
 
@@ -203,18 +208,18 @@ class CombinedDependencyProvider(DependencyProviderBase):
         exit(1)
 
     @cached()
-    def all_candidates_sorted(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
+    def all_candidates_sorted(self, pkg_name, extras, builds) -> Iterable[Candidate]:
         # use dict as ordered set
         candidates = []
         # order by reversed preference expected
-        for provider in reversed(tuple(self.allowed_providers_for_pkg(pkg_name).values())):
-            candidates += list(provider.all_candidates_sorted(pkg_name, extras, build))
+        for provider in tuple(self.allowed_providers_for_pkg(pkg_name).values()):
+            candidates += list(provider.all_candidates_sorted(pkg_name, extras, builds))
         if not candidates:
-            self.print_error_no_versions_available(pkg_name, extras, build)
+            self.print_error_no_versions_available(pkg_name, extras, builds)
         return tuple(candidates)
 
-    def all_candidates(self, name, extras=None, build=None) -> Iterable[Candidate]:
-        return self.all_candidates_sorted(name, extras, build)
+    def all_candidates(self, name, extras, builds) -> Iterable[Candidate]:
+        return self.all_candidates_sorted(name, extras, builds)
 
 
 class NixpkgsDependencyProvider(DependencyProviderBase):
@@ -240,15 +245,15 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
         for provider in (self.sdist_provider, self.wheel_provider):
             candidates = [
                 candidate
-                for candidate in provider.all_candidates(c.name)
+                for candidate in provider.all_candidates(c.name, None, None)
                 if candidate.ver == c.ver
             ]
             if len(candidates) > 0:
                 return provider.get_pkg_reqs(candidates[0])
         return None, None
 
-    def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
-        if build:
+    def all_candidates(self, pkg_name, extras, builds) -> Iterable[Candidate]:
+        if builds:
             return []
         name = self.unify_key(pkg_name)
         if not self.nixpkgs.exists(name):
@@ -305,8 +310,8 @@ class WheelDependencyProvider(DependencyProviderBase):
         else:
             raise Exception(f"Unsupported Platform {platform.system()}")
 
-    def all_candidates(self, pkg_name, extras=None, build=None) -> List[Candidate]:
-        if build:
+    def all_candidates(self, pkg_name, extras, builds) -> List[Candidate]:
+        if builds:
             return []
         return [Candidate(
             w.name,
@@ -471,8 +476,8 @@ class SdistDependencyProvider(DependencyProviderBase):
         requirements['install_requires'] += self._get_reqs_for_extras(pkg, c.selected_extras)
         return requirements['install_requires'], requirements['setup_requires']
 
-    def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
-        if build:
+    def all_candidates(self, pkg_name, extras, builds) -> Iterable[Candidate]:
+        if builds:
             return []
         return [Candidate(
             pkg_name,
@@ -573,16 +578,19 @@ class CondaDependencyProvider(DependencyProviderBase):
     @cached()
     def all_candidates_sorted(self, name, extras, build) -> Iterable[Candidate]:
         candidates = self.all_candidates(name, extras, build)
-        candidates.sort(key=lambda c: (c.ver, c.provider_info.data['build_number']))
+        candidates.sort(
+            key=lambda c: (c.ver, c.provider_info.data["build_number"]),
+            reverse=True,
+        )
         return candidates
 
 
-    def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
+    def all_candidates(self, pkg_name, extras, builds) -> Iterable[Candidate]:
         pkg_name = normalize_name(pkg_name)
         if pkg_name not in self.pkgs:
             return []
         candidates = []
-        for p in self.compatible_builds(pkg_name, build):
+        for p in self.compatible_builds(pkg_name, builds):
             if 'sha256' not in p:
                 print(
                     f"Ignoring conda package {p['name']}:{p['version']} from provider {self.channel} \n"
@@ -625,11 +633,11 @@ class CondaDependencyProvider(DependencyProviderBase):
         return True
 
     @cached()
-    def compatible_builds(self, pkg_name, build_pattern) -> list:
-        if build_pattern:
+    def compatible_builds(self, pkg_name, build_patterns) -> list:
+        if build_patterns:
             # fnmatch caches the regexes it builds.
             def build_matches(build):
-                return fnmatch.fnmatch(build, build_pattern)
+                return all((fnmatch.fnmatch(build, build_pattern) for build_pattern in build_patterns))
         else:
             def build_matches(build):
                 return True

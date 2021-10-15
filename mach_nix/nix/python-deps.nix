@@ -9,10 +9,10 @@ rec {
     doCheck = false;
   };
   resolvelib = python.pkgs.buildPythonPackage {
-    name = "resolvelib-0.3.0";
+    name = "resolvelib-0.4.0";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/e1/84/5c20d9bed18041343eeb537cc2b76aa17c18102ecf5873c12cd78a04cc69/resolvelib-0.3.0.tar.gz";
-      sha256 = "9781c2038be2ba3377d075dd3aa8f5f0f7b508b6f59779b1414bea08ed402f1e";
+      url = "https://files.pythonhosted.org/packages/20/64/5a93bc4f169f84c45107e69292a5a81d63fa50b6a23431005a68c6ae888c/resolvelib-0.4.0.tar.gz";
+      sha256 = "93e42cf712534cf8dccb146c0c20521a5ac344ef8ec6e7742a49b22a24335662";
     };
     doCheck = false;
   };

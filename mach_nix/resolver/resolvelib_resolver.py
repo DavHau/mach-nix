@@ -28,8 +28,8 @@ class Provider(resolvelib.providers.AbstractProvider):
     def get_preference(self, resolution, candidates, information):
         return len(candidates)
 
-    def find_matches(self, req):
-        return self.provider.find_matches(req)
+    def find_matches(self, reqs):
+        return self.provider.find_matches(reqs)
 
     def is_satisfied_by(self, requirement, candidate: Candidate):
         res = bool(len(list(filter_versions([candidate.ver], requirement))))
