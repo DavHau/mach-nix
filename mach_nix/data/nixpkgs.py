@@ -73,18 +73,22 @@ class NixpkgsIndex(UserDict):
             return pkgs[0].nix_key
         # try to find nixpkgs candidate with closest version
         remaining_pkgs = pkgs
-        for i in range(7):  # usually there are not more than 4 parts in a version
+        for i in range(len(ver.version)):
             same_ver = list(filter(lambda p: self.is_same_ver(ver, p.ver, i), remaining_pkgs))
             if len(same_ver) == 1:
                 return same_ver[0].nix_key
             elif len(same_ver) == 0:
-                highest = self.get_highest_ver(remaining_pkgs).nix_key
-                print(f'Multiple nixpkgs attributes found for {name}-{ver}: {[p.nix_key for p in remaining_pkgs]}'
-                      f"\nPicking '{highest}' as base attribute name.")
-                return highest
+                # If there are no versions that match at this precision
+                # we pick the best version among the version that matched
+                # at the prior prefix.
+                break
             remaining_pkgs = same_ver
-        # In any case we should have returned by now
-        raise Exception("Dude... Check yor code!")
+        # We've either fallen off the loop (in which case the versions match)
+        # or all remaining packages match the same length version prefix.
+        highest = self.get_highest_ver(remaining_pkgs).nix_key
+        print(f'Multiple nixpkgs attributes found for {name}-{ver}: {[p.nix_key for p in remaining_pkgs]}'
+              f"\nPicking '{highest}' as base attribute name.")
+        return highest
 
     def exists(self, name, ver=None):
         try:
