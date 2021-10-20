@@ -90,11 +90,20 @@
               type = "app";
               program = toString (pkgs.writeScript "tests-unit" ''
                 export PATH="${pkgs.lib.makeBinPath (with pkgs; [
-                  busybox
                   (import ./mach_nix/nix/python.nix {
                     inherit pkgs;
                     dev = true;
                   })
+                ]
+                ++ pkgs.lib.optional (stdenv.isLinux) busybox
+                # This is not equivalent to "busybox", but is close enough for
+                # everything to work. The only quirk here is borrowing a trick
+                # from nixpkgs to provide a "/bin/sh" that's identical to the
+                # one nixpkgs exists (coreutils doesn't bundle /bin/sh but
+                # busybox does).
+                ++ pkgs.lib.optionals (stdenv.isDarwin) [
+                  coreutils
+                  (pkgs.runCommand "bin-sh" {} "mkdir -p $out/bin && ln -s ${pkgs.bash}/bin/bash $out/bin/sh")
                 ])}"
 
                 export PYPI_DATA=${inp.pypi-deps-db}
@@ -112,10 +121,14 @@
               type = "app";
               program = toString (pkgs.writeScript "tests-eval" ''
                 export PATH="${pkgs.lib.makeBinPath (with pkgs; [
-                  busybox
                   git
                   nixFlakes
                   parallel
+                ]
+                ++ pkgs.lib.optional (stdenv.isLinux) busybox
+                ++ pkgs.lib.optionals (stdenv.isDarwin) [
+                  coreutils
+                  (pkgs.runCommand "bin-sh" {} "mkdir -p $out/bin && ln -s ${pkgs.bash}/bin/bash $out/bin/sh")
                 ])}"
 
                 cd tests

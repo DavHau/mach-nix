@@ -152,9 +152,12 @@ let
               name = "mach-nix-python";
               tag = "latest";
               contents = [
-                pkgs.busybox
                 self
-              ] ++ extra_pkgs_other;
+              ] ++ extra_pkgs_other
+              ++ pkgs.lib.optional (pkgs.stdenv.isLinux) pkgs.busybox
+              # Even though the docker container is always linux, the nix
+              # closure is built locally and busybox won't evaluate on macOS
+              ++ pkgs.lib.optionals (pkgs.stdenv.isDarwin) [ pkgs.coreutils ];
               config = {
                 Cmd = [ "${self}/bin/python" ];
               };
