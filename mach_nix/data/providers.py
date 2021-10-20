@@ -507,9 +507,13 @@ class SdistDependencyProvider(DependencyProviderBase):
 def conda_virtual_packages():
 
     packages = dict(
-        __glibc=environ.get("MACHNIX_GLIBC_VERSION", platform.libc_ver()[0][1]),
         __unix=0,
     )
+
+    # platform.libc_ver() returns ('', '') on macOS and MACHNIX_GLIBC_VERSION is unset
+    libc_complier, libc_version = platform.libc_ver()
+    if libc_complier == 'glibc':
+        packages['__glibc'] = environ.get("MACHNIX_GLIBC_VERSION", libc_version)
 
     # Maximum version of CUDA supported by the display driver.
     cudaVer = environ.get("MACHNIX_CUDA_VERSION", None)
