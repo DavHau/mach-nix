@@ -147,7 +147,7 @@ let
 in
 with pkgs;
 rec {
-  inherit machnix_source pythonInterpreters;
+  inherit machnix_source mkPy pythonInterpreters;
   example = extractor {pkg = "requests"; version = "2.22.0";};
   extract_from_src = {py, src}:
     let 
