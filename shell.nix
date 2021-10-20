@@ -19,6 +19,7 @@ pkgs.mkShell {
     [ pythonWithPkgs ]
     ++
     (with pkgs; [
+      git
       nix-prefetch-git
       parallel
     ]);
