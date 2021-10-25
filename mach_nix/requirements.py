@@ -3,12 +3,11 @@ from typing import Iterable, Tuple, List
 
 import distlib.markers
 import pkg_resources
-from conda.models.version import ver_eval
 from distlib.markers import DEFAULT_CONTEXT
-from pkg_resources._vendor.packaging.specifiers import SpecifierSet
+from packaging.specifiers import SpecifierSet
 
 from mach_nix.cache import cached
-from mach_nix.versions import PyVer, Version, parse_ver
+from mach_nix.versions import PyVer, Version
 
 
 def context(py_ver: PyVer, platform: str, system: str):
@@ -43,17 +42,6 @@ class Requirement:
         return hash((self.name, self.specs, self.build))
 
 
-class RequirementOld(pkg_resources.Requirement):
-    def __init__(self, line, build=None):
-        self.build = build
-        super(Requirement, self).__init__(line)
-        self.name = self.name.lower().replace('_', '-')
-        self.specifier = SpecifierSet(','.join(f"{op}{ver}" for op, ver in self.specs))
-
-    def __hash__(self):
-        return hash((super().__hash__(), self.build))
-
-
 def filter_reqs_by_eval_marker(reqs: Iterable[Requirement], context: dict, selected_extras=None):
     # filter requirements relevant for current environment
     for req in reqs:
@@ -72,6 +60,7 @@ def filter_reqs_by_eval_marker(reqs: Iterable[Requirement], context: dict, selec
 
 all_ops = {'==', '!=', '<=', '>=', '<', '>', '~=', ';'}
 
+re_pytz = re.compile(r"pytz>dev|pytz\(>dev\)")
 
 @cached(lambda args: tuple(args[0]) if isinstance(args[0], list) else args[0])
 def parse_reqs(strs):
@@ -88,17 +77,6 @@ def parse_reqs(strs):
         yield Requirement(*parse_reqs_line(line))
 
 
-re_specs = re.compile(r"(==|!=|>=|<=|>|<|~=)(.*)")
-
-
-def parse_spec_part(part):
-    specs = []
-    op, ver = re.fullmatch(re_specs, part.strip()).groups()
-    ver = ver.strip()
-    specs.append((op, ver))
-    return list(specs)
-
-
 extra_name = r"([a-z]|[A-Z]|-|_|\.|\d)+"
 re_marker_extras = re.compile(rf"extra *== *'?({extra_name})'?")
 
@@ -109,7 +87,7 @@ def extras_from_marker(marker):
         return tuple(group[0] for group in matches)
     return tuple()
 
-
+re_spec_part = r"( *(==|!=|>=|<=|>|<|~=|=)? *(\* |-?\w?\d(\w|\.|\*|-|\||!|\+)*))"
 re_reqs = re.compile(
     r"^(?P<name>([a-z]|[A-Z]|-|_|\d|\.)+)"
     rf"(?P<extras>\[({extra_name},?)+\])?"
@@ -122,7 +100,7 @@ re_reqs = re.compile(
             # multiple specs
             r" *\(?(?P<specs_0>"
                 r"\*"
-                r"|([,\|]? *(==|!=|>=|<=|>|<|~=|=)? *(\* |dev|-?\w?\d(\w|\.|\*|-|\||!|\+)*))+(?![_\d]))\)?"
+                rf"|{re_spec_part}([,\|]{re_spec_part})*(?![_\d]))\)?"
             r"(?P<build_0> *([a-z]|\d|_|\*|\.)+)?"
         r"|"
             # single spec only
@@ -133,6 +111,13 @@ re_reqs = re.compile(
 
 
 def parse_reqs_line(line):
+    # We special case `pytz>dev` since several packages have that requirement.
+    # The intent is to accept any version, but the versioning scheme used by versions prior to 2013.6
+    # were detected as pre-releases.
+    # See https://github.com/pypa/pip/issues/974#issuecomment-22641489
+    if line == 'pytz>dev' or line == 'pytz (>dev)':
+        return ("pytz", (), (), None, None)
+
     line = line.split("#")[0].strip()
     if line.endswith("==*"):
         line = line[:-3]
@@ -185,8 +170,8 @@ def parse_reqs_line(line):
                     part = '==' + part
                 elif re.fullmatch(r"=\d(\d|\.|\*|[a-z])*", part):
                     part = '=' + part
-                parsed_parts += parse_spec_part(part)
-            all_specs.append(tuple(parsed_parts))
+                parsed_parts.append(part)
+            all_specs.append(SpecifierSet(",".join(parsed_parts)))
 
         all_specs = tuple(all_specs)
 
@@ -207,18 +192,13 @@ def filter_versions(
     which are allowed according to the given specifiers
     """
     assert isinstance(versions, list)
-    versions = list(versions)
     if not req.specs:
-        return versions
-    all_versions = []
+        # We filter version with an empty specifier set, since that will filter
+        # out prerelease, if there are any other releases.
+        return SpecifierSet().filter(versions)
+    matched_versions = []
     for specs in req.specs:
-        for op, ver in specs:
-            if op == '==':
-                if str(ver) == "*":
-                    return versions
-                elif '*' in str(ver):
-                    op = '='
-            ver = parse_ver(ver)
-            versions = list(filter(lambda v: ver_eval(v, f"{op}{ver}"), versions))
-        all_versions += list(versions)
-    return all_versions
+        matched_versions.extend(
+            specs.filter(versions)
+        )
+    return matched_versions

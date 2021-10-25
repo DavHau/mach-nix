@@ -76,7 +76,7 @@ def env(args, nixpkgs_ref):
             url = "https://github.com/DavHau/mach-nix/tarball/${{lock.mach-nix.rev}}";
             sha256 = lock.mach-nix.sha256;
           }}) {{
-            python = "python{py_ver.digits()}";
+            python = "{py_ver.nix()}";
             inherit pkgs;
           }};
         }}
