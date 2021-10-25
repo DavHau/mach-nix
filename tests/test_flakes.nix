@@ -2,12 +2,13 @@
   baseArgsMkPython ? {},
   baseArgsBuildPythonPackage ? {},
   mach-nix ? import ../. {},
+  system ? builtins.currentSystem or "x86_64-linux",
   ...
 }:
 with builtins;
 let
-  pyEnv = (builtins.getFlake (toString ../.)).packages.x86_64-linux.gen.python.requests;
-  pyEnvDockerImage = (builtins.getFlake (toString ../.)).packages.x86_64-linux.gen.docker.requests;
+  pyEnv = (builtins.getFlake (toString ../.)).packages.${system}.gen.python.requests;
+  pyEnvDockerImage = (builtins.getFlake (toString ../.)).packages.${system}.gen.docker.requests;
 in
 (map (p:
   if p ? _passthru.python.pkgs.requests then
