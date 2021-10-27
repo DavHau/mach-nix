@@ -85,7 +85,7 @@ class OverridesGenerator(ExpressionGenerator):
                     else
                       trace "removing dependency ${{dep.name}} from ${{pname}}" false)
                   inputs;
-              updatePythonDepsRec = newPkgs: pkg:
+              updatePythonDeps = newPkgs: pkg:
                 if ! isPyModule pkg then pkg else
                 let
                   pname = normalizeName (get_pname pkg);
@@ -98,15 +98,11 @@ class OverridesGenerator(ExpressionGenerator):
                     else
                       pkg;
                 in
-                  newP.overrideAttrs (old: mapAttrs (n: v:
-                    if elem n depNamesAll then
-                      map (p: updatePythonDepsRec newPkgs p) v
-                    else v
-                  ) old);
-              updateAndRemoveDepsRec = pythonSelf: name: inputs:
-                removeUnwantedPythonDeps name (map (dep: updatePythonDepsRec pythonSelf dep) inputs);
+                  newP;
+              updateAndRemoveDeps = pythonSelf: name: inputs:
+                removeUnwantedPythonDeps name (map (dep: updatePythonDeps pythonSelf dep) inputs);
               cleanPythonDerivationInputs = pythonSelf: name: oldAttrs:
-                mapAttrs (n: v: if elem n depNamesAll then updateAndRemoveDepsRec pythonSelf name v else v ) oldAttrs;
+                mapAttrs (n: v: if elem n depNamesAll then updateAndRemoveDeps pythonSelf name v else v ) oldAttrs;
               override = pkg:
                 if hasAttr "overridePythonAttrs" pkg then
                     pkg.overridePythonAttrs
@@ -193,12 +189,12 @@ class OverridesGenerator(ExpressionGenerator):
             keep_src=False):
         out = f"""
             "{name}" = override python-super.{nix_name} ( oldAttrs:
-              # filter out unwanted dependencies and replace colliding packages recursively
+              # filter out unwanted dependencies and replace colliding packages
               let cleanedAttrs = cleanPythonDerivationInputs python-self "{name}" oldAttrs; in cleanedAttrs // {{
                 pname = "{name}";
                 version = "{ver}";
                 passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "{provider}"; }};
-                buildInputs = with python-self; (map (dep: updatePythonDepsRec python-self dep) (cleanedAttrs.buildInputs or [])) ++ [ {build_inputs_str} ];
+                buildInputs = with python-self; (cleanedAttrs.buildInputs or []) ++ [ {build_inputs_str} ];
                 propagatedBuildInputs = 
                   (cleanedAttrs.propagatedBuildInputs or [])
                   ++ ( with python-self; [ {prop_build_inputs_str} ]);"""
