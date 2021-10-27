@@ -130,6 +130,9 @@ def parse_reqs_line(line):
         line = init + ';' + marker
     else:
         line = line.replace("'", "").replace('"', '')
+    
+    if line.endswith(','):
+        line = line[:-1]
 
     match = re.fullmatch(re_reqs, line)
     if not match:
