@@ -151,7 +151,7 @@ _Note that some dependency declaration formats are missing. For a roadmap, pleas
 #### Configure Providers
 **Providers** allow you to configure the origin for your packages on a granular basis.
 
-The following 3 providers are available:
+The following providers are available:
   1. **conda**: Provides packages from anaconda.org. Those packages can contain binaries. Some benefits of anaconda are:  
       - Different build variants for packages  
       - Provides all system dependencies for packages
