@@ -122,6 +122,10 @@ def parse_reqs_line(line):
     if line.endswith("==*"):
         line = line[:-3]
 
+    # Throw away direct references.
+    if "@" in line:
+        line = line.split("@")[0]
+
     # remove ' symbols
     split = line.split(';')
     if len(split) > 1:
