@@ -1,10 +1,10 @@
 {python, fetchurl, ...}:
 rec {
   distlib = python.pkgs.buildPythonPackage {
-    name = "distlib-0.3.0";
+    name = "distlib-0.3.3";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/7d/29/694a3a4d7c0e1aef76092e9167fbe372e0f7da055f5dcf4e1313ec21d96a/distlib-0.3.0.zip";
-      sha256 = "2e166e231a26b36d6dfe35a48c4464346620f8645ed0ace01ee31822b288de21";
+      url = "https://files.pythonhosted.org/packages/56/ed/9c876a62efda9901863e2cc8825a13a7fcbda75b4b498103a4286ab1653b/distlib-0.3.3.zip";
+      sha256 = "01bbw4gm64fvdnlylqhsy3fhxs4yjhfnk3pcwassmspn3xsx10nr";
     };
     doCheck = false;
   };
