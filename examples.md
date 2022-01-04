@@ -3,6 +3,7 @@ This page contains basic and advanced examples for using mach-nix inside a nix e
 
 <!--ts-->
   * [Import mach-nix](#import-mach-nix)
+  * [Use mach-nix from a Flake](#use-mach-nix-from-a-flake)
   * [mkPython / mkPythonShell](#mkpython--mkpythonshell)
     * [From a list of requirements](#from-a-list-of-requirements)
     * [Include extra packages.](#include-extra-packages)
@@ -59,6 +60,37 @@ let
   };
 in
 ...
+```
+
+### Use mach-nix from a Flake
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs";
+    flake-utils.url = "github:numtide/flake-utils";
+    mach-nix = {
+      url = "github:DavHau/mach-nix?ref=3.3.0";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        flake-utils.follows = "flake-utils";
+      };
+    };
+  };
+  outputs = { self, nixpkgs, flake-utils, mach-nix, ...}@inputs:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = nixpkgs.legacyPackages."${system}";
+        mach-nix = mach-nix.lib."${system}";
+      in {
+        devShell = mach-nix.mkPythonShell {
+          requirements = ''
+            pillow
+            numpy
+            requests
+          '';
+        };
+    });
+}
 ```
 
 ### mkPython / mkPythonShell
