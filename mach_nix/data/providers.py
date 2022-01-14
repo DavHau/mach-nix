@@ -600,10 +600,10 @@ class CondaDependencyProvider(DependencyProviderBase):
         candidates = []
         for ver in self.pkgs[pkg_name].keys():
             for p in self.compatible_builds(pkg_name, parse_ver(ver), build):
-                if 'sha256' not in p:
+                if 'sha256' not in p and 'md5' not in p:
                     print(
                         f"Ignoring conda package {p['name']}:{p['version']} from provider {self.channel} \n"
-                        "since it doesn't provide a sha256 sum.\n")
+                        "since it doesn't provide a sha256 or md5 sum.\n")
                 else:
                     if self.channel in ('free', 'intel', 'main', 'r'):
                         url = f"https://repo.anaconda.com/pkgs/{self.channel}/{p['subdir']}/{p['fname']}"
@@ -618,7 +618,7 @@ class CondaDependencyProvider(DependencyProviderBase):
                         provider_info=ProviderInfo(
                             self,
                             url=url,
-                            hash=p['sha256']
+                            hash=p.get('sha256', p["md5"])
                         )
                     ))
                     if 'collisions' in p:
