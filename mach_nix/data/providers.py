@@ -571,50 +571,48 @@ class CondaDependencyProvider(DependencyProviderBase):
         return list(parse_reqs(depends)), None
 
     @cached()
+    def all_candidates_sorted(self, name, extras, build) -> Iterable[Candidate]:
+        candidates = self.all_candidates(name, extras, build)
+        candidates.sort(key=lambda c: (c.ver, c.provider_info.data['build_number']))
+        return candidates
+
+
     def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
         pkg_name = normalize_name(pkg_name)
         if pkg_name not in self.pkgs:
             return []
         candidates = []
-        for ver in self.pkgs[pkg_name].keys():
-            for p in self.compatible_builds(pkg_name, ver, build):
-                if 'sha256' not in p:
-                    print(
-                        f"Ignoring conda package {p['name']}:{p['version']} from provider {self.channel} \n"
-                        "since it doesn't provide a sha256 sum.\n")
+        for p in self.compatible_builds(pkg_name, build):
+            if 'sha256' not in p:
+                print(
+                    f"Ignoring conda package {p['name']}:{p['version']} from provider {self.channel} \n"
+                    "since it doesn't provide a sha256 sum.\n")
+            else:
+                if self.channel in ('free', 'intel', 'main', 'r'):
+                    url = f"https://repo.anaconda.com/pkgs/{self.channel}/{p['subdir']}/{p['fname']}"
                 else:
-                    if self.channel in ('free', 'intel', 'main', 'r'):
-                        url = f"https://repo.anaconda.com/pkgs/{self.channel}/{p['subdir']}/{p['fname']}"
-                    else:
-                        url = f"https://anaconda.org/{self.channel}/{p['name']}/" \
-                              f"{p['version']}/download/{p['subdir']}/{p['fname']}"
-                    candidates.append(Candidate(
-                        p['name'],
-                        parse_ver(p['version']),
+                    url = f"https://anaconda.org/{self.channel}/{p['name']}/" \
+                          f"{p['version']}/download/{p['subdir']}/{p['fname']}"
+                candidates.append(Candidate(
+                    p['name'],
+                    parse_ver(p['version']),
                         p['version'],
-                        selected_extras=tuple(),
-                        build=p['build'],
-                        provider_info=ProviderInfo(
-                            self,
-                            url=url,
-                            hash=p['sha256'],
-                            data=p,
-                        )
-                    ))
-                    if 'collisions' in p:
-                        print(
-                            f"WARNING: Colliding conda package in channel '{self.channel}' "
-                            f"Ignoring {list(map(itemgetter(0), p['collisions']))} "
-                            f"from {list(map(itemgetter(1), p['collisions']))} "
-                            f"in favor of {p['name']} from '{p['subdir']}'")
+                    selected_extras=tuple(),
+                    build=p['build'],
+                    provider_info=ProviderInfo(
+                        self,
+                        url=url,
+                        hash=p['sha256'],
+                        data=p,
+                    )
+                ))
+                if 'collisions' in p:
+                    print(
+                        f"WARNING: Colliding conda package in channel '{self.channel}' "
+                        f"Ignoring {list(map(itemgetter(0), p['collisions']))} "
+                        f"from {list(map(itemgetter(1), p['collisions']))} "
+                        f"in favor of {p['name']} from '{p['subdir']}'")
         return candidates
-
-    def deviated_version(self, pkg_name, normalized_version: Version, build):
-        for builds in self.pkgs[pkg_name].values():
-            for p in builds.values():
-                if parse_ver(p['version']) == normalized_version:
-                    return p['version']
-        raise Exception(f"Cannot find deviated version for {pkg_name}:{normalized_version}")
 
     def python_ok(self, build):
         for dep in build['depends']:
@@ -627,19 +625,18 @@ class CondaDependencyProvider(DependencyProviderBase):
         return True
 
     @cached()
-    def compatible_builds(self, pkg_name, pkg_version: Version, build=None) -> list:
-        deviated_ver = self.deviated_version(pkg_name, pkg_version, build)
-        if build:
-            matched = set(fnmatch.filter(self.pkgs[pkg_name][deviated_ver], build))
-            pkgs = \
-                [p for p in self.pkgs[pkg_name][deviated_ver].values() if p['build'] in matched and self.python_ok(p)]
-            pkgs.sort(key=lambda p: p['build_number'], reverse=True)
-            return pkgs
-        compatible = []
-        for build in self.pkgs[pkg_name][deviated_ver].values():
-            # continue if python incompatible
-            if not self.python_ok(build):
-                continue
-            # python is compatible
-            compatible.append(build)
-        return compatible
+    def compatible_builds(self, pkg_name, build_pattern) -> list:
+        if build_pattern:
+            # fnmatch caches the regexes it builds.
+            def build_matches(build):
+                return fnmatch.fnmatch(build, build_pattern)
+        else:
+            def build_matches(build):
+                return True
+        return [
+            pkg_data
+            for ver, pkg_builds in self.pkgs[pkg_name].items()
+            for build, pkg_data in pkg_builds.items()
+            if self.python_ok(pkg_data)
+            and build_matches(build)
+        ]
