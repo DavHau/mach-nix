@@ -246,6 +246,9 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
     def get_pkg_reqs(self, c: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
         if not self.nixpkgs.exists(c.name, c.ver):
             raise Exception(f"Cannot find {c.name}:{c.ver} in nixpkgs")
+        requirements = self.nixpkgs.get_requirements(c.name, c.ver)
+        if requirements is not None:
+            return list(parse_reqs(requirements)), []
         install_reqs, setup_reqs = [], []
         for provider in (self.sdist_provider, self.wheel_provider):
             try:

@@ -18,6 +18,8 @@ let
   };
 
   py = python.override { packageOverrides = mergeOverrides ( overrides ++ [ pnamePassthruOverride ] ); };
+
+  l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 in
 
 with pkgs;
@@ -28,9 +30,10 @@ let
     let
       p = python.pkgs."${attrname}";
       pname = get_pname p;
+      requirements = p.requirements or null;
       res = if pname != "" && p ? version then
         {
-          inherit pname;
+          inherit pname requirements;
           version = (toString p.version);
         }
       else

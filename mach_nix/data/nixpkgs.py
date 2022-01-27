@@ -24,6 +24,7 @@ class NixpkgsIndex(UserDict):
         with open(nixpkgs_json_file) as f:
             data = json.load(f)
         self.data = {}
+        self.requirements = {}
         for nix_key, nix_data in data.items():
             if nix_data is None:
                 continue
@@ -35,6 +36,8 @@ class NixpkgsIndex(UserDict):
             if version not in self.data[pname_key]:
                 self.data[pname_key][version] = []
             self.data[pname_key][version].append(nix_key)
+            if nix_data["requirements"] is not None:
+                self.requirements[nix_key] = nix_data["requirements"]
         super(NixpkgsIndex, self).__init__(self.data, **kwargs)
 
     def has_multiple_candidates(self, name):
@@ -107,3 +110,7 @@ class NixpkgsIndex(UserDict):
         if ver:
             return any(ver == c.ver for c in candidates)
         return True
+
+    def get_requirements(self, name, ver):
+        nix_key = self.find_best_nixpkgs_candidate(name, ver)
+        return self.requirements.get(nix_key)
