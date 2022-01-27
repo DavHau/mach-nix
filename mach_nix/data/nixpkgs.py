@@ -24,11 +24,12 @@ class NixpkgsIndex(UserDict):
         with open(nixpkgs_json_file) as f:
             data = json.load(f)
         self.data = {}
-        for nix_key, s in data.items():
-            if '@' not in s:
+        for nix_key, nix_data in data.items():
+            if nix_data is None:
                 continue
-            pname, version = s.split('@')
-            pname_key = pname.replace('_', '-').lower()
+            pname = nix_data["pname"]
+            version = parse_ver(nix_data["version"])
+            pname_key = pname.replace("_", "-").lower()
             if pname_key not in self.data:
                 self.data[pname_key] = {}
             if version not in self.data[pname_key]:
@@ -47,7 +48,7 @@ class NixpkgsIndex(UserDict):
     def get_all_candidates(self, name) -> List[NixpkgsPyPkg]:
         result = []
         for ver, nix_keys in self.data[name].items():
-            result += [NixpkgsPyPkg(name, nix_key, parse_ver(ver)) for nix_key in nix_keys]
+            result += [NixpkgsPyPkg(name, nix_key, ver) for nix_key in nix_keys]
         return result
 
     def get_highest_ver(self, pkgs: List[NixpkgsPyPkg]):
