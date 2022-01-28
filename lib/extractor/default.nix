@@ -82,7 +82,6 @@ let
       python_env = python.withPackages (ps: with ps; [
         # base requirements
         setuptools
-        pkgconfig
       ]);
     in
       patchDistutils python_env;
