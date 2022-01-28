@@ -78,7 +78,7 @@ class OverridesGenerator(ExpressionGenerator):
                   [ "{'" "'.join(all_pnames)}" ]
                   (pname: null);
               removeUnwantedPythonDeps = pname: inputs:
-                filter 
+                filter
                   (dep:
                     if ! isPyModule dep || pnamesEnv ? "${{normalizeName (get_pname dep)}}" then
                       true
@@ -129,17 +129,17 @@ class OverridesGenerator(ExpressionGenerator):
                   python_pkgs = python.pkgs;
                   pname = if hasAttr "${{pypi_name}}" python_pkgs then pypi_name else nix_name;
                 in
-                  if hasAttr "${{pname}}" python_pkgs then 
-                    let result = (tryEval 
+                  if hasAttr "${{pname}}" python_pkgs then
+                    let result = (tryEval
                       (if isNull python_pkgs."${{pname}}" then
                         {{}}
                       else
-                        python_pkgs."${{pname}}".passthru)); 
+                        python_pkgs."${{pname}}".passthru));
                     in
                       if result.success then result.value else {{}}
                   else {{}};
               allCondaDepsRec = pkg:
-                let directCondaDeps = 
+                let directCondaDeps =
                   filter (p: p ? provider && p.provider == "conda") (pkg.propagatedBuildInputs or []);
                 in
                   directCondaDeps ++ filter (p: ! directCondaDeps ? p) (map (p: p.allCondaDeps) directCondaDeps);
@@ -188,14 +188,14 @@ class OverridesGenerator(ExpressionGenerator):
             self, name, ver, circular_deps, nix_name, provider, build_inputs_str, prop_build_inputs_str,
             keep_src=False):
         out = f"""
-            "{name}" = override python-super.{nix_name} ( oldAttrs:
+            "{name}" = override python-super."{nix_name}" ( oldAttrs:
               # filter out unwanted dependencies and replace colliding packages
               let cleanedAttrs = cleanPythonDerivationInputs python-self "{name}" oldAttrs; in cleanedAttrs // {{
                 pname = "{name}";
                 version = "{ver}";
                 passthru = (get_passthru "{name}" "{nix_name}") // {{ provider = "{provider}"; }};
                 buildInputs = with python-self; (cleanedAttrs.buildInputs or []) ++ [ {build_inputs_str} ];
-                propagatedBuildInputs = 
+                propagatedBuildInputs =
                   (cleanedAttrs.propagatedBuildInputs or [])
                   ++ ( with python-self; [ {prop_build_inputs_str} ]);"""
         if not keep_src:
@@ -272,7 +272,7 @@ class OverridesGenerator(ExpressionGenerator):
                 condaInstallHook
               ];
               buildInputs = pkgs.pythonCondaPackages.condaPatchelfLibs;
-              passthru = (get_passthru "{name}" "{nix_name}") // {{ 
+              passthru = (get_passthru "{name}" "{nix_name}") // {{
                 provider = "conda";
                 allCondaDeps = allCondaDepsRec pSelf;
                 srcUnpacked = pkgs.runCommand "{name}-src" {{}} ''
@@ -285,7 +285,7 @@ class OverridesGenerator(ExpressionGenerator):
               pipInstallFlags = "--no-dependencies";
               preBuild = ''
                 circularDeps="${{
-                  toString (flatten (forEach 
+                  toString (flatten (forEach
                     [ "{'" "'.join(circular_deps)}" ]
                     (pname: python-self."${{pname}}".srcUnpacked or [])
                   ))
