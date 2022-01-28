@@ -310,6 +310,7 @@ class WheelDependencyProvider(DependencyProviderBase):
                 re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-any"),
                 re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_universal"),
                 re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_x86_64"),
+                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_arm64"),
             )
         else:
             raise Exception(f"Unsupported Platform {platform.system()}")
