@@ -1,1 +1,1 @@
-(import ./default.nix {}).extractor-fast
+{...}@args: (import ./default.nix args).extractor-fast

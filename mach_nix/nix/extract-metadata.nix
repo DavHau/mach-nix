@@ -12,14 +12,19 @@ let
     build-backend = "setuptools.build_meta:__legacy__";
   };
 
-  extract-cmd = {python, src, providers, overridesPre}: outPath:
+  build-system = src:
     let
       pyproject-toml = "${src}/pyproject.toml";
-      build-system = if builtins.pathExists pyproject-toml then
-          let
-            toml = builtins.fromTOML (builtins.readFile pyproject-toml);
-          in toml.build-system
-        else default-build-system;
+    in
+      if builtins.pathExists pyproject-toml then
+        let
+          toml = builtins.fromTOML (builtins.readFile pyproject-toml);
+        in toml.build-system or default-build-system
+      else default-build-system;
+
+  extract-cmd = {python, src, providers, overridesPre ? []}: outPath:
+    let
+      build-system' = build-system src;
       base-env = mkPython python {
         inherit python providers;
         requirements = ''
@@ -27,15 +32,29 @@ let
           importlib-metadata >= 4.0.0
         '';
       };
+      metadata-env = mkPython python {
+        inherit python providers overridesPre;
+        requirements = concatStringsSep "\n" build-system'.requires;
+      };
+      build-metadata = pkgs.stdenv.mkDerivation {
+        name = "python-build-metadata";
+        buildInputs = [ pkgs.unzip ];
+        phases = ["unpackPhase" "installPhase"];
+        inherit src;
+        installPhase = ''
+          mkdir $out
+          ${base-env.interpreter} ${./extract-metadata.py} $out/build-requires.json . ${metadata-env.interpreter} ${args} build-requires
+        '';
+      };
+      build-requires-path = "${build-metadata}/build-requires.json";
+      build-requires = fromJSON (readFile build-requires-path);
       build-env = mkPython python {
         inherit python providers overridesPre;
-        requirements = concatStringsSep "\n" build-system.requires;
+        requirements = concatStringsSep "\n" (build-system'.requires ++ build-requires);
       };
-      args = escapeShellArgs [build-env.interpreter build-system.build-backend build-system.backend-path or ""];
-    in 
-      ''
-      ${base-env.interpreter} ${./extract-metadata.py} ${outPath} ${src} ${args}
-      '';
+      args = escapeShellArgs [build-system'.build-backend build-system'.backend-path or ""];
+    in
+      "${base-env.interpreter} ${./extract-metadata.py} ${outPath} ${src} ${build-env.interpreter} ${args} metadata ${build-requires-path}";
 
     extract = {python, src, providers, overridesPre}@args: fail_msg:
       let
@@ -75,5 +94,5 @@ let
       in
         trace msg result;
 in {
-  inherit extract-cmd extract-meta extract-requirements;
+  inherit build-system extract-cmd extract-meta extract-requirements;
 }

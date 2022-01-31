@@ -2,25 +2,31 @@
   pkgs ? import <nixpkgs> { config = { allowUnfree = true; };},
   lib ? pkgs.lib,
   pythonInterpreters ? pkgs.useInterpreters or (with pkgs; [
-    python27
     python35
     python36
     python37
     python38
   ]),
+  # Only used for extractor-fast
+  condaDataRev ? (builtins.fromJSON (builtins.readFile ../../mach_nix/nix/CONDA_CHANNELS.json)).rev,
+  condaDataSha256 ? (builtins.fromJSON (builtins.readFile ../../mach_nix/nix/CONDA_CHANNELS.json)).indexSha256,
+  pypiDataRev ? ((import ../../mach_nix/nix/flake-inputs.nix) "pypi-deps-db").rev,
+  pypiDataSha256 ? ((import ../../mach_nix/nix/flake-inputs.nix) "pypi-deps-db").sha256,
+  pypiData ? builtins.fetchTarball {
+    name = "pypi-deps-db-src";
+    url = "https://github.com/DavHau/pypi-deps-db/tarball/${pypiDataRev}";
+    sha256 = "${pypiDataSha256}";
+  },
   ...
 }:
 with builtins;
 with lib;
 let
-  commit = "1434cc0ee2da462f0c719d3a4c0ab4c87d0931e7";
-  fetchPypiSrc = builtins.fetchTarball {
-   name = "nix-pypi-fetcher";
-   url = "https://github.com/DavHau/nix-pypi-fetcher/archive/${commit}.tar.gz";
-   # Hash obtained using `nix-prefetch-url --unpack <url>`
-   sha256 = "080l189zzwrv75jgr7agvs4hjv4i613j86d4qky154fw5ncp0mnp";
-  };
-  fetchPypi = import (fetchPypiSrc);
+  inherit (import ../../mach_nix/nix/extract-metadata.nix {
+    inherit condaDataRev condaDataSha256 pkgs pypiData;
+    condaChannelsExtra = {};
+  }) build-system extract-cmd;
+
   patchDistutils = python_env:
     with builtins;
     let
@@ -94,19 +100,22 @@ let
     f.close();
     exec(compile(code, __file__, 'exec'))
   '';
-  script = pyVersions: ''
+  script = pyVersions: src: ''
     mkdir $out
-    ${concatStringsSep "\n" (forEach pythonInterpreters (interpreter:
+    cp $buildSystemPath $out/build-system.json
+    ${concatStringsSep "\n" (forEach pythonInterpreters (python:
       let
-        py = mkPy interpreter;
-        verSplit = splitString "." interpreter.version;
+        verSplit = splitString "." python.version;
         major = elemAt verSplit 0;
         minor = elemAt verSplit 1;
         v = "${major}${minor}";
       # only use selected interpreters
       in optionalString (pyVersions == [] || elem v pyVersions) ''
         echo "extracting metadata for python${v}"
-        out_file=$out/python${v}.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python${v}.log || true
+        ${extract-cmd {
+          inherit python src;
+          providers = { _defaults = "wheel,sdist"; };
+        } "$out/python${v}.json"} &> $out/python${v}.log
       ''
     ))}
   '';
@@ -119,11 +128,8 @@ let
   base_derivation = pyVersions: with pkgs; {
     buildInputs = [ unzip pkg-config pipenv ];
     phases = ["unpackPhase" "installPhase"];
-    # Tells our modified python builtins to dump setup attributes instead of doing an actual installation
-    dump_setup_attrs = "y";
     PYTHONIOENCODING = "utf8";  # My gut feeling is that encoding issues might decrease by this
     LANG = "C.utf8";
-    installPhase = script pyVersions;
   };
 
   sanitizeDerivationName = string: lib.pipe string [
@@ -155,21 +161,28 @@ rec {
     stdenv.mkDerivation ( (base_derivation []) // {
       inherit src;
       name = "package-requirements";
+      # Tells our modified python builtins to dump setup attributes instead of doing an actual installation
+      dump_setup_attrs = "y";
       installPhase = script_single (mkPy py');
     });
-  extractor = {pkg, version, ...}:
-    stdenv.mkDerivation ({
-      name = "${pkg}-${version}-requirements";
-      src = fetchPypi pkg version;
-    } // (base_derivation []));
   extractor-fast = {pkg, version, url, sha256, pyVersions ? [], ...}:
-    stdenv.mkDerivation ( rec {
-      name = sanitizeDerivationName "${pkg}-${version}-requirements";
+    let
       src = (pkgs.fetchurl {
         inherit url sha256;
       }).overrideAttrs (_: {
         name = sanitizeDerivationName _.name;
       });
+      src-only = (pkgs.srcOnly {
+        name = sanitizeDerivationName "${pkg}-${version}-src";
+        buildInputs = [ unzip ];
+        inherit src;
+      });
+    in stdenv.mkDerivation ( rec {
+      name = sanitizeDerivationName "${pkg}-${version}-requirements";
+      inherit src;
+      buildSystem = builtins.toJSON (build-system src-only);
+      passAsFile = ["buildSystem"];
+      installPhase = script pyVersions src-only;
     } // (base_derivation pyVersions));
   make-drvs =
     let
@@ -179,6 +192,6 @@ rec {
           "${job.pkg}#${job.version}"
           (extractor-fast job).drvPath
       ) jobs);
-    in toJSON results;
+    in results;
 
 }
