@@ -2,10 +2,10 @@
   pkgs ? import <nixpkgs> { config = { allowUnfree = true; };},
   lib ? pkgs.lib,
   pythonInterpreters ? pkgs.useInterpreters or (with pkgs; [
-    python35
-    python36
     python37
     python38
+    python39
+    python310
   ]),
   # Only used for extractor-fast
   condaDataRev ? (builtins.fromJSON (builtins.readFile ../../mach_nix/nix/CONDA_CHANNELS.json)).rev,
@@ -115,6 +115,7 @@ let
         ${extract-cmd {
           inherit python src;
           providers = { _defaults = "wheel,sdist"; };
+          _providerDefaults = {};
         } "$out/python${v}.json"} &> $out/python${v}.log
       ''
     ))}

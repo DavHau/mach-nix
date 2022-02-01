@@ -35,10 +35,10 @@ let
       # Extract dependencies automatically if 'requirements' is unset
       pname =
         if hasAttr "pname" args then args.pname
-        else extract-meta python_pkg src "name" "pname";
+        else extract-meta { inherit python providers overridesPre src; } src "name" "pname";
       version =
         if hasAttr "version" args then args.version
-        else extract-meta python_pkg src "version" "version";
+        else extract-meta { inherit python providers overridesPre src; } src "version" "version";
       meta_reqs = extract-requirements { inherit python providers overridesPre src; } "${pname}:${version}" extras;
       reqs =
         (if requirements == "" then

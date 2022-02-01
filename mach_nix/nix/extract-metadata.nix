@@ -22,18 +22,18 @@ let
         in toml.build-system or default-build-system
       else default-build-system;
 
-  extract-cmd = {python, src, providers, overridesPre ? []}: outPath:
+  extract-cmd = {python, src, providers, _providerDefaults, overridesPre ? []}: outPath:
     let
       build-system' = build-system src;
       base-env = mkPython python {
-        inherit python providers;
+        inherit python providers _providerDefaults;
         requirements = ''
           pep517
           importlib-metadata >= 4.0.0
         '';
       };
       metadata-env = mkPython python {
-        inherit python providers overridesPre;
+        inherit python providers _providerDefaults overridesPre;
         requirements = concatStringsSep "\n" build-system'.requires;
       };
       build-metadata = pkgs.stdenv.mkDerivation {
@@ -49,14 +49,14 @@ let
       build-requires-path = "${build-metadata}/build-requires.json";
       build-requires = fromJSON (readFile build-requires-path);
       build-env = mkPython python {
-        inherit python providers overridesPre;
+        inherit python providers _providerDefaults overridesPre;
         requirements = concatStringsSep "\n" (build-system'.requires ++ build-requires);
       };
       args = escapeShellArgs [build-system'.build-backend build-system'.backend-path or ""];
     in
       "${base-env.interpreter} ${./extract-metadata.py} ${outPath} ${src} ${build-env.interpreter} ${args} metadata ${build-requires-path}";
 
-    extract = {python, src, providers, overridesPre}@args: fail_msg:
+    extract = {python, src, providers, _providerDefaults, overridesPre}@args: fail_msg:
       let
         result = pkgs.runCommand "python-metadata" {} ''
           mkdir $out
@@ -66,7 +66,7 @@ let
       in
         if pathExists file_path then fromJSON (readFile file_path) else throw fail_msg;
 
-    extract-requirements = {python, src, providers, overridesPre}@args: name: extras:
+    extract-requirements = {python, src, providers, _providerDefaults, overridesPre}@args: name: extras:
       let
         ensureList = requires: if isString requires then [requires] else requires;
         data = extract args ''
@@ -83,7 +83,7 @@ let
       in
         trace msg all_reqs;
 
-    extract-meta = {python, src, providers, overridesPre}@args: attr: for_attr:
+    extract-meta = {python, src, providers, _providerDefaults, overridesPre}@args: attr: for_attr:
       let
         error_msg = ''
           Automatic extraction of '${for_attr}' from python package source ${src} failed.
