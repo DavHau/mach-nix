@@ -63,7 +63,7 @@ let
       # gather requirements of exra pkgs
       extra_pkgs_py_reqs =
         map (p:
-          if hasAttr "requirements" p then p.requirements
+          if hasAttr "requirements" p then p.pname
           else throw "Packages passed via 'packagesExtra' must be built via mach-nix.buildPythonPackage"
         ) extra_pkgs_python;
       extra_pkgs_r_reqs = if extra_pkgs_r == [] then "" else ''
@@ -91,17 +91,18 @@ let
       );
       overrides_pre_extra = flatten (map (p: p.passthru.overridesPre) extra_pkgs_python);
       overrides_post_extra = flatten (map (p: p.passthru.overridesPost) extra_pkgs_python);
+      extra_pkgs_providers = builtins.mapAttrs (n: p: "nixpkgs") extra_pkgs_python_attrs;
 
       py = python_pkg.override { packageOverrides = l.mergeOverrides overridesPre; };
       result = l.compileOverrides {
-        inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs providers pypiData tests _providerDefaults;
+        inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs pypiData tests _providerDefaults;
         overrides = overridesPre ++ overrides_pre_extra ++ extra_pkgs_py_overrides;
+        providers = providers // extra_pkgs_providers;
         python = py;
         requirements = l.concat_reqs ([requirements] ++ extra_pkgs_py_reqs ++ [extra_pkgs_r_reqs]);
       };
       selectPkgs = ps:
-        (result.select_pkgs ps)
-        ++ (map (name: ps."${name}") (attrNames extra_pkgs_python_attrs));
+        (result.select_pkgs ps);
 
       override_selectPkgs = pySelf: pySuper: {
         inherit selectPkgs;
