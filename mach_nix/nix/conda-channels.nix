@@ -17,6 +17,7 @@ let
   systemMap = {
     x86_64-linux = "linux-64";
     x86_64-darwin = "osx-64";
+    aarch64-darwin = "osx-arm64";
     aarch64-linux = "linux-aarch64";
   };
 
