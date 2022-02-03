@@ -202,7 +202,7 @@ rec {
           src = src;
         }}/python.json";
     in
-      if pathExists file_path then fromJSON (readFile file_path) else throw fail_msg;
+      if pathExists file_path then fromJSON (builtins.unsafeDiscardStringContext (readFile file_path)) else throw fail_msg;
 
   extract_requirements = python: src: name: extras:
     let
