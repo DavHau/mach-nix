@@ -8,7 +8,7 @@ import sys
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import List, Tuple, Iterable
+from typing import List, Optional, Tuple, Iterable
 
 import distlib.markers
 from pkg_resources import RequirementParseError
@@ -35,6 +35,14 @@ class ProviderInfo:
     wheel_fname: str = None  # only required for wheel
     url: str = None
     hash: str = None
+
+    def toDict(self):
+        return dict(
+            provider=self.provider.name,
+            wheel_fname=self.wheel_fname,
+            url=self.url,
+            hash=self.hash,
+        )
 
 
 def normalize_name(key: str) -> str:
@@ -106,8 +114,12 @@ class DependencyProviderBase(ABC):
         pass
 
     def get_reqs_for_extras(self, pkg_name, pkg_ver, extras):
-        install_reqs_wo_extras, setup_reqs_wo_extras = self.get_pkg_reqs(pkg_name, pkg_ver)
-        install_reqs_w_extras, setup_reqs_w_extras = self.get_pkg_reqs(pkg_name, pkg_ver, extras=extras)
+        install_reqs_wo_extras, _ = self.get_pkg_reqs(pkg_name, pkg_ver)
+        install_reqs_w_extras, _ = self.get_pkg_reqs(pkg_name, pkg_ver, extras=extras)
+        if install_reqs_wo_extras is None:
+            install_reqs_wo_extras = []
+        if install_reqs_w_extras is None:
+            install_reqs_w_extras = []
         install_reqs = set(install_reqs_w_extras) - set(install_reqs_wo_extras)
         return list(install_reqs)
 
@@ -116,7 +128,7 @@ class DependencyProviderBase(ABC):
 
     @abstractmethod
     @cached()
-    def get_pkg_reqs(self, candidate: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
+    def get_pkg_reqs(self, candidate: Candidate) -> Tuple[Optional[List[Requirement]], Optional[List[Requirement]]]:
         """
         Get all requirements of a candidate for the current platform and the specified extras
         returns two lists: install_requires, setup_requires
@@ -177,7 +189,7 @@ class CombinedDependencyProvider(DependencyProviderBase):
             if pkg_version in (c.ver for c in provider.all_candidates(pkg_name, build=build)):
                 return provider
 
-    def get_pkg_reqs(self, c: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
+    def get_pkg_reqs(self, c: Candidate) -> Tuple[Optional[List[Requirement]], Optional[List[Requirement]]]:
         for provider in self.allowed_providers_for_pkg(c.name).values():
             if c in provider.all_candidates(c.name, c.selected_extras, c.build):
                 return provider.get_pkg_reqs(c)
@@ -243,19 +255,21 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
         self.wheel_provider = wheel_provider
         self.sdist_provider = sdist_provider
 
-    def get_pkg_reqs(self, c: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
+    def get_pkg_reqs(self, c: Candidate) -> Tuple[Optional[List[Requirement]], Optional[List[Requirement]]]:
         if not self.nixpkgs.exists(c.name, c.ver):
             raise Exception(f"Cannot find {c.name}:{c.ver} in nixpkgs")
         requirements = self.nixpkgs.get_requirements(c.name, c.ver)
         if requirements is not None:
-            return list(parse_reqs(requirements)), []
+            return list(parse_reqs(requirements)), None
         install_reqs, setup_reqs = [], []
-        for provider in (self.sdist_provider, self.wheel_provider):
+        try:
+            return self.sdist_provider.get_pkg_reqs(c)
+        except PackageNotFound:
             try:
-                install_reqs, setup_reqs = provider.get_pkg_reqs(c)
-            except PackageNotFound:
-                pass
-        return install_reqs, setup_reqs
+                # wheel provider onyl knows install deps
+                return self.wheel_provider.get_pkg_reqs(c)[0], None
+            except:
+                return None, None
 
     def all_candidates(self, pkg_name, extras=None, build=None) -> Iterable[Candidate]:
         if build:
