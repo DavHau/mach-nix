@@ -103,20 +103,6 @@ rec {
     patches.mod = oldPatches: filterSafe (patch: ! hasSuffix "reproducible.patch" patch) oldPatches;
   };
 
-  pyqt5 = {
-    fix-build-inputs = {
-      # fix mach-nix induced problem: mach-nix removes all previous python inputs from propagatedBuildInputs
-      _cond = {prov, ... }: prov == "nixpkgs";
-      propagatedBuildInputs.mod = pySelf: oldAttrs: oldVal:
-        (filterSafe (p: p.pname != "pyqt5-sip") oldVal) ++ [ pySelf.sip pySelf.dbus-python ];
-    };
-    fix-wheel-inputs = {
-      _cond = {prov, ... }: prov == "wheel";
-      buildInputs.mod = pySelf: oldAttrs: oldVal:
-        oldVal ++ pkgs.python3Packages.pyqt5.buildInputs ++ [ pkgs.kerberos pySelf.sip ];
-    };
-  };
-
   rpy2.remove-pandas-patch = {
     _cond = { prov, ver, ... }:
       # https://github.com/rpy2/rpy2/commit/fbd060e364b70012e8d26cc74df04ee53f769379
