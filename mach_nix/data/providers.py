@@ -309,10 +309,11 @@ class WheelDependencyProvider(DependencyProviderBase):
                 re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-any"),
             )
         elif self.system == "darwin":
+            platform = "arm64" if self.platform == "aarch64" else self.platform
             self.preferred_wheels = (
                 re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-any"),
                 re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_universal"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_{self.platform}"),
+                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_{platform}"),
             )
         else:
             raise Exception(f"Unsupported Platform {platform.system()}")
