@@ -66,31 +66,28 @@ in
 ```nix
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs";
-    flake-utils.url = "github:numtide/flake-utils";
-    mach-nix = {
-      url = "github:DavHau/mach-nix?ref=3.4.0";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
-      };
-    };
+    mach-nix.url = "mach-nix/3.4.0";
   };
-  outputs = { self, nixpkgs, flake-utils, mach-nix, ...}@inputs:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = nixpkgs.legacyPackages."${system}";
-        mach-nix = mach-nix.lib."${system}";
-      in {
-        devShell = mach-nix.mkPythonShell {
-          requirements = ''
-            pillow
-            numpy
-            requests
-          '';
-        };
-    });
+
+  outputs = {self, nixpkgs, mach-nix }@inp:
+    let
+      l = nixpkgs.lib // builtins;
+      supportedSystems = [ "x86_64-linux" "aarch64-darwin" ];
+      forAllSystems = f: l.genAttrs supportedSystems
+        (system: f system (import mach-nix.inputs.nixpkgs {inherit system;}));
+    in
+    {
+      # enter this python environment by executing `nix shell .`
+      defaultPackage = forAllSystems (system: pkgs: mach-nix.lib."${system}".mkPython {
+        requirements = ''
+          pillow
+          numpy
+          requests
+        '';
+      });
+    };
 }
+
 ```
 
 ### mkPython / mkPythonShell
