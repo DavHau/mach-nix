@@ -74,7 +74,7 @@ in
       l = nixpkgs.lib // builtins;
       supportedSystems = [ "x86_64-linux" "aarch64-darwin" ];
       forAllSystems = f: l.genAttrs supportedSystems
-        (system: f system (import mach-nix.inputs.nixpkgs {inherit system;}));
+        (system: f system (import nixpkgs {inherit system;}));
     in
     {
       # enter this python environment by executing `nix shell .`
