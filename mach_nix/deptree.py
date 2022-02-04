@@ -47,7 +47,12 @@ def remove_circles_and_print(pkgs: Iterable[ResolvedPkg], nixpkgs: NixpkgsIndex)
 
     edges = set()
     for p in pkgs:
-        for child in p.build_inputs + p.prop_build_inputs:
+        build_inputs, prop_build_inputs = [], []
+        if p.build_inputs is not None:
+            build_inputs = p.build_inputs
+        if p.prop_build_inputs is not None:
+            prop_build_inputs = p.prop_build_inputs
+        for child in build_inputs + prop_build_inputs:
             edges.add((p.name, child))
     G = nx.DiGraph(sorted(list(edges)))
 
@@ -79,7 +84,13 @@ def remove_circles_and_print(pkgs: Iterable[ResolvedPkg], nixpkgs: NixpkgsIndex)
             if node_name in self.visited:
                 return []
             self.visited.add(node_name)
-            return list(set(indexed_pkgs[node_name].build_inputs + indexed_pkgs[node_name].prop_build_inputs))
+            p = indexed_pkgs[node_name]
+            build_inputs, prop_build_inputs = [], []
+            if p.build_inputs is not None:
+                build_inputs = p.build_inputs
+            if p.prop_build_inputs is not None:
+                prop_build_inputs = p.prop_build_inputs
+            return list(set(build_inputs + prop_build_inputs))
 
     for root in roots:
         limiter = Limiter()

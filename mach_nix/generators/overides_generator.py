@@ -37,7 +37,9 @@ class OverridesGenerator(ExpressionGenerator):
         pkgs = dict(sorted(((p.name, p) for p in pkgs), key=lambda x: x[1].name))
         return self._gen_python_env(pkgs)
 
-    def _gen_imports(self, all_pnames):
+    def _gen_imports(self, pkgs):
+        all_pnames = list(pkgs.keys())
+        pkgsJSON = json.dumps({pname: pkg.toDict() for pname, pkg in pkgs.items()})
         out = f"""
             {{ pkgs, python, ... }}:
             with builtins;
@@ -52,6 +54,7 @@ class OverridesGenerator(ExpressionGenerator):
               pypiFetcher = import pypi_fetcher_src {{ inherit pkgs; }};
               fetchPypi = pypiFetcher.fetchPypi;
               fetchPypiWheel = pypiFetcher.fetchPypiWheel;
+              pkgsData = fromJSON ''{pkgsJSON}'';
               isPyModule = pkg:
                 isAttrs pkg && hasAttr "pythonModule" pkg;
               normalizeName = name: (replaceStrings ["_"] ["-"] (toLower name));
@@ -73,18 +76,22 @@ class OverridesGenerator(ExpressionGenerator):
                 "propagatedBuildInputs"
                 "buildInputs"
               ];
-              pnamesEnv =
-                genAttrs
-                  [ "{'" "'.join(all_pnames)}" ]
-                  (pname: null);
-              removeUnwantedPythonDeps = pname: inputs:
-                filter
-                  (dep:
-                    if ! isPyModule dep || pnamesEnv ? "${{normalizeName (get_pname dep)}}" then
-                      true
-                    else
-                      trace "removing dependency ${{dep.name}} from ${{pname}}" false)
-                  inputs;
+              removeUnwantedPythonDeps = pythonSelf: pname: inputs:
+                # Do not remove any deps if provider is nixpkgs and actual dependencies are unknown.
+                # Otherwise we risk removing dependencies which are needed.
+                if pkgsData."${{pname}}".provider_info.provider == "nixpkgs"
+                    &&
+                    (pkgsData."${{pname}}".build_inputs == null
+                        || pkgsData."${{pname}}".prop_build_inputs == null) then
+                  inputs
+                else
+                  filter
+                    (dep:
+                      if ! isPyModule dep || pkgsData ? "${{normalizeName (get_pname dep)}}" then
+                        true
+                      else
+                        trace "removing dependency ${{dep.name}} from ${{pname}}" false)
+                    inputs;
               updatePythonDeps = newPkgs: pkg:
                 if ! isPyModule pkg then pkg else
                 let
@@ -100,7 +107,7 @@ class OverridesGenerator(ExpressionGenerator):
                 in
                   newP;
               updateAndRemoveDeps = pythonSelf: name: inputs:
-                removeUnwantedPythonDeps name (map (dep: updatePythonDeps pythonSelf dep) inputs);
+                removeUnwantedPythonDeps pythonSelf name (map (dep: updatePythonDeps pythonSelf dep) inputs);
               cleanPythonDerivationInputs = pythonSelf: name: oldAttrs:
                 mapAttrs (n: v: if elem n depNamesAll then updateAndRemoveDeps pythonSelf name v else v ) oldAttrs;
               override = pkg:
@@ -317,10 +324,16 @@ class OverridesGenerator(ExpressionGenerator):
             if pkg.name not in overrides_keys:
                 continue
             overlays_required = True
-            build_inputs_local = {b for b in pkg.build_inputs if b in overrides_keys}
-            build_inputs_nixpkgs = set(pkg.build_inputs) - build_inputs_local
-            prop_build_inputs_local = {b for b in pkg.prop_build_inputs if b in overrides_keys}
-            prop_build_inputs_nixpkgs = set(pkg.prop_build_inputs) - prop_build_inputs_local
+            build_inputs, prop_build_inputs = pkg.build_inputs, pkg.prop_build_inputs
+            if build_inputs is None:
+              build_inputs = []
+            if prop_build_inputs is None:
+              prop_build_inputs = []
+
+            build_inputs_local = {b for b in build_inputs if b in overrides_keys}
+            build_inputs_nixpkgs = set(build_inputs) - build_inputs_local
+            prop_build_inputs_local = {b for b in prop_build_inputs if b in overrides_keys}
+            prop_build_inputs_nixpkgs = set(prop_build_inputs) - prop_build_inputs_local
             # convert build inputs to string
             build_inputs_str = self._gen_build_inputs(build_inputs_local, build_inputs_nixpkgs, ).strip()
             # convert prop build inputs to string
@@ -394,8 +407,7 @@ class OverridesGenerator(ExpressionGenerator):
 
     def _gen_python_env(self, pkgs: Dict[str, ResolvedPkg]):
         overrides_keys = {p.name for p in pkgs.values()}
-        all_pnames = list(pkgs.keys())
-        out = self._gen_imports(all_pnames) + self._gen_overrides(pkgs, overrides_keys)
+        out = self._gen_imports(pkgs) + self._gen_overrides(pkgs, overrides_keys)
         python_with_packages = f"""
             in
             {{

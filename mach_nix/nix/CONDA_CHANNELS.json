@@ -1,8 +1,12 @@
 {
   "url": "https://github.com/davhau/conda-channels",
-  "rev": "21371cb199615f3e3ff468fe8c756e30fe74ce45",
-  "date": "2020-11-20T14:00:42+00:00",
-  "sha256": "",
+  "rev": "da2ce5d116065f00e1fdfd144dbafbb8ae727bd3",
+  "date": "2022-02-03T06:37:09+00:00",
+  "path": "/nix/store/f22n3yv11dhxd1hrclf6v4045dcja4vb-conda-channels",
+  "sha256": "12yivv4a3xkml4m8qyb79aw6sfg6igarknvxggjy1r2snc57krvs",
+  "fetchLFS": false,
   "fetchSubmodules": false,
-  "indexSha256": "0grj7v376cwszqcb53dmbgbj53wmi5pzvxrcifmxmmh6r845bid7"
+  "deepClone": false,
+  "leaveDotGit": false,
+  "indexSha256": "5cc83b205f3358fc0ba7c96cc36a29e568a0a01df23b78337a134194e358d1c0"
 }

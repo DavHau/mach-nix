@@ -37,6 +37,10 @@ class Provider(resolvelib.providers.AbstractProvider):
 
     def get_dependencies(self, candidate):
         install_requires, setup_requires = self.provider.get_pkg_reqs(candidate)
+        if install_requires is None:
+            install_requires = []
+        if setup_requires is None:
+            setup_requires = []
         deps = install_requires + setup_requires
         return deps
 
@@ -56,12 +60,15 @@ class ResolvelibResolver(Resolver):
             candidate = result.mapping[name]
             ver = candidate.ver
             install_requires, setup_requires = self.deps_provider.get_pkg_reqs(candidate)
-            prop_build_inputs = list(filter(
-                lambda name: not name.startswith('-'),
-                list({req.key for req in install_requires})))
-            build_inputs = list(filter(
-                lambda name: not name.startswith('-'),
-                list({req.key for req in setup_requires})))
+            build_inputs, prop_build_inputs = None, None
+            if install_requires is not None:
+                prop_build_inputs = list(filter(
+                    lambda name: not name.startswith('-'),
+                    list({req.key for req in install_requires})))
+            if setup_requires is not None:
+                build_inputs = list(filter(
+                    lambda name: not name.startswith('-'),
+                    list({req.key for req in setup_requires})))
             is_root = name in result.graph._forwards[None]
             nix_py_pkgs.append(ResolvedPkg(
                 name=name,
