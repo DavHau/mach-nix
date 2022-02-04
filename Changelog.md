@@ -1,4 +1,4 @@
-# 3.4.0 (29 Jan 2022)
+# 3.4.0 (04 Feb 2022)
 aarch64-darwin, nixpkgs provider improvements, bugfixes
 
 ### Features
