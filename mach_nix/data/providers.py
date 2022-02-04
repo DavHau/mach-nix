@@ -266,7 +266,7 @@ class NixpkgsDependencyProvider(DependencyProviderBase):
             return self.sdist_provider.get_pkg_reqs(c)
         except PackageNotFound:
             try:
-                # wheel provider onyl knows install deps
+                # wheel provider only knows install deps
                 return self.wheel_provider.get_pkg_reqs(c)[0], None
             except:
                 return None, None
