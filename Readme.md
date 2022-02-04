@@ -1,9 +1,9 @@
 <p align="center">
-<img width="200" src="https://gist.githubusercontent.com/DavHau/9a66b8c66b798254b714cc3ca44ffda8/raw/ef6b947b3753425118c730a5dfe81084c1bcfe86/logo_small.jpg">  
+<img width="200" src="https://gist.githubusercontent.com/DavHau/9a66b8c66b798254b714cc3ca44ffda8/raw/ef6b947b3753425118c730a5dfe81084c1bcfe86/logo_small.jpg">
 </p>
 
 ## mach-nix - Create highly reproducible python environments
-Mach-nix makes it easy to create and share reproducible python environments or packages. Existing tools for python package management often suffer from reproducibility and complexity issues, requiring a multitude of tools and additional virtualization layers to work sufficiently. Mach-nix aims to solve these problems by providing a simple way to use nix, a revolutionary build system which is known to achieve great reproducibility and portability besides [many other advantages](https://nixos.org/features.html). 
+Mach-nix makes it easy to create and share reproducible python environments or packages. Existing tools for python package management often suffer from reproducibility and complexity issues, requiring a multitude of tools and additional virtualization layers to work sufficiently. Mach-nix aims to solve these problems by providing a simple way to use nix, a revolutionary build system which is known to achieve great reproducibility and portability besides [many other advantages](https://nixos.org/features.html).
 
 ## Who is this meant for?
  - Users without nix experience, who want to maintain python environments for their projects which are reliable and easy to reproduce.
@@ -57,7 +57,7 @@ Table of Contents
 
 ### Installation
 ```shell
-nix-env -if https://github.com/DavHau/mach-nix/tarball/3.3.0 -A mach-nix
+nix-env -if https://github.com/DavHau/mach-nix/tarball/3.4.0 -A mach-nix
 ```
 or, if you prefer `nix-shell`:
 
@@ -66,11 +66,11 @@ or, if you prefer `nix-shell`:
   ```shell
   nix shell github:DavHau/mach-nix
   ```
-  
+
 + otherwise:
-  
+
   ```shell
-  nix-shell -p '(callPackage (fetchTarball https://github.com/DavHau/mach-nix/tarball/3.3.0) {}).mach-nix'
+  nix-shell -p '(callPackage (fetchTarball https://github.com/DavHau/mach-nix/tarball/3.4.0) {}).mach-nix'
   ```
 
 ---
@@ -82,7 +82,7 @@ This will generate the python environment into `./env`. To activate it, execute:
 ```bash
 nix-shell ./env
 ```
-The `./env` directory contains a portable and reproducible definition of your python environment. To reuse this environment on another system, just copy the `./env` directory 
+The `./env` directory contains a portable and reproducible definition of your python environment. To reuse this environment on another system, just copy the `./env` directory
 and use `nix-shell` to activate it.
 
 ---
@@ -102,7 +102,7 @@ You can call mach-nix directly from a nix expression
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix";
-    ref = "refs/tags/3.3.0";
+    ref = "refs/tags/3.4.0";
   }) {};
 in
 mach-nix.mkPython {
@@ -133,7 +133,7 @@ Functions for building python packages or applications:
 **buildPythonPackage** and **buildPythonApplication** accept the same arguments as their equally named partners in nixpkgs, plus the arguments of **mkPython**. If name/version/requirements arguments are omitted, mach-nix attempts to detect them automatically. See [./examples.md](/examples.md).
 
 _Note that some dependency declaration formats are missing. For a roadmap, please refer to issue [#132](https://github.com/DavHau/mach-nix/issues/132)._
- 
+
 **mkPython** and all other **mk...** functions take exactly the following arguments:
 
 #### Required Arguments:
@@ -147,13 +147,13 @@ _Note that some dependency declaration formats are missing. For a roadmap, pleas
  - **overridesPost** (list): (advanced) list of pythonOverrides to apply after the mach-nix overrides. Use this to fixup packages.
  - **tests** (bool): Whether to enable tests (default: false)
  - **_providerDefaults** (set): builtin provider defaults. Disable them by passing {}
- 
+
 #### Configure Providers
 **Providers** allow you to configure the origin for your packages on a granular basis.
 
 The following providers are available:
-  1. **conda**: Provides packages from anaconda.org. Those packages can contain binaries. Some benefits of anaconda are:  
-      - Different build variants for packages  
+  1. **conda**: Provides packages from anaconda.org. Those packages can contain binaries. Some benefits of anaconda are:
+      - Different build variants for packages
       - Provides all system dependencies for packages
   1. **wheel**: Provides all linux compatible wheel releases from pypi. If wheels contain binaries, Mach-nix patches them via patchelf to ensure reproducibility. Wheels are very quick to install and work quite reliable.
   1. **sdist**: Provides all setuptools compatible packages from pypi. It still uses nix for building, which allows it to be tweaked in a flexible way. But in some cases problems can occur, if there is not sufficient information available to determine required system depedencies.
@@ -184,8 +184,8 @@ Mach-nix will always satisfy the **requirements.txt** fully with the configured 
 If a mach-nix build fails, most of the time it can be resolved by just switching the provider of a package, which is simple and doesn't require writing a lot of nix code. For some more complex scenarios, checkout the [./examples.md](/examples.md).
 
 ## Why nix?
-Usually people rely on multiple layers of different package management tools for building their software environments. These tools are often not well integrated with each other and don't offer strong reproducibility. Example: You are on debian/ubuntu and use APT (layer 1) to install python. Then you use venv (layer 2) to overcome some of your layer 1 limitations (not being able to have multiple versions of the same package installed) and afterwards you are using pip (layer 3) to install python packages. You notice that even after pinning all your requirements, your environment behaves differently on your server or your colleagues machine because their underlying system differs from yours. You start using docker (layer 4) to overcome this problem which adds extra complexity to the whole process and gives you some nasty limitations during development. You need to configure your IDE's docker integration and so on. Despite all the effort you put in, still the problem is not fully solved and from time to time your build pipeline just breaks and you need to fix it manually. 
- 
+Usually people rely on multiple layers of different package management tools for building their software environments. These tools are often not well integrated with each other and don't offer strong reproducibility. Example: You are on debian/ubuntu and use APT (layer 1) to install python. Then you use venv (layer 2) to overcome some of your layer 1 limitations (not being able to have multiple versions of the same package installed) and afterwards you are using pip (layer 3) to install python packages. You notice that even after pinning all your requirements, your environment behaves differently on your server or your colleagues machine because their underlying system differs from yours. You start using docker (layer 4) to overcome this problem which adds extra complexity to the whole process and gives you some nasty limitations during development. You need to configure your IDE's docker integration and so on. Despite all the effort you put in, still the problem is not fully solved and from time to time your build pipeline just breaks and you need to fix it manually.
+
 In contrast to that, the nix package manager provides a from ground up different approach to build software systems. Due to its purely functional approach, nix doesn't require additional layers to make your software reliable. Software environments built with nix are known to be reproducible and portable, which makes many processes during development and deployment easier. Mach-nix leverages that potential by abstracting away the complexity involved in building python environments with nix. Under the hood it just generates and evaluates nix expressions for you.
 
 ## How does mach-nix work?
@@ -194,8 +194,8 @@ The general mechanism can be broken down into [Dependency resolution](#dependenc
 ###  Dependency resolution
 Mach-nix contains a dependency graph of nearly all python packages available on pypi.org. This allows mach-nix to resolve dependencies offline within seconds.
 
-The dependency graph data can be found here: https://github.com/DavHau/pypi-deps-db  
-The dependency graph is updated on a daily basis by this set of tools: https://github.com/DavHau/pypi-crawlers  
+The dependency graph data can be found here: https://github.com/DavHau/pypi-deps-db
+The dependency graph is updated on a daily basis by this set of tools: https://github.com/DavHau/pypi-crawlers
 
 Despite this graph being updated constantly, mach-nix always pins one specific version of the graph to ensure reproducibility.
 
@@ -208,15 +208,15 @@ After all python dependencies and their providers have been determined by the de
 
 Individual python packages are either built by overriding an existing package definition from nixpkgs, or by creating the package from scratch via nixpkgs' `buildPythonPackage`. Which strategy is used depends on the provider of a package and if it is already packaged in nixpkgs.
 
-Using nixpkgs as a base has the following benefits:  
-1. **Non-python Dependencies**:  
+Using nixpkgs as a base has the following benefits:
+1. **Non-python Dependencies**:
    Many python packages have non-python dependencies like various C libraries. Mach-nix can resolve those dependencies by taking the build inputs from python package definitions in nixpkgs.
 1. **Special features**:
    Some python packages can be built with special features, like for example SSE/AVX/FMA support in tensorflow. The nixpkgs versions of those python packages often include these features.
-1. **Nix specific fixes**:  
+1. **Nix specific fixes**:
    Some python packages might need some additional modification to work with nix. Those are already done in nixpkgs.
-   
-If a package is built by overriding nixpkgs, the following attributes are modified:  
+
+If a package is built by overriding nixpkgs, the following attributes are modified:
    - `src`: updated to the required version
    - `name`: modified to match the new version
    - `buildInputs`: replaced with mach-nix determined python deps

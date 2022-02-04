@@ -1,3 +1,33 @@
+# 3.4.0 (29 Jan 2022)
+aarch64-darwin, nixpkgs provider improvements, bugfixes
+
+### Features
+ - support conda packages
+ - support wheels for apple m1 (aarch64-darwin)
+
+### Changes
+ - remove support for installing mach-nix via pip
+ - updated inputs nixpkgs, pypi-deps-db, conda-channels
+
+### Improvements
+ - support for PEP600 wheels of format: 'manylinux_${GLIBCMAJOR}_${GLIBCMINOR}'
+ - respect 'python_requires' for sdist packages
+ - PEP440 compatible pre-release version handling
+ - improve handling of python packages from nixpkgs
+
+### Fixes
+ - fix problem where required dependencies were removed from nixpkgs python modules.
+ - prevent package collisions with dependencies from `packagesExtra`
+ - fix version comparison of versions with arbitrary length
+ - various fixes for MacOS
+ - various fixes for requirements parsing
+ - various other fixes
+
+### Package Fixes
+ - libwebp-base: remove colliding binaries in conda package
+ - pyqt5: fix missing wrapQtAppsHook
+
+
 # 3.3.0 (22 May 2021)
 bugfixes, improvements
 
@@ -12,7 +42,7 @@ bugfixes, improvements
  - Mach-nix (used via flakes) will now throw an error if the selected nixpkgs version is newer than the dependency DB since this can cause conflicts in the resulting environment.
  - When used via flakes, it was impossible to select the python version because the import function is not used anymore. Now `python` can be passed to `mkPython` alternatively.
  - For the flakes cmdline api, collisions are now ignored by default
- - The simplified override interface did not deal well with non-existent values. 
+ - The simplified override interface did not deal well with non-existent values.
     - Now the `.add` directive automatically assumes an empty list/set/string when the attribute to be extended doesn't exist.
     - Now the `.mod` directive will pass `null` to the given function if the attribute to modify doesn't exist instead.
 
@@ -72,7 +102,7 @@ flakes lib, cli improvements, bugfixes
  - mkDockerImage produced corrupt images.
  - non-python packages passed via `packagesExtra` were not available during runtime. Now they are added to the `PATH`.
  - remove `<nixpkgs>` impurity in the dependency extractor used in buildPythonPackage.
- 
+
 
 
 # 3.0.2 (27 Oct 2020)
@@ -120,16 +150,16 @@ in
 ```
 
 ### Features
-  - Flakes gateway to pypi. Get a nix shell with arbitrary python packages. Example:  
+  - Flakes gateway to pypi. Get a nix shell with arbitrary python packages. Example:
    `nix develop github:davhau/mach-nix#shellWith.requests.tensorflow.aiohttp`
-- or a docker image  
+- or a docker image
   `nix build github:davhau/mach-nix#dockerImageWith.package1.package2 ...`
-- or a python derivation  
+- or a python derivation
   `nix build github:davhau/mach-nix#with.package1.package2 ...`
- - New output formats:  
-   * **mkDockerImage** -> produces layered docker image containing a python environment  
-   * **mkNixpkgs** -> returns nixpkgs which is conform to the given requirements   
-   * **mkOverlay** -> returns an overlay function to make nixpkgs conform to the given requirements  
+ - New output formats:
+   * **mkDockerImage** -> produces layered docker image containing a python environment
+   * **mkNixpkgs** -> returns nixpkgs which is conform to the given requirements
+   * **mkOverlay** -> returns an overlay function to make nixpkgs conform to the given requirements
    * **mkPythonOverrides** -> produces pythonOverrides to make python conform to the given requirements.
 
  - New functions **fetchPypiSdist** and **fetchPypiWheel**. Example:
@@ -145,13 +175,13 @@ in
     ```
 
  - R support (experimental): R packages can be passed via `packagesExtra`. Mach-nix will setup rpy2 accordingly. See [usage example](https://github.com/DavHau/mach-nix/blob/master/examples.md#r-and-python).
- 
+
  - Non-python packages can be passed via `packagesExtra` to include them into the environment.
- 
+
   the target platform's python interpreter was used to generate the nix expression, resulting in a failing build
 ### Improvements
  - rework the logic for inheriting dependencies from nixpkgs
- - fixes.nix: allow alternative mod function signature with more arguments:  
+ - fixes.nix: allow alternative mod function signature with more arguments:
  `key-to-override.mod = pySelf: oldAttrs: oldVal: ...;`
  - allow derivations passed as `src` argument to buildPythonPackage
  - stop inheriting attribute names from nixpkgs, instead use normalized package names
@@ -168,7 +198,7 @@ in
  - wheel provider picked wheels incompatible to python version
  - unwanted python buildInput inheritance when overriding nixpkgs
  - properly parse setup/install_requires if they are strings instead of lists
- 
+
 ### Package Fixes
  - rpy2: sdist: remove conflicting patch for versions newer than 3.2.6
  - pytorch from nixpkgs was not detected as `torch`
@@ -184,7 +214,7 @@ bugfixes
  - null value error when inheriting passthru for disabled packages
  - Wrong provider detected for `sdist` packages in fixes.nix
  - overrides from fixes.nix didn't apply for `buildPythonPackage`
-  
+
 ### Package Fixes
  - pip: allow from `sdist` provider
  - pip: remove `reproducible.patch` for versions < 20.0
@@ -199,13 +229,13 @@ Global conditional overrides, simple overrides for buildPythonPackage, improved 
  - Inherit passthru from nixpkgs: Reduces risk of missing attributes like `numpy.blas`.
  - Allow passing a string to the `python` argument of mkPython: Values like, for example, `"python38"` are now accepted in which case `pkgs.python38` will be used. The intention is to reduce the risk of accidentally mixing multiple nixpkgs versions.
  - Improved error handling while extracting metadata from python sources in buildPythonPackage.
- 
+
 ### Fixes
  - Selecting `extras` when using `buildPythonPackage` didn't have any effect
  - The `passthru` argument for `buildPythonPackage` was ignored
  - The `propagatedBuildInputs` argument for `buildPythonPackage` was ignored
  - Wheels with multiple python versions in their filename like `PyQt5-...-cp35.cp36.cp37.cp38-...whl` were not selected correctly.
- 
+
 ### Package Fixes:
   - tensorflow: collision related to tensorboard
   - orange3: broken .so file caused by fixupPhase (probably due to shrinking)
@@ -215,7 +245,7 @@ Global conditional overrides, simple overrides for buildPythonPackage, improved 
 simplified override system, autodetect requirements, improved success rate
 
 ### Features
- - Simplified generic override system via `_` (underscore) argument for `mkPython`.  
+ - Simplified generic override system via `_` (underscore) argument for `mkPython`.
    Example: `_.{package}.buildInputs.add = [...]`
  - `buildPythonPackage` now automatically detects requirements. Therefore the `requrements` argument becomes optional.
  - `buildPythonPackage` now automatically detects package `name` and `version`. Therefore those attributes become optional.
@@ -229,7 +259,7 @@ simplified override system, autodetect requirements, improved success rate
  - Fix installation of the mach-nix tool via pip. (requirements were missing)
  - packages which use a non-normalized version triggered an evaluation error since mach-nix tried to reference their source via normalized version.
  - wheels removed from pypi were not removed from the dependency graph which could result in environments failing to build
- 
+
 
 # 2.2.2 (17 Aug 2020)
 
@@ -238,7 +268,7 @@ simplified override system, autodetect requirements, improved success rate
  - Problem generating error message for resolution impossible errors
  - `buildPythonPackage` of mach-nix failed if arguments like `pkgs` were passed.
  - When overriding packages, mach-nix now falls back to using `overrideAttrs` if `overridePythonAttrs` is not available.
- 
+
 ### Package Fixes:
  - pip: installation failed. Fixed by forcing `nixpkgs` provider
  - gdal: building from sdist doesn't work. Fixed by forcing `nixpkgs` provider
@@ -257,7 +287,7 @@ Handle circular dependencies, fix python 3.8 wheels, improve error message
 ### Fixes
  - Fix crash on circular dependencies.
  - Python 3.8 wheels have abi tag cp38, not cp38m. This was not considered before which prevented finding suitable manylinux wheels for python 3.8
- 
+
 ### Development
  - Added integration tests under [./tests/](/tests/)
 
@@ -267,15 +297,15 @@ Improved success rate, MacOS support, bugfixes, optimizations
 
 ### Features
  - Improved selection of wheel releases. MacOS is now supported and architectures besides x86_64 should be handled correctly.
- - Whenever mach-nix resolves dependencies, a visualization of the resulting dependency tree is printed on the terminal. 
+ - Whenever mach-nix resolves dependencies, a visualization of the resulting dependency tree is printed on the terminal.
  - The dependency DB is now accessed through a caching layer which reduces the resolver's CPU time significantly for larger environments.
  - The python platform context is now generated from the nix build environment variable `system`. This should decrease the chance of impurities during dependency resolution.
- 
+
 ### Fixes
  - The requires_python attribute of wheels was not respected. This lead to failing builds especially for older python versions. Now `requires_python` is part of the dependency graph and affects resolution.
  - Detecting the correct package name for python packages in nixpkgs often failed since the attribute names don't follow a fixed schema. This lead to a handful of different errors in different situations. Now the package names are extracted from the pypi `url` inside the `src` attribute which is much more reliable. For packages which are not fetched from pypi, the `pname` attribute is used as fallback.
  - Fixed bug which lead to the error `attribute 'sdist' missing` if a package from the nixpkgs provider was used which doesn't publish it's source on pypi. (For example `tensorflow`)
- 
+
 ### Other Changes
  - Mach-nix now uses a revision of the nixpkgs-unstable branch instead of nixos-20.03 as base fo the tool and the nixpkgs provider.
  - Updated revision of the dependency DB
@@ -316,12 +346,12 @@ Improves build-time closure, build success rate and fixes disable_checks option.
  - **Extras support**: All providers now fully support python [extras](https://www.python.org/dev/peps/pep-0508/#extras). That means requirements like for example '`requests[security]`' will be correctly resolved.
 
 ### Nix Interface changes:
- - Removed:  
+ - Removed:
     - **mkPythonExpr**: removed in favor of `machNixFile` and `machNix`
- - Added:  
+ - Added:
     - **machNixFile** which generates a nex expresison
     - **machNix** which evaluates the generated nix expression to get `overrides` and `select_pkgs`
- - Changed:  
+ - Changed:
     - **mkPython**:
         - Removed arguments:
             - `python_attr` in favor if `python`

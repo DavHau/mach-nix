@@ -46,7 +46,7 @@ every mach-nix expression should begin like this:
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix";
-    ref = "refs/tags/3.3.0";
+    ref = "refs/tags/3.4.0";
   }) {
     # optionally bring your own nixpkgs
     # pkgs = import <nixpkgs> {};
@@ -69,7 +69,7 @@ in
     nixpkgs.url = "github:nixos/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
     mach-nix = {
-      url = "github:DavHau/mach-nix?ref=3.3.0";
+      url = "github:DavHau/mach-nix?ref=3.4.0";
       inputs = {
         nixpkgs.follows = "nixpkgs";
         flake-utils.follows = "flake-utils";
@@ -198,7 +198,7 @@ mach-nix.mkPython {
   _.{package}.buildInputs = [...];             # replace buildInputs
   _.{package}.buildInputs.add = [...];         # add buildInputs
   _.{package}.buildInputs.mod =                # modify buildInputs
-      oldInputs: filter (inp: ...) oldInputs; 
+      oldInputs: filter (inp: ...) oldInputs;
 
   _.{package}.patches = [...];                 # replace patches
   _.{package}.patches.add = [...];             # add patches
@@ -264,7 +264,7 @@ mach-nix.mkPython {
   '';
 
   # force tensorflow to be taken from nixpkgs
-  providers.tensorflow = "nixpkgs"; 
+  providers.tensorflow = "nixpkgs";
 }
 ```
 This only works if the restrictions in `requirements.txt` allow for the tensorflow version from nixpkgs.
@@ -305,15 +305,15 @@ mach-nix.mkPython rec {
 }
 ```
 
-## Jupyter 
+## Jupyter
 
 ### ...using jupyterWith + mach-nix
-In this example, mach-nix is used to resolve our python dependencies and provide them to [jupyterWith](https://github.com/tweag/jupyterWith) which is a Nix-based framework for the definition of declarative and reproducible Jupyter environments. 
+In this example, mach-nix is used to resolve our python dependencies and provide them to [jupyterWith](https://github.com/tweag/jupyterWith) which is a Nix-based framework for the definition of declarative and reproducible Jupyter environments.
 ```nix
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix";
-    ref = "refs/heads/3.3.0";  # update this version
+    ref = "refs/heads/3.4.0";  # update this version
   }) {
     python = "python37";
   };
@@ -407,8 +407,8 @@ docker run --rm -it -p 8888:8888 -v $HOME:/mnt jupyterlab
 ```
 
 ## R and Python
-The following is an example for a Python environment mixed with R packages.  
-R packages can be added via `packagesExtra`.  
+The following is an example for a Python environment mixed with R packages.
+R packages can be added via `packagesExtra`.
 If mach-nix finds R packages inside `packagesExtra`, it will automatically include `rpy2` and add the selected R packages to its buildInputs.
 To get a list of available R packages, execute: `echo "builtins.attrNames(import <nixpkgs> {}).rPackages" | nix repl`
 
@@ -426,8 +426,8 @@ mach-nix.mkPython {
 
 
 ## Raspberry PI / aarch64 SD Image
-This example builds an aarch64 sd image via emulator. For this to work, binfmt support for aarch64 must be installed first. (On NixOS simply set `boot.binfmt.emulatedSystems = [ "aarch64-linux" ]`)  
-For the SD-image, create a configuration.nix file which adds the mach-nix tool and some default python packages to the system environment.  
+This example builds an aarch64 sd image via emulator. For this to work, binfmt support for aarch64 must be installed first. (On NixOS simply set `boot.binfmt.emulatedSystems = [ "aarch64-linux" ]`)
+For the SD-image, create a configuration.nix file which adds the mach-nix tool and some default python packages to the system environment.
 **configuration.nix**:
 ```nix
 { config, lib, pkgs, ... }:
@@ -474,7 +474,7 @@ NIXOS_CONFIG=$PWD/configuration.nix nix build -f default.nix -I nixpkgs=channel:
 
 ### collision between /nix/store/X and /nix/store/Y
 In general, there can be two different reasons for this error:
-#### 1. Environment contains different versions of same package. 
+#### 1. Environment contains different versions of same package.
 This is the case, if both store paths, mentioned by the error message, **contain the same package name**. For example:
 ```
 collision between
@@ -493,9 +493,9 @@ collision between
 and
 /nix/store/2cfyjnic605mjr5j7zck88gk7bkqwpim-python3.8-opencensus-0.7.12/lib/python3.8/site-packages/opencensus/common/__pycache__/__init__.cpython-38.pyc
 ```
-In this example, both packages `opencensus-context` and `opencensus` contain a file with the exact same import path `[...]/opencensus/common/__pycache__/__init__.cpython-38.pyc`.  
-Would you be installing these two packages via pip, then the later installed package would overwrite the file of the earlier installed package. This leads to undefined behavior, since the outcome dependes on the order of installation which is not necessarily the same across different installations.  
-Still, those collisions are common among some python packages, since pip does not raise an error when this happens, and just blindly overwrites files, leaving package maintainers in the dark about the problem.  
+In this example, both packages `opencensus-context` and `opencensus` contain a file with the exact same import path `[...]/opencensus/common/__pycache__/__init__.cpython-38.pyc`.
+Would you be installing these two packages via pip, then the later installed package would overwrite the file of the earlier installed package. This leads to undefined behavior, since the outcome dependes on the order of installation which is not necessarily the same across different installations.
+Still, those collisions are common among some python packages, since pip does not raise an error when this happens, and just blindly overwrites files, leaving package maintainers in the dark about the problem.
 It should be in the best interest of the packages maintainers to remove these collisions and get rid of undeclared behavior. Therefore it might be a good idea to report the collision issue upstream.
 To fix the immediate error with your current mach-nix environment, you have two options:
 
