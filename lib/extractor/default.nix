@@ -114,8 +114,8 @@ let
         echo "extracting metadata for python${v}"
         ${extract-cmd {
           inherit python src;
-          providers = { _defaults = "wheel,sdist"; };
-          _providerDefaults = {};
+          providers = {};
+          _providerDefaults = { _default = "wheel,sdist"; setuptools = "nixpkgs"; wheel = "nixpkgs"; };
         } "$out/python${v}.json"} &> $out/python${v}.log
       ''
     ))}
