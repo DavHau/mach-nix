@@ -25,8 +25,13 @@ class Provider(resolvelib.providers.AbstractProvider):
     def identify(self, requirement_or_candidate):
         return requirement_or_candidate.name
 
-    def get_preference(self, resolution, candidates, information):
-        return len(candidates)
+    def get_preference(
+        self, identifier, resolutions, candidates, information, backtrack_causes
+    ):
+        # This logic could be improved, for example to prefer the cause of backtracking.
+        # See https://github.com/pypa/pip/blob/main/src/pip/_internal/resolution/resolvelib/provider.py
+        # for the implementation in pip.
+        return sum(1 for _ in candidates[identifier])
 
     def find_matches(self, identifier, requirements, incompatibilities):
         return [

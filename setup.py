@@ -25,7 +25,7 @@ setup(
         'distlib == 0.3.3',
         'networkx',
         'packaging >= 19.0',
-        'resolvelib == 0.6.0',
+        'resolvelib == 0.8.1',
         'toml',
         'tree-format == 0.1.2',
     ],
