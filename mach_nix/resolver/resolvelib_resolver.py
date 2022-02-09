@@ -22,14 +22,18 @@ class Provider(resolvelib.providers.AbstractProvider):
     def get_base_requirement(self, candidate):
         return Requirement("{}=={}".format(candidate.name, candidate.ver))
 
-    def identify(self, dependency):
-        return dependency.name
+    def identify(self, requirement_or_candidate):
+        return requirement_or_candidate.name
 
     def get_preference(self, resolution, candidates, information):
         return len(candidates)
 
-    def find_matches(self, reqs):
-        return self.provider.find_matches(reqs)
+    def find_matches(self, identifier, requirements, incompatibilities):
+        return [
+            candidate
+            for candidate in self.provider.find_matches(list(requirements[identifier]))
+            if candidate not in incompatibilities.get(identifier, ())
+        ]
 
     def is_satisfied_by(self, requirement, candidate: Candidate):
         res = bool(len(list(filter_versions([candidate.ver], requirement))))
