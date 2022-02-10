@@ -103,7 +103,6 @@
                 # busybox does).
                 ++ pkgs.lib.optionals (stdenv.isDarwin) [
                   coreutils
-                  (pkgs.runCommand "bin-sh" {} "mkdir -p $out/bin && ln -s ${pkgs.bash}/bin/bash $out/bin/sh")
                 ])}"
 
                 export PYPI_DATA=${inp.pypi-deps-db}
@@ -112,8 +111,10 @@
                   providers = { _default = [ "conda/main" "conda/r" "conda/conda-forge"]; };
                 }).condaChannelsJson}
 
+                # Use "python -m pytest" to add current directory to python path.
+                # This ensures that mach_nix is importable.
                 echo "executing unit tests"
-                pytest -n $(nproc) -x ${./.}
+                python -m pytest -n ''${WORKERS:-$(nproc)} -x ${./.}
               '');
             };
 
