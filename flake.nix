@@ -132,19 +132,18 @@
                 ])}"
 
                 cd tests
-                echo "executing evaluation tests (without conda)"
+                echo "executing evaluation tests"
                 ./execute.sh
-
-                echo "executing evaluation tests (with conda)"
-                CONDA_TESTS=y ./execute.sh
               '');
             };
 
             apps.tests-all = {
               type = "app";
               program = toString (pkgs.writeScript "tests-eval" ''
+                set -e
                 ${apps.tests-unit.program}
                 ${apps.tests-eval.program}
+                CONDA_TESTS=y ${apps.tests-eval.program}
               '');
             };
 
