@@ -1,11 +1,10 @@
 {
-  mach-nix ? import ../. {
-    python = "python38";
-  },
+  mach-nix ? import ../. {},
   ...
 }:
 with builtins;
 mach-nix.mkPython {
+  python = "python38";
   requirements = ''
     numba==0.50.1
   '';

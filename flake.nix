@@ -124,11 +124,11 @@
                   git
                   nixFlakes
                   parallel
+                  bash
                 ]
                 ++ pkgs.lib.optional (stdenv.isLinux) busybox
                 ++ pkgs.lib.optionals (stdenv.isDarwin) [
                   coreutils
-                  (pkgs.runCommand "bin-sh" {} "mkdir -p $out/bin && ln -s ${pkgs.bash}/bin/bash $out/bin/sh")
                 ])}"
 
                 cd tests
