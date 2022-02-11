@@ -45,13 +45,17 @@ def remove_circles_and_print(pkgs: Iterable[ResolvedPkg], nixpkgs: NixpkgsIndex)
     indexed_pkgs = {p.name: p for p in sorted(pkgs, key=lambda p: p.name)}
     roots: Iterable[ResolvedPkg] = sorted([p for p in pkgs if p.is_root], key=lambda p: p.name)
 
+    def get_build_inputs(pkg: ResolvedPkg):
+        build_inputs, prop_build_inputs = [], []
+        if pkg.build_inputs is not None:
+            build_inputs = pkg.build_inputs
+        if pkg.prop_build_inputs is not None:
+            prop_build_inputs = pkg.prop_build_inputs
+        return build_inputs, prop_build_inputs
+
     edges = set()
     for p in pkgs:
-        build_inputs, prop_build_inputs = [], []
-        if p.build_inputs is not None:
-            build_inputs = p.build_inputs
-        if p.prop_build_inputs is not None:
-            prop_build_inputs = p.prop_build_inputs
+        build_inputs, prop_build_inputs = get_build_inputs(p)
         for child in build_inputs + prop_build_inputs:
             edges.add((p.name, child))
     G = nx.DiGraph(sorted(list(edges)))
@@ -75,7 +79,8 @@ def remove_circles_and_print(pkgs: Iterable[ResolvedPkg], nixpkgs: NixpkgsIndex)
 
         def name(self, node_name):
             if node_name in self.visited:
-                if indexed_pkgs[node_name].build_inputs + indexed_pkgs[node_name].prop_build_inputs == []:
+                build_inputs, prop_build_inputs = get_build_inputs(indexed_pkgs[node_name])
+                if build_inputs + prop_build_inputs == []:
                     return make_name(indexed_pkgs[node_name], nixpkgs)
                 return f"{make_name(indexed_pkgs[node_name], nixpkgs)} -> ..."
             return make_name(indexed_pkgs[node_name], nixpkgs)
@@ -84,12 +89,7 @@ def remove_circles_and_print(pkgs: Iterable[ResolvedPkg], nixpkgs: NixpkgsIndex)
             if node_name in self.visited:
                 return []
             self.visited.add(node_name)
-            p = indexed_pkgs[node_name]
-            build_inputs, prop_build_inputs = [], []
-            if p.build_inputs is not None:
-                build_inputs = p.build_inputs
-            if p.prop_build_inputs is not None:
-                prop_build_inputs = p.prop_build_inputs
+            build_inputs, prop_build_inputs = get_build_inputs(indexed_pkgs[node_name])
             return list(set(build_inputs + prop_build_inputs))
 
     for root in roots:
