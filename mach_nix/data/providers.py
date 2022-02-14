@@ -325,7 +325,7 @@ class WheelDependencyProvider(DependencyProviderBase):
             reqs_raw = []
         # handle extras by evaluationg markers
         install_reqs = list(filter_reqs_by_eval_marker(parse_reqs(reqs_raw), self.context_wheel, c.selected_extras))
-        return install_reqs, None
+        return install_reqs, []
 
     def _all_releases(self, pkg_name):
         name = self.unify_key(pkg_name)
@@ -568,7 +568,7 @@ class CondaDependencyProvider(DependencyProviderBase):
             # always add optional dependencies to ensure constraints are applied
             + (candidate['constrains'] if 'constrains' in candidate else [])
         ))
-        return list(parse_reqs(depends)), None
+        return list(parse_reqs(depends)), []
 
     @cached()
     def all_candidates_sorted(self, name, extras, build) -> Iterable[Candidate]:
