@@ -179,7 +179,7 @@ rec {
       file = "${compileExpression args}/share/mach_nix_file.nix";
       result = import file { inherit (args) pkgs python; };
       manylinux =
-        if args.pkgs.stdenv.hostPlatform.system == "x86_64-darwin" then
+        if builtins.elem args.pkgs.stdenv.hostPlatform.system [ "x86_64-darwin" "aarch64-darwin" ] then
           []
         else
           args.pkgs.pythonManylinuxPackages.manylinux1;
