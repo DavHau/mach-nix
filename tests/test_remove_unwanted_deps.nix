@@ -14,4 +14,5 @@ mach-nix.mkPython (baseArgsMkPython // {
     librosa==0.8.0
   '';
   providers.soundfile = "sdist";
+  providers._default = "wheel,sdist,nixpkgs";
 })

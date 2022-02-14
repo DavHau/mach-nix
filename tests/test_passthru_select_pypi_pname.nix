@@ -7,6 +7,7 @@
 }:
 with builtins;
 mach-nix.mkPython (baseArgsMkPython // {
+  providers._default = "wheel,sdist,nixpkgs";
   requirements = ''
     bokeh
   '';
