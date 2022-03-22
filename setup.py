@@ -6,6 +6,13 @@ pwd = dirname(abspath(__file__))
 with open(pwd + '/mach_nix/VERSION') as f:
     version = f.read().strip()
 
+test_deps = [
+    'pytest',
+]
+extras = {
+    'test': test_deps,
+}
+
 setup(
     name='mach-nix',
     version=version,
@@ -29,4 +36,6 @@ setup(
         'toml',
         'tree-format == 0.1.2',
     ],
+    tests_require=test_deps,
+    extras_require=extras,
 )
