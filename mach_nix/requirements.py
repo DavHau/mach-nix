@@ -54,7 +54,10 @@ def filter_reqs_by_eval_marker(reqs: Iterable[Requirement], context: dict, selec
                 if distlib.markers.interpret(str(req.marker), extra_context):
                     yield req
         else:
-            if distlib.markers.interpret(str(req.marker), context):
+            extra_context = context.copy()
+            if 'extra' not in extra_context:
+                extra_context['extra'] = None
+            if distlib.markers.interpret(str(req.marker), extra_context):
                 yield req
 
 
