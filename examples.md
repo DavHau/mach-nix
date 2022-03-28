@@ -310,7 +310,7 @@ In this example, mach-nix is used to resolve our python dependencies and provide
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix";
-    ref = "refs/heads/3.4.0";  # update this version
+    ref = "refs/tags/3.4.0";  # update this version
   }) {
     python = "python37";
   };
