@@ -117,7 +117,7 @@ let
     out_file=$out/python.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python.log || true
   '';
   base_derivation = pyVersions: with pkgs; {
-    buildInputs = [ unzip pkg-config pipenv ];
+    buildInputs = [ unzip pkg-config ];
     phases = ["unpackPhase" "installPhase"];
     # Tells our modified python builtins to dump setup attributes instead of doing an actual installation
     dump_setup_attrs = "y";
