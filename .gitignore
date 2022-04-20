@@ -6,3 +6,5 @@ debug/reqs.txt
 result
 debug/overrides.nix
 !.github
+*.egg-info
+build/
