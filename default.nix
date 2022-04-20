@@ -22,6 +22,8 @@
 with builtins;
 with pkgs.lib;
 
+assert builtins.compareVersions builtins.nixVersion "2.3" >= 0;
+
 let
   l = import ./mach_nix/nix/lib.nix { inherit pkgs; lib = pkgs.lib; };
 
