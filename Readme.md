@@ -44,6 +44,7 @@ Table of Contents
       * [Why nix?](#why-nix)
       * [How does mach-nix work?](#how-does-mach-nix-work)
          * [Dependency resolution](#dependency-resolution)
+         * [File resolution](#file-resolution)
          * [Generating a nix expression](#generating-a-nix-expression)
       * [Contributing](#contributing)
       * [Limitations](#limitations)
@@ -202,6 +203,14 @@ Despite this graph being updated constantly, mach-nix always pins one specific v
 As core for the resolving resolvelib is used: https://github.com/sarugaku/resolvelib
 
 Mach-nix supports multiple providers to retrieve python packages from. The user can specify which providers should be preferred. Packages from different providers can be mixed.
+
+### File resolution
+With `pypi-deps-db`, we have built a dependency graph, where each package is defined by name and version, for example `pillow-9.1.0`.
+
+To download a package, we need it's URL and hash. This is where [nix-pypi-fetcher](https://github.com/DavHau/nix-pypi-fetcher) comes in.
+`nix-pypi-fetcher` is another database, which allows us to resolve packages to their URL and hash.
+
+For details, see [implementation.md](implementation.md).
 
 ### Generating a nix expression
 After all python dependencies and their providers have been determined by the dependency resolver, mach-nix will generate a nix expression defining your python environment.
