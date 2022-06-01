@@ -58,7 +58,7 @@ Table of Contents
 
 ### Installation
 ```shell
-nix-env -if https://github.com/DavHau/mach-nix/tarball/3.4.0 -A mach-nix
+nix-env -if https://github.com/DavHau/mach-nix/tarball/3.5.0 -A mach-nix
 ```
 or, if you prefer `nix-shell`:
 
@@ -71,7 +71,7 @@ or, if you prefer `nix-shell`:
 + otherwise:
 
   ```shell
-  nix-shell -p '(callPackage (fetchTarball https://github.com/DavHau/mach-nix/tarball/3.4.0) {}).mach-nix'
+  nix-shell -p '(callPackage (fetchTarball https://github.com/DavHau/mach-nix/tarball/3.5.0) {}).mach-nix'
   ```
 
 ---
@@ -103,7 +103,7 @@ You can call mach-nix directly from a nix expression
 let
   mach-nix = import (builtins.fetchGit {
     url = "https://github.com/DavHau/mach-nix";
-    ref = "refs/tags/3.4.0";
+    ref = "refs/tags/3.5.0";
   }) {};
 in
 mach-nix.mkPython {
