@@ -291,21 +291,21 @@ class WheelDependencyProvider(DependencyProviderBase):
         cp_abi = f"cp{maj}{min}mu" if int(maj) == 2 else f"cp{maj}{min}m?"
         if self.system == "linux":
             self.preferred_wheels = (
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux2014_{self.platform}"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux2010_{self.platform}"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux1_{self.platform}"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux_2_5_{self.platform}"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux_2_12_{self.platform}"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-manylinux_2_17_{self.platform}"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-linux_{self.platform}"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-any"),
+                re.compile(rf".*(py{maj}|cp{maj})({min})?[\.-].*({cp_abi}|abi3|none)-manylinux2014_{self.platform}"),
+                re.compile(rf".*(py{maj}|cp{maj})({min})?[\.-].*({cp_abi}|abi3|none)-manylinux2010_{self.platform}"),
+                re.compile(rf".*(py{maj}|cp{maj})({min})?[\.-].*({cp_abi}|abi3|none)-manylinux1_{self.platform}"),
+                re.compile(rf".*(py{maj}|cp{maj})({min})?[\.-].*({cp_abi}|abi3|none)-manylinux_2_5_{self.platform}"),
+                re.compile(rf".*(py{maj}|cp{maj})({min})?[\.-].*({cp_abi}|abi3|none)-manylinux_2_12_{self.platform}"),
+                re.compile(rf".*(py{maj}|cp{maj})({min})?[\.-].*({cp_abi}|abi3|none)-manylinux_2_17_{self.platform}"),
+                re.compile(rf".*(py{maj}|cp{maj})({min})?[\.-].*({cp_abi}|abi3|none)-linux_{self.platform}"),
+                re.compile(rf".*(py{maj}|cp{maj})({min})?[\.-].*({cp_abi}|abi3|none)-any"),
             )
         elif self.system == "darwin":
             platform = "arm64" if self.platform == "aarch64" else self.platform
             self.preferred_wheels = (
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-any"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_universal"),
-                re.compile(rf".*(py{maj}|cp{maj}){min}?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_{platform}"),
+                re.compile(rf".*(py{maj}|cp{maj})({min})?[\.-].*({cp_abi}|abi3|none)-any"),
+                re.compile(rf".*(py{maj}|cp{maj})({min})?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_universal"),
+                re.compile(rf".*(py{maj}|cp{maj})({min})?[\.-].*({cp_abi}|abi3|none)-macosx_\d*_\d*_{platform}"),
             )
         else:
             raise Exception(f"Unsupported Platform {platform.system()}")

@@ -20,6 +20,7 @@ from mach_nix.versions import PyVer
     # none-any wheels for py2 + py3
     (True, '2.7.0', 'requests-2.24.0-py2.py3-none-any.whl', "linux", "x86_64"),
     (True, '3.8.0', 'requests-2.24.0-py2.py3-none-any.whl', "linux", "x86_64"),
+    (True, '3.10.4', 'requests-2.24.0-py2.py3-none-any.whl', "linux", "x86_64"),
     (False, '4.0.0', 'requests-2.24.0-py2.py3-none-any.whl', "linux", "x86_64"),
     # none-any wheels for py2
     (True, '2.0.0', 'requests-2.24.0-py2-none-any.whl', "linux", "x86_64"),
