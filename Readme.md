@@ -94,7 +94,7 @@ mach-nix gen -r requirements.txt
 ...to print out the nix expression which defines a python derivation (optionally use `-o` to define an `output file`)
 
 ---
-### Generate a nix expression from a list of requirements
+### Build a derivation or enter a shell from a list of requirements
 + if [Nix flakes is enabled](https://nixos.wiki/wiki/Flakes#:~:text=Installing%20flakes):
 
   ```shell
