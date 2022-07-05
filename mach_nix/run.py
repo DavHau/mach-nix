@@ -171,9 +171,9 @@ def github_rev_and_sha256(owner, repo, ref):
 def parse_args(parser: ArgumentParser, nixpkgs_ref):
     common_arguments = (
         (('-p', '--python'), dict(
-            help='select python version (default: 3.7)',
-            choices=('2.7', '3.5', '3.6', '3.7', '3.8'),
-            default='3.7')),
+            help='select python version (default: 3.9)',
+            choices=('2.7', '3.5', '3.6', '3.7', '3.8', '3.9', '3.10'),
+            default='3.9')),
 
         (('-r',), dict(
             help='path to requirements.txt file',
