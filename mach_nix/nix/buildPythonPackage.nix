@@ -5,6 +5,10 @@ with pkgs.lib;
 let
   l = import ./lib.nix { inherit (pkgs) lib; inherit pkgs; };
 
+  inherit (import ./extract-metadata.nix {
+    inherit condaChannelsExtra condaDataRev condaDataSha256 pkgs pypiData;
+   }) extract-meta extract-requirements;
+
   buildPythonPackageBase = pythonGlobal: func:
     args@{
       cudaVersion ? pkgs.cudatoolkit.version,  # max allowed cuda version for conda packages
@@ -24,7 +28,6 @@ let
       _fixes ? import ../fixes.nix {pkgs = pkgs;},
       ...
     }:
-    with (_buildPythonParseArgs args);
     with builtins;
     let
       python_pkg = l.selectPythonPkg pkgs python requirements;
@@ -32,17 +35,13 @@ let
       # Extract dependencies automatically if 'requirements' is unset
       pname =
         if hasAttr "pname" args then args.pname
-        else l.extract_meta python_pkg src "name" "pname";
+        else extract-meta { inherit python providers overridesPre src; } src "name" "pname";
       version =
         if hasAttr "version" args then args.version
-        else l.extract_meta python_pkg src "version" "version";
-      meta_reqs = l.extract_requirements python_pkg src "${pname}:${version}" extras;
+        else extract-meta { inherit python providers overridesPre src; } src "version" "version";
+      meta_reqs = extract-requirements { inherit python providers overridesPre src; } "${pname}:${version}" extras;
       reqs =
         (if requirements == "" then
-          if builtins.hasAttr "format" args && args.format != "setuptools" then
-            throw "Automatic dependency extraction is only available for 'setuptools' format."
-                  " Please specify 'requirements' if setuptools is not used."
-          else
             meta_reqs
         else
           requirements)
@@ -64,7 +63,6 @@ let
       pass_args = removeAttrs args (builtins.attrNames ({
         inherit condaDataRev condaDataSha256 overridesPre overridesPost pkgs providers
                 requirements requirementsExtra pypiData tests _providerDefaults _ ;
-        python = python_arg;
       }));
     in
     py_final.pkgs."${func}" ( pass_args // {

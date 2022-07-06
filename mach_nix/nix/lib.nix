@@ -77,7 +77,9 @@ rec {
          else
           throw '''python' must be a string. Example: "python38"'');
     in
-      if preProcessedReqs ? python then
+      if isDerivation pyStr then
+        pyStr
+      else if preProcessedReqs ? python then
         if ! isNull pyStr && pyStr != preProcessedReqs.python then
           throw ''
             The specified 'python' conflicts the one specified via 'requirements'.

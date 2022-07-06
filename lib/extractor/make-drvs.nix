@@ -1,1 +1,1 @@
-(import ./default.nix {}).make-drvs
+{...}@args: (import ./default.nix args).make-drvs

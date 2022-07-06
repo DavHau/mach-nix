@@ -1,1 +1,1 @@
-(import ./default.nix {}).extractor-fast
+{pypiData, argsJSON}: (import ./default.nix { inherit pypiData; } ).extractor-fast (builtins.fromJSON argsJSON)

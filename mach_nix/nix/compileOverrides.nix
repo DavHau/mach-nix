@@ -75,4 +75,4 @@ let
     '';
 in
 # single file derivation containing $out/share/mach_nix_file.nix
-mach_nix_file
+traceValFn (drv: "${drv.outPath} ${python}") mach_nix_file
