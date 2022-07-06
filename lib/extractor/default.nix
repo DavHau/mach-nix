@@ -33,6 +33,11 @@ let
     pkgs.symlinkJoin {
       name = "${python_env.name}-patched";
       paths = [ python_env ];
+      buildInputs = [
+        # prefer binary wrapper - but if that's not available (e.g. nixos 21.05)
+        # use the regular shell script wrapper
+        pkgs.makeBinaryWrapper or pkgs.makeWrapper
+      ];
       postBuild = ''
         ### Distutils
         # symlinks to files
@@ -69,10 +74,15 @@ let
           rm ${site_pkgs_dir}/setuptools/__pycache__/__init__.*
         fi
 
+
         # fix executables
-        for f in $(ls ${python_env}/bin); do
-          sed -i "s|${python_env}|$out|g" $out/bin/$f
-          sed -i "/NIX_PYTHONPATH/a export PYTHONPATH=$out\/lib\/python${major}.${minor}" $out/bin/$f
+        shopt -s nullglob
+        for f in ${python_env}/bin/*; do
+          f=$(basename "$f")
+          # wrap it once more, set PYTHONPATH, ignoring NIXPYTHON_PATH and NIX_PYTHONEXECUTABLE
+          rm "$out/bin/$f" # remove the existing symlink
+          makeWrapper "${python_env}/bin/$f" "$out/bin/$f" \
+              --set PYTHONPATH "$out/lib/python${major}.${minor}"
         done
       '';
   };
@@ -94,6 +104,9 @@ let
     f.close();
     exec(compile(code, __file__, 'exec'))
   '';
+  # note on SETUPTOOLS_USE_DISTUTILS=stdlib: Restore old setuptools behaviour (since
+  # https://github.com/pypa/setuptools/commit/b6fcbbd00cb6d5607c9272dec452a50457bdb292),
+  # to keep it working with mach-nix.
   script = pyVersions: ''
     mkdir $out
     ${concatStringsSep "\n" (forEach pythonInterpreters (interpreter:
@@ -106,7 +119,7 @@ let
       # only use selected interpreters
       in optionalString (pyVersions == [] || elem v pyVersions) ''
         echo "extracting metadata for python${v}"
-        out_file=$out/python${v}.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python${v}.log || true
+        SETUPTOOLS_USE_DISTUTILS=stdlib out_file=$out/python${v}.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python${v}.log || true
       ''
     ))}
   '';
@@ -114,7 +127,7 @@ let
     chmod +x setup.py || true
     mkdir $out
     echo "extracting dependencies"
-    out_file=$out/python.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python.log || true
+    SETUPTOOLS_USE_DISTUTILS=stdlib out_file=$out/python.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python.log || true
   '';
   base_derivation = pyVersions: with pkgs; {
     buildInputs = [ unzip pkg-config ];
