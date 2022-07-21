@@ -216,6 +216,29 @@ mach-nix.mkPython {
 }
 
 ```
+### Example: add missing .so shared object library for instance you are getting a `Pyside on nixos ImportError: libgssapi_krb5.so.2` error
+
+If you have nix-index package installed you should be able to find the package that should provide the lib fast with  
+
+    nix-locate -1 -w libgssapi_krb5.so.2  | grep -v \(
+    libkrb5.out
+    krb5.out
+    hyperion-ng.out
+
+
+Once you have decided on the lib in this case libkrb5 for pyside2
+```nix
+...
+with mach-nix.nixpkgs;
+mach-nix.mkPython {
+
+  requirements = "web2ldap";
+
+  # add missing os library to libkrb5
+  _.pyside2.buildInputs.add = with pkgs; [ libkrb5 ];  # LINE ADDED
+}
+
+```
 
 ## Overrides (overridesPre / overridesPost)
 ### Include poetry2nix overrides
