@@ -35,7 +35,25 @@ let
         else l.extract_meta python_pkg src "name" "pname";
       version =
         if hasAttr "version" args then args.version
-        else l.extract_meta python_pkg src "version" "version";
+        else (
+            let
+              input_version = l.extract_meta python_pkg src "version" "version";
+              output_version =
+                if
+                  ! builtins.isNull (builtins.match
+                    # straight from Appendix B of PEP 440
+                    "^([1-9][0-9]*!)?(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))*((a|b|rc)(0|[1-9][0-9]*))?(\.post(0|[1-9][0-9]*))?(\.dev(0|[1-9][0-9]*))?$"
+                    input_version)
+                then input_version
+                else
+                  # if possible, do a fake 'public+local' (ie. 0+xyz) version according to
+                  # https://peps.python.org/pep-0440/#local-version-identifiers
+                  if ! builtins.isNull (builtins.match "^[a-zA-Z0-9.]*$" input_version)
+                  then "0+" + input_version
+                  else throw "package ${pname} version '${input_version}' could not be turned into a valid PEP 440 (local) version string. Supply version attribute manually.";
+            in
+              output_version
+              );
       meta_reqs = l.extract_requirements python_pkg src "${pname}:${version}" extras;
       reqs =
         (if requirements == "" then
