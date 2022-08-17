@@ -10,7 +10,7 @@ let
       };
       attrs_list = map (n:
           { name = n; value = (gen attr (selected ++ [n])); }
-      ) names;
+      ) (filter (n: n!= "meta") names);
       drv = if attr == "" then pyEnvBase else pyEnvBase."${attr}";
       pyEnv = drv.overrideAttrs (oa: {
         passthru =
