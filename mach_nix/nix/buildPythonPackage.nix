@@ -10,7 +10,7 @@ let
       cudaVersion ? pkgs.cudatoolkit.version,  # max allowed cuda version for conda packages
       ignoreDataOutdated ? false,  # don't fail if pypi data is older than nixpkgs
       requirements ? "",  # content from a requirements.txt file
-      requirementsExtra ? "",  # add additional requirements to the packge
+      requirementsExtra ? "",  # add additional requirements to the package
       tests ? false,  # Disable tests wherever possible to decrease build time.
       extras ? [],
       doCheck ? tests,

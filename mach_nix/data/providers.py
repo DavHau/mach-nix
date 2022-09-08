@@ -495,8 +495,8 @@ def conda_virtual_packages():
     )
 
     # platform.libc_ver() returns ('', '') on macOS and MACHNIX_GLIBC_VERSION is unset
-    libc_complier, libc_version = platform.libc_ver()
-    if libc_complier == 'glibc':
+    libc_compiler, libc_version = platform.libc_ver()
+    if libc_compiler == 'glibc':
         packages['__glibc'] = environ.get("MACHNIX_GLIBC_VERSION", libc_version)
 
     # Maximum version of CUDA supported by the display driver.

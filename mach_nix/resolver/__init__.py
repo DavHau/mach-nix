@@ -19,7 +19,7 @@ class ResolvedPkg(JSONEncoder):
     is_root: bool
     provider_info: ProviderInfo
     extras_selected: List[str]
-    # contains direct or indirect children wich have been diconnected due to circular deps
+    # contains direct or indirect children which have been disconnected due to circular deps
     removed_circular_deps: Set[str] = field(default_factory=set)
     build: str = None
 
