@@ -60,7 +60,7 @@ let
       extra_pkgs_r = filter (p: p ? rCommand) packagesExtra;
       extra_pkgs_other = filter (p: ! (p ? rCommand || p ? pythonModule || l.is_src p)) packagesExtra;
 
-      # gather requirements of exra pkgs
+      # gather requirements of extra pkgs
       extra_pkgs_py_reqs =
         map (p:
           if hasAttr "requirements" p then p.pname
