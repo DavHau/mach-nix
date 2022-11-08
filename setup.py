@@ -29,7 +29,7 @@ setup(
     package_data={'': ['nix/*', 'VERSION', 'provider_defaults.toml', 'flake.lock']},
     setup_requires=["wheel"],
     install_requires=[
-        'distlib == 0.3.3',
+        'distlib == 0.3.7.dev.0',
         'networkx',
         'packaging >= 19.0',
         'resolvelib == 0.8.1',

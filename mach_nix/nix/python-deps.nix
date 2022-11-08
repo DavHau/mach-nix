@@ -1,11 +1,13 @@
 {python, fetchurl, ...}:
 rec {
   distlib = python.pkgs.buildPythonPackage {
-    name = "distlib-0.3.3";
+    name = "distlib-0.3.7.dev.0";
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/56/ed/9c876a62efda9901863e2cc8825a13a7fcbda75b4b498103a4286ab1653b/distlib-0.3.3.zip";
-      sha256 = "01bbw4gm64fvdnlylqhsy3fhxs4yjhfnk3pcwassmspn3xsx10nr";
+      # PR fixing python_full_version: https://github.com/pypa/distlib/pull/187
+      url = "https://github.com/pypa/distlib/archive/61534987ec5e4b3bdd346de8ffcc7aeaeb132572.zip";
+      sha256 = "0mrp73k6nh3cphbamsv9k330irz5xnzays6d66w6xf857xj1gfx1";
     };
+    format = "pyproject";
     doCheck = false;
   };
   resolvelib = python.pkgs.buildPythonPackage {
