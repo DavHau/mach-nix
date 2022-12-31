@@ -1,3 +1,5 @@
+!!! This project is unmaintained. The plan is to replace it with dream2nix. The dream2nix python support is still WIP and needs your help. Please consider to support dream2nix with contributions or funds in order to speed up the process. Feel free to contact me.
+
 <p align="center">
 <img width="200" src="https://gist.githubusercontent.com/DavHau/9a66b8c66b798254b714cc3ca44ffda8/raw/ef6b947b3753425118c730a5dfe81084c1bcfe86/logo_small.jpg">
 </p>
@@ -15,13 +17,6 @@ Mach-nix makes it easy to create and share reproducible python environments or p
  - Cross platform support (tested only aarch64)
  - Easily include private packages or packages from other sources.
  - Build time parameters and dependencies of complex python packages can be tweaked without needing to setup any build environment. It requires some knowledge about nix, though. For examples, see [override system](/examples.md/#simplified-overrides-_-argument).
-
-## Donate
-Want to support mach-nix? A beer always helps ;)
-
-<a href="https://checkout.opennode.com/p/0063d37e-dcb5-4da7-bfa4-462b34c2b5bb" target="_blank"><img style="width:100px;" src="https://app.opennode.com/donate-with-bitcoin.svg"/></a>
-or
-<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=8Q5L3AM7SMJCG&source=url" target="_blank"><img style="width:100px;" src="https://www.paypalobjects.com/en_US/DK/i/btn/btn_donateCC_LG.gif"/></a>
 
 Table of Contents
 =================
