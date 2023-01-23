@@ -14,7 +14,7 @@ let
   pypi_fetcher_sha256 = removeSuffix "\n" (readFile "${deps_db_src}/PYPI_FETCHER_SHA256");
   pypi_fetcher_src = fetchTarball {
     name = "nix-pypi-fetcher-src";
-    url = "https://github.com/DavHau/nix-pypi-fetcher/tarball/${pypi_fetcher_commit}";
+    url = "https://github.com/DavHau/nix-pypi-fetcher-2/tarball/${pypi_fetcher_commit}";
     sha256 = "${pypi_fetcher_sha256}";
   };
   pypi_fetcher = import pypi_fetcher_src {

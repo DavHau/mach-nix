@@ -38,19 +38,19 @@ in
       WORKERS = "100";
       PYTHONPATH = src;
       EMAIL = "hsngrmpf+pypidepscrawler@gmail.com";
-      pypi_fetcher = "/home/${user}/nix-pypi-fetcher";
+      pypi_fetcher = "/home/${user}/nix-pypi-fetcher-2";
       dump_dir = "/home/${user}/wheels";
       #skip = "21";
     };
     path = [ python pkgs.git ];
     script = ''
-      if [ ! -e /home/${user}/nix-pypi-fetcher ]; then
-        git clone --single-branch --branch wheels https://github.com/DavHau/nix-pypi-fetcher.git /home/${user}/nix-pypi-fetcher
-        cd /home/${user}/nix-pypi-fetcher
+      if [ ! -e /home/${user}/nix-pypi-fetcher-2 ]; then
+        git clone --single-branch --branch wheels https://github.com/DavHau/nix-pypi-fetcher-2.git /home/${user}/nix-pypi-fetcher-2
+        cd /home/${user}/nix-pypi-fetcher-2
         git config user.email "$EMAIL"
         git config user.name "DavHau"
       fi
-      cd /home/${user}/nix-pypi-fetcher
+      cd /home/${user}/nix-pypi-fetcher-2
       #git checkout wheels
       #git pull
       ${python}/bin/python -u ${src}/wheel_deps_spider.py
@@ -65,19 +65,19 @@ in
       WORKERS = "100";
       PYTHONPATH = src;
       EMAIL = "hsngrmpf+pypidepscrawler@gmail.com";
-      pypi_fetcher = "/home/${user}/nix-pypi-fetcher";
+      pypi_fetcher = "/home/${user}/nix-pypi-fetcher-2";
       dump_dir = "/home/${user}/wheels";
       skip = "40";
     };
     path = [ python pkgs.git ];
     script = ''
-      if [ ! -e /home/${user}/nix-pypi-fetcher ]; then
-        git clone --single-branch --branch wheels https://github.com/DavHau/nix-pypi-fetcher.git /home/${user}/nix-pypi-fetcher
-        cd /home/${user}/nix-pypi-fetcher
+      if [ ! -e /home/${user}/nix-pypi-fetcher-2 ]; then
+        git clone --single-branch --branch wheels https://github.com/DavHau/nix-pypi-fetcher-2.git /home/${user}/nix-pypi-fetcher-2
+        cd /home/${user}/nix-pypi-fetcher-2
         git config user.email "$EMAIL"
         git config user.name "DavHau"
       fi
-      cd /home/${user}/nix-pypi-fetcher
+      cd /home/${user}/nix-pypi-fetcher-2
       #git checkout wheels
       #git pull
       ${python}/bin/python -u ${src}/wheel_deps_spider.py
@@ -92,19 +92,19 @@ in
       WORKERS = "100";
       PYTHONPATH = src;
       EMAIL = "hsngrmpf+pypidepscrawler@gmail.com";
-      pypi_fetcher = "/home/${user}/nix-pypi-fetcher";
+      pypi_fetcher = "/home/${user}/nix-pypi-fetcher-2";
       dump_dir = "/home/${user}/wheels";
       skip = "80";
     };
     path = [ python pkgs.git ];
     script = ''
-      if [ ! -e /home/${user}/nix-pypi-fetcher ]; then
-        git clone --single-branch --branch wheels https://github.com/DavHau/nix-pypi-fetcher.git /home/${user}/nix-pypi-fetcher
-        cd /home/${user}/nix-pypi-fetcher
+      if [ ! -e /home/${user}/nix-pypi-fetcher-2 ]; then
+        git clone --single-branch --branch wheels https://github.com/DavHau/nix-pypi-fetcher-2.git /home/${user}/nix-pypi-fetcher-2
+        cd /home/${user}/nix-pypi-fetcher-2
         git config user.email "$EMAIL"
         git config user.name "DavHau"
       fi
-      cd /home/${user}/nix-pypi-fetcher
+      cd /home/${user}/nix-pypi-fetcher-2
       #git checkout wheels
       #git pull
       ${python}/bin/python -u ${src}/wheel_deps_spider.py
@@ -119,19 +119,19 @@ in
       WORKERS = "100";
       PYTHONPATH = src;
       EMAIL = "hsngrmpf+pypidepscrawler@gmail.com";
-      pypi_fetcher = "/home/${user}/nix-pypi-fetcher";
+      pypi_fetcher = "/home/${user}/nix-pypi-fetcher-2";
       dump_dir = "/home/${user}/wheels";
       skip = "c0";
     };
     path = [ python pkgs.git ];
     script = ''
-      if [ ! -e /home/${user}/nix-pypi-fetcher ]; then
-        git clone --single-branch --branch wheels https://github.com/DavHau/nix-pypi-fetcher.git /home/${user}/nix-pypi-fetcher
-        cd /home/${user}/nix-pypi-fetcher
+      if [ ! -e /home/${user}/nix-pypi-fetcher-2 ]; then
+        git clone --single-branch --branch wheels https://github.com/DavHau/nix-pypi-fetcher-2.git /home/${user}/nix-pypi-fetcher-2
+        cd /home/${user}/nix-pypi-fetcher-2
         git config user.email "$EMAIL"
         git config user.name "DavHau"
       fi
-      cd /home/${user}/nix-pypi-fetcher
+      cd /home/${user}/nix-pypi-fetcher-2
       #git checkout wheels
       #git pull
       ${python}/bin/python -u ${src}/wheel_deps_spider.py

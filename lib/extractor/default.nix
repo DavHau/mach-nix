@@ -15,8 +15,8 @@ with lib;
 let
   commit = "1434cc0ee2da462f0c719d3a4c0ab4c87d0931e7";
   fetchPypiSrc = builtins.fetchTarball {
-   name = "nix-pypi-fetcher";
-   url = "https://github.com/DavHau/nix-pypi-fetcher/archive/${commit}.tar.gz";
+   name = "nix-pypi-fetcher-2";
+   url = "https://github.com/DavHau/nix-pypi-fetcher-2/archive/${commit}.tar.gz";
    # Hash obtained using `nix-prefetch-url --unpack <url>`
    sha256 = "080l189zzwrv75jgr7agvs4hjv4i613j86d4qky154fw5ncp0mnp";
   };
@@ -64,7 +64,7 @@ let
         rm ${site_pkgs_dir}/setuptools
         mv ${site_pkgs_dir}/setuptools_tmp ${site_pkgs_dir}/setuptools
         # patch setuptools/__init__.py
-        echo ${site_pkgs_dir}/setuptools/__init__.py 
+        echo ${site_pkgs_dir}/setuptools/__init__.py
         patch ${site_pkgs_dir}/setuptools/__init__.py ${./setuptools.patch}
         # remove .pyc files
         if [ ${major} = 2 ]; then
@@ -162,7 +162,7 @@ rec {
   inherit machnix_source mkPy pythonInterpreters;
   example = extractor {pkg = "requests"; version = "2.22.0";};
   extract_from_src = {py, src}:
-    let 
+    let
       py' = if isString py then pkgs."${py}" else py;
     in
     stdenv.mkDerivation ( (base_derivation []) // {

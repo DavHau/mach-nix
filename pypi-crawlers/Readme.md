@@ -4,7 +4,7 @@ These crawlers have been created for the purpose of maintaining data required fo
 
 This project contains 2 crawlers. One which indexes available `sdist` python package downloads from pypi.org and another one which actually downloads all packages and extracts their dependency information.
 
-The URL index is stored here: [nix-pypi-fetcher](https://github.com/DavHau/nix-pypi-fetcher) (which at the same time is a convenient standalone pypi fetcher for nix)  
+The URL index is stored here: [nix-pypi-fetcher-2](https://github.com/DavHau/nix-pypi-fetcher-2) (which at the same time is a convenient standalone pypi fetcher for nix)
 The dependency graph is stored here: [pypi-deps-db](https://github.com/DavHau/pypi-deps-db)
 
 ---

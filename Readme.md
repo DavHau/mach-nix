@@ -209,8 +209,8 @@ Mach-nix supports multiple providers to retrieve python packages from. The user 
 ### File resolution
 With `pypi-deps-db`, we have built a dependency graph, where each package is defined by name and version, for example `pillow-9.1.0`.
 
-To download a package, we need it's URL and hash. This is where [nix-pypi-fetcher](https://github.com/DavHau/nix-pypi-fetcher) comes in.
-`nix-pypi-fetcher` is another database, which allows us to resolve packages to their URL and hash.
+To download a package, we need it's URL and hash. This is where [nix-pypi-fetcher-2](https://github.com/DavHau/nix-pypi-fetcher-2) comes in.
+`nix-pypi-fetcher-2` is another database, which allows us to resolve packages to their URL and hash.
 
 For details, see [implementation.md](implementation.md).
 

@@ -112,7 +112,7 @@ in
       path = [ python pkgs.git ];
       script = with environment; ''
         set -x
-        ${cd_into_updated_proj_branch "nix-pypi-fetcher" "nix-pypi-fetcher_update" "${branch}" EMAIL}
+        ${cd_into_updated_proj_branch "nix-pypi-fetcher-2" "nix-pypi-fetcher_update" "${branch}" EMAIL}
         rm -f ./pypi/*
         ${python}/bin/python -u ${src}/crawl_urls.py ./pypi
         echo $(date +%s) > UNIX_TIMESTAMP
@@ -140,7 +140,7 @@ in
         DB_HOST = db_host;
         EMAIL = "hsngrmpf+pypidepscrawler@gmail.com";
         CLEANUP = "y";
-        pypi_fetcher = "/home/${user}/nix-pypi-fetcher";
+        pypi_fetcher = "/home/${user}/nix-pypi-fetcher-2";
         inherit extractor_dir;
       };
     in
@@ -154,13 +154,13 @@ in
       ${python}/bin/python -u ${src}/crawl_sdist_deps.py
       set -x
       export GIT_SSH_COMMAND="${pkgs.openssh}/bin/ssh -i /home/${user}/.ssh/id_ed25519_deps_db"
-      ${cd_into_updated_proj_branch "nix-pypi-fetcher" "nix-pypi-fetcher" "${branch}" EMAIL}
+      ${cd_into_updated_proj_branch "nix-pypi-fetcher-2" "nix-pypi-fetcher-2" "${branch}" EMAIL}
       ${cd_into_updated_proj_branch "pypi-deps-db" "pypi-deps-db" "${branch}" EMAIL}
       rm -f ./sdist/*
       ${python}/bin/python -u ${src}/dump_sdist_deps.py ./sdist
       echo $(date +%s) > UNIX_TIMESTAMP
-      pypi_fetcher_commit=$(git ls-remote https://github.com/DavHau/nix-pypi-fetcher ${branch} | awk '{print $1;}')
-      pypi_fetcher_url="https://github.com/DavHau/nix-pypi-fetcher/archive/''${pypi_fetcher_commit}.tar.gz"
+      pypi_fetcher_commit=$(git ls-remote https://github.com/DavHau/nix-pypi-fetcher-2 ${branch} | awk '{print $1;}')
+      pypi_fetcher_url="https://github.com/DavHau/nix-pypi-fetcher-2/archive/''${pypi_fetcher_commit}.tar.gz"
       pypi_fetcher_hash=$(nix-prefetch-url --unpack $pypi_fetcher_url)
       echo $pypi_fetcher_commit > PYPI_FETCHER_COMMIT
       echo $pypi_fetcher_hash > PYPI_FETCHER_SHA256
@@ -187,7 +187,7 @@ in
         WORKERS = "5";
         PYTHONPATH = src;
         EMAIL = "hsngrmpf+pypidepscrawler@gmail.com";
-        pypi_fetcher = "/home/${user}/nix-pypi-fetcher";
+        pypi_fetcher = "/home/${user}/nix-pypi-fetcher-2";
         dump_dir = "/home/${user}/pypi-deps-db/wheel";
       };
     in
@@ -199,13 +199,13 @@ in
     script = with environment; ''
       set -x
       export GIT_SSH_COMMAND="${pkgs.openssh}/bin/ssh -i /home/${user}/.ssh/id_ed25519_deps_db"
-      ${cd_into_updated_proj_branch "nix-pypi-fetcher" "nix-pypi-fetcher" "${branch}" EMAIL}
+      ${cd_into_updated_proj_branch "nix-pypi-fetcher-2" "nix-pypi-fetcher" "${branch}" EMAIL}
       ${cd_into_updated_proj_branch "pypi-deps-db" "pypi-deps-db" "${branch}" EMAIL}
       export PYTONPATH=${src}
       ${python}/bin/python -u ${src}/crawl_wheel_deps.py $dump_dir
       echo $(date +%s) > UNIX_TIMESTAMP
-      pypi_fetcher_commit=$(git ls-remote https://github.com/DavHau/nix-pypi-fetcher ${branch} | awk '{print $1;}')
-      pypi_fetcher_url="https://github.com/DavHau/nix-pypi-fetcher/archive/''${pypi_fetcher_commit}.tar.gz"
+      pypi_fetcher_commit=$(git ls-remote https://github.com/DavHau/nix-pypi-fetcher-2 ${branch} | awk '{print $1;}')
+      pypi_fetcher_url="https://github.com/DavHau/nix-pypi-fetcher-2/archive/''${pypi_fetcher_commit}.tar.gz"
       pypi_fetcher_hash=$(nix-prefetch-url --unpack $pypi_fetcher_url)
       echo $pypi_fetcher_commit > PYPI_FETCHER_COMMIT
       echo $pypi_fetcher_hash > PYPI_FETCHER_SHA256

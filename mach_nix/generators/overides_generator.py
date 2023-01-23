@@ -46,8 +46,8 @@ class OverridesGenerator(ExpressionGenerator):
             with pkgs.lib;
             let
               pypi_fetcher_src = builtins.fetchTarball {{
-                name = "nix-pypi-fetcher";
-                url = "https://github.com/DavHau/nix-pypi-fetcher/tarball/{self.pypi_fetcher_commit}";
+                name = "nix-pypi-fetcher-2";
+                url = "https://github.com/DavHau/nix-pypi-fetcher-2/tarball/{self.pypi_fetcher_commit}";
                 # Hash obtained using `nix-prefetch-url --unpack <url>`
                 sha256 = "{self.pypi_fetcher_sha256}";
               }};
