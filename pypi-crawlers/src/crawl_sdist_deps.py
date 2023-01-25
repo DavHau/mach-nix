@@ -191,7 +191,7 @@ def cleanup():
 
 def ensure_pypi_fetcher(dir):
     if not os.path.isdir(dir):
-        cmd = f'git clone git@github.com:DavHau/nix-pypi-fetcher.git {dir}'
+        cmd = f'git clone git@github.com:DavHau/nix-pypi-fetcher-2.git {dir}'
         sp.check_call(cmd, shell=True)
     sp.check_call("git checkout master && git pull", shell=True, cwd=dir)
 

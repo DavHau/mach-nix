@@ -1,6 +1,6 @@
 ## File resolution
 
-`mach-nix` uses [nix-pypi-fetcher](https://github.com/DavHau/nix-pypi-fetcher) to translate package versions to URLs and hashes.
+`mach-nix` uses [nix-pypi-fetcher-2](https://github.com/DavHau/nix-pypi-fetcher-2) to translate package versions to URLs and hashes.
 
 For example, the declaration "package pillow + version 9.1.0 + python 3.9 + linux" resolves to
 
