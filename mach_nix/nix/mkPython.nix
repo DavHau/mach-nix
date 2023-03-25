@@ -119,13 +119,14 @@ let
         ++ [ override_selectPkgs ]
       );
       py_final = python_pkg.override { packageOverrides = all_overrides;};
-      py_final_with_pkgs = (py_final.withPackages (ps: selectPkgs ps)).overrideAttrs (oa:{
+      py_final_with_pkgs = ((py_final.withPackages (ps: selectPkgs ps)).override {
+        inherit ignoreCollisions;
+      }).overrideAttrs (oa:{
         postBuild = ''
           ${l.condaSymlinkJoin (flatten (map (p: p.allCondaDeps or []) (selectPkgs py_final.pkgs))) }
         '' + oa.postBuild + postBuild;
       });
       final_env = py_final_with_pkgs.override (oa: {
-        inherit ignoreCollisions;
         makeWrapperArgs =
           (map (p: "--suffix PATH : ${p}/bin") extra_pkgs_other)
           ++ [''--set QT_PLUGIN_PATH ${py_final_with_pkgs}/plugins''];
