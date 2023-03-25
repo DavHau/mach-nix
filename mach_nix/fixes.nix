@@ -129,4 +129,11 @@ rec {
     patchPhase = "";
   };
 
+  deepspeed-mii.remove-asyncio = {
+    _cond = ({ pyver, ... }:
+      # asyncio becomes a built-in library since Python 3.4
+      comp_ver pyver ">=" "3.4");
+    propagatedBuildInputs.mod =
+      builtins.filter (input: input.pname != "asyncio");
+  };
 }

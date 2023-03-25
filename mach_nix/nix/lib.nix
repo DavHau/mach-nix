@@ -193,7 +193,7 @@ rec {
     let
       provider = if hasAttr "provider" oa.passthru then oa.passthru.provider else "nixpkgs";
     in
-      condition { prov = provider; ver = oa.version; pyver = oa.pythonModule.version; };
+      condition { prov = provider; ver = oa.version; pyver = oa.passthru.pythonModule.version; };
 
     extract = python: src: fail_msg:
     let
