@@ -134,6 +134,6 @@ rec {
       # asyncio becomes a built-in library since Python 3.4
       comp_ver pyver ">=" "3.4");
     propagatedBuildInputs.mod =
-      builtins.filter (input: input.pname != "asyncio");
+      filterSafe (input: input.pname != "asyncio");
   };
 }
