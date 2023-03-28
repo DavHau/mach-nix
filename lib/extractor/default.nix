@@ -3,10 +3,10 @@
   lib ? pkgs.lib,
   pythonInterpreters ? pkgs.useInterpreters or (with pkgs; [
     python27
-    python35
-    python36
-    python37
     python38
+    python39
+    python310
+    python311
   ]),
   ...
 }:

@@ -335,7 +335,7 @@ let
     url = "https://github.com/DavHau/mach-nix";
     ref = "refs/tags/3.5.0";  # update this version
   }) {
-    python = "python37";
+    python = "python39";
   };
 
   # load your requirements
