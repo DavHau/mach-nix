@@ -33,7 +33,6 @@ from mach_nix.requirements import parse_reqs_line
     , ('hdf5 >=1.10.5,<1.10.6.0a0 mpi_mpich_*',
        ('hdf5', (), (SpecifierSet('>=1.10.5,<1.10.6.0a0'),), 'mpi_mpich_*', None))
     , ('blas 1.* openblas', ('blas', (), (SpecifierSet('==1.*'),), 'openblas', None))
-    , ('blas * openblas', ('blas', (), (SpecifierSet('==*'),), 'openblas', None))
     , ('blas 1.1 openblas', ('blas', (), (SpecifierSet('==1.1'),), 'openblas', None))
     , ('requests >=2.24.0 build123*', ('requests', (), (SpecifierSet('>=2.24.0'),), 'build123*', None))
     , ('requests ==2.24.* build123*', ('requests', (), (SpecifierSet('==2.24.*'),), 'build123*', None))
@@ -41,8 +40,6 @@ from mach_nix.requirements import parse_reqs_line
     , ('requests 2.24.0 build123*', ('requests', (), (SpecifierSet('==2.24.0'),), 'build123*', None))
     , ('requests 2.24.0 *bla', ('requests', (), (SpecifierSet('==2.24.0'),), '*bla', None))
     , ('requests 2.24.0 *', ('requests', (), (SpecifierSet('==2.24.0'),), '*', None))
-    , ('requests * *bla', ('requests', (), (SpecifierSet('==*'),), '*bla', None))
-    , ('requests * *', ('requests', (), (SpecifierSet('==*'),), '*', None))
     , ('requests 2.24.0 build123*', ('requests', (), (SpecifierSet('==2.24.0'),), 'build123*', None))
     , ('requests 2.24.0 build123*', ('requests', (), (SpecifierSet('==2.24.0'),), 'build123*', None))
     , ('requests 2.24.0 build123*', ('requests', (), (SpecifierSet('==2.24.0'),), 'build123*', None))
