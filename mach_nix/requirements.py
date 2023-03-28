@@ -202,7 +202,7 @@ def filter_versions(
     if not req.specs:
         # We filter version with an empty specifier set, since that will filter
         # out prerelease, if there are any other releases.
-        return SpecifierSet().filter(versions)
+        return list(SpecifierSet().filter(versions))
     matched_versions = []
     for specs in req.specs:
         matched_versions.extend(
