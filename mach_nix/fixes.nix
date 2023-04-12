@@ -136,4 +136,8 @@ rec {
     propagatedBuildInputs.mod =
       filterSafe (input: input.pname != "asyncio");
   };
+  
+  gradio.linkify-it-py-missing = {
+    propagatedBuildInputs.mod = pySelf: _: oldVal: oldVal ++ [ pySelf.linkify-it-py ];
+  };
 }
