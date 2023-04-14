@@ -62,12 +62,6 @@
 
           apps.mach-nix = flake-utils.lib.mkApp { drv = packages.mach-nix.mach-nix; };
           apps.extract-reqs =
-            let
-              extractor = import ./lib/extractor {
-                inherit pkgs;
-                lib = inp.nixpkgs.lib;
-              };
-            in
             {
               type = "app";
               program = toString (pkgs.writeScript "extract.sh" ''
