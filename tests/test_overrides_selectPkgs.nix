@@ -6,7 +6,7 @@
 }:
 with builtins;
 let
-  py = mach-nix.nixpkgs.python37;
+  py = mach-nix.nixpkgs.python39;
 
   overr = mach-nix.mkPythonOverrides {
     requirements = ''

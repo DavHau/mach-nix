@@ -29,7 +29,11 @@ class NixpkgsIndex(UserDict):
             if nix_data is None:
                 continue
             pname = nix_data["pname"]
-            version = parse_ver(nix_data["version"])
+            raw_version = nix_data["version"]
+            try:
+                version = parse_ver(raw_version)
+            except ValueError:
+                version = raw_version
             pname_key = pname.replace("_", "-").lower()
             if pname_key not in self.data:
                 self.data[pname_key] = {}

@@ -79,7 +79,7 @@ def format_log(log: str):
 
 
 def extract_requirements(job: PackageJob):
-    py_versions = ('python27', 'python35', 'python36', 'python37', 'python38')
+    py_versions = ('python27', 'python38', 'python39', 'python310', 'python311')
     try:
         print(f"Bucket {job.bucket} - Job {job.idx} - {job.name}:{job.version}")
         store = os.environ.get('STORE', None)
