@@ -24,7 +24,7 @@ let
       _fixes ? import ../fixes.nix {pkgs = pkgs;},
       ...
     }:
-    with (_buildPythonParseArgs args);
+    # with (_buildPythonParseArgs args);
     with builtins;
     let
       python_pkg = l.selectPythonPkg pkgs python requirements;
@@ -54,13 +54,23 @@ let
             in
               output_version
               );
-      meta_reqs = l.extract_requirements python_pkg src "${pname}:${version}" extras;
+              meta_reqs = 
+              let format = (if builtins.hasAttr "format" args then args.format else "setuptools");
+              in
+
+              l.extract_requirements {
+                python = python_pkg;
+                src = src;
+                name = "${pname}:${version}";
+                extras = extras;
+                format = format;
+              };
       reqs =
         (if requirements == "" then
-          if builtins.hasAttr "format" args && args.format != "setuptools" then
-            throw "Automatic dependency extraction is only available for 'setuptools' format."
-                  " Please specify 'requirements' if setuptools is not used."
-          else
+          # if builtins.hasAttr "format" args && args.format != "setuptools" && args.format != "pyproject" then
+          #   throw "Automatic dependency extraction is only available for 'setuptools' and 'pyproject' formats."
+          #         " Please specify 'requirements' if something else is used."
+          # else
             meta_reqs
         else
           requirements)
