@@ -194,6 +194,8 @@ class OverridesGenerator(ExpressionGenerator):
     def _gen_overrideAttrs(
             self, name, ver, circular_deps, nix_name, provider, build_inputs_str, prop_build_inputs_str,
             keep_src=False):
+        if name == 'setuptools' or name == "pip":
+            return ""
         out = f"""
             "{name}" = override python-super."{nix_name}" ( oldAttrs:
               # filter out unwanted dependencies and replace colliding packages
