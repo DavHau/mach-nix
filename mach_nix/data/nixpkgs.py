@@ -2,6 +2,7 @@ import json
 from collections import UserDict
 from dataclasses import dataclass
 from typing import List
+import packaging.version
 
 from mach_nix.cache import cached
 from mach_nix.versions import parse_ver, Version
@@ -29,7 +30,11 @@ class NixpkgsIndex(UserDict):
             if nix_data is None:
                 continue
             pname = nix_data["pname"]
-            version = parse_ver(nix_data["version"])
+            try:
+                version = parse_ver(nix_data["version"])
+            except packaging.version.InvalidVersion as e:
+                print("omitting nixpkgs / ", pname, " version was invalid: '", nix_data["version"], "'", sep="")
+                continue
             pname_key = pname.replace("_", "-").lower()
             if pname_key not in self.data:
                 self.data[pname_key] = {}
