@@ -35,6 +35,7 @@ setup(
         'resolvelib == 0.8.1',
         'toml',
         'tree-format == 0.1.2',
+        'rich==12.4.1',
     ],
     tests_require=test_deps,
     extras_require=extras,

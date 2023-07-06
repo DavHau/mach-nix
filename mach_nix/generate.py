@@ -5,6 +5,9 @@ from os.path import dirname
 from pprint import pformat
 from typing import List
 
+import rich.traceback
+rich.traceback.install(show_locals=True)
+
 from resolvelib import ResolutionImpossible
 from resolvelib.resolvers import RequirementInformation
 

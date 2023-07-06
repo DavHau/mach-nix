@@ -29,6 +29,8 @@ rec {
     doCheck = false;
   };
 
+
+  rich = python.pkgs.rich;
   networkx = python.pkgs.networkx;
   packaging = python.pkgs.packaging;
   setuptools = python.pkgs.setuptools;
