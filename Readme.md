@@ -1,4 +1,6 @@
-!!! This project is unmaintained. The plan is to replace it with dream2nix. The dream2nix python support is still WIP and needs your help. Please consider to support dream2nix with contributions or funds in order to speed up the process. Feel free to contact me.
+# ⚠️ This project is unmaintained ⚠️
+
+The plan is to replace it with dream2nix. The dream2nix python support is still WIP and needs your help. Please consider to support dream2nix with contributions or funds in order to speed up the process. Feel free to contact me.
 
 <p align="center">
 <img width="200" src="https://gist.githubusercontent.com/DavHau/9a66b8c66b798254b714cc3ca44ffda8/raw/ef6b947b3753425118c730a5dfe81084c1bcfe86/logo_small.jpg">
