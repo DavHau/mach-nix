@@ -195,29 +195,33 @@ rec {
     in
       condition { prov = provider; ver = oa.version; pyver = oa.passthru.pythonModule.version; };
 
-    extract = python: src: fail_msg:
+    extract = python: src: fail_msg: format:
     let
-      file_path = "${(import ../../lib/extractor { inherit pkgs; }).extract_from_src {
+      derivation = (import ../../lib/extractor { inherit pkgs; }).extract_from_src {
           py = python;
           src = src;
-        }}/python.json";
+          format = format;
+        };
+        file_path = "${derivation}/python.json";
     in
-      if pathExists file_path then fromJSON (builtins.unsafeDiscardStringContext (readFile file_path)) else throw fail_msg;
+      if pathExists file_path then fromJSON (builtins.unsafeDiscardStringContext (readFile file_path)) else throw (fail_msg + "\nFor details of the failure execute 'nix log ${derivation}'");
 
-  extract_requirements = python: src: name: extras:
+
+  extract_requirements = {python, src, name, extras, format}:
     let
       ensureList = requires: if isString requires then [requires] else requires;
       data = extract python src ''
         Automatic requirements extraction failed for ${name}.
-        Please manually specify 'requirements' '';
+        Please manually specify 'requirements' '' format;
       setup_requires = if hasAttr "setup_requires" data then ensureList data.setup_requires else [];
       install_requires = if hasAttr "install_requires" data then ensureList data.install_requires else [];
       extras_require =
         if hasAttr "extras_require" data then
           flatten (map (extra: data.extras_require."${extra}") extras)
+
         else [];
       all_reqs = concat_reqs (setup_requires ++ install_requires ++ extras_require);
-      msg = "\n automatically detected requirements of ${name} ${version}:${all_reqs}\n\n";
+      msg = "\n automatically detected requirements of ${name} ${version}:${all_reqs}\n\n\n";
     in
       trace msg all_reqs;
 

@@ -92,6 +92,7 @@ let
       python_env = python.withPackages (ps: with ps; [
         # base requirements
         setuptools
+        toml
       ]);
     in
       patchDistutils python_env;
@@ -127,8 +128,16 @@ let
     chmod +x setup.py || true
     mkdir $out
     echo "extracting dependencies"
-    SETUPTOOLS_USE_DISTUTILS=stdlib out_file=$out/python.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python.log || true
+    SETUPTOOLS_USE_DISTUTILS=stdlib out_file=$out/python.json ${py}/bin/python -c "${setuptools_shim}" install || true
   '';
+  pyproject_toml_parser = ./pyproject_toml_parser.py;
+  script_single_pyproject_toml = py: ''
+    mkdir $out
+    echo "extracting dependencies using pyproject.toml parser"
+    out_file=$out/python.json ${py}/bin/python ${pyproject_toml_parser} 
+  '';
+
+
   base_derivation = pyVersions: with pkgs; {
     buildInputs = [ unzip pkg-config ];
     phases = ["unpackPhase" "installPhase"];
@@ -161,15 +170,20 @@ with pkgs;
 rec {
   inherit machnix_source mkPy pythonInterpreters;
   example = extractor {pkg = "requests"; version = "2.22.0";};
-  extract_from_src = {py, src}:
+  extract_from_src = {py, src, format}:
     let
       py' = if isString py then pkgs."${py}" else py;
-    in
+      derivation = 
     stdenv.mkDerivation ( (base_derivation []) // {
       inherit src;
       name = "package-requirements";
-      installPhase = script_single (mkPy py');
+      installPhase = if format == "setuptools" then script_single (mkPy py')
+      else script_single_pyproject_toml (mkPy py')
+      ;
     });
+    in 
+    # builtins.trace "${derivation}" derivation;
+    derivation;
   extractor = {pkg, version, ...}:
     stdenv.mkDerivation ({
       name = "${pkg}-${version}-requirements";
