@@ -128,6 +128,7 @@ let
     mkdir $out
     echo "extracting dependencies"
     SETUPTOOLS_USE_DISTUTILS=stdlib out_file=$out/python.json ${py}/bin/python -c "${setuptools_shim}" install &> $out/python.log || true
+    cat $out/python.log
   '';
   base_derivation = pyVersions: with pkgs; {
     buildInputs = [ unzip pkg-config ];
