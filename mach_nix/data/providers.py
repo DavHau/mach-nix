@@ -12,6 +12,7 @@ from typing import Any, Iterable, List, Optional, Tuple
 
 import distlib.markers
 from pkg_resources import RequirementParseError
+import packaging
 
 from mach_nix.requirements import filter_reqs_by_eval_marker, Requirement, parse_reqs, context, filter_versions
 from mach_nix.versions import PyVer, parse_ver, Version
@@ -313,13 +314,20 @@ class WheelDependencyProvider(DependencyProviderBase):
     def all_candidates(self, pkg_name, extras, builds) -> List[Candidate]:
         if builds:
             return []
-        return [Candidate(
-            w.name,
-            parse_ver(w.ver),
-            w.ver,
-            extras,
-            provider_info=ProviderInfo(provider=self, wheel_fname=w.fn, data=w)
-        ) for w in self._suitable_wheels(pkg_name)]
+        result = []
+        for w in self._suitable_wheels(pkg_name):
+            try:
+                result.append(Candidate(
+                    w.name,
+                    parse_ver(w.ver),
+                    w.ver,
+                    extras,
+                    provider_info=ProviderInfo(provider=self, wheel_fname=w.fn, data=w)
+                ))
+            except packaging.version.InvalidVersion:
+                print(f"Error parsing (wheel) {w.name} version '{w.ver}")
+                continue
+        return result
 
     def get_pkg_reqs(self, c: Candidate) -> Tuple[List[Requirement], List[Requirement]]:
         """
@@ -479,13 +487,21 @@ class SdistDependencyProvider(DependencyProviderBase):
     def all_candidates(self, pkg_name, extras, builds) -> Iterable[Candidate]:
         if builds:
             return []
-        return [Candidate(
-            pkg_name,
-            parse_ver(ver),
-            ver,
-            extras,
-            provider_info=ProviderInfo(self, data=pkg)
-        ) for ver, pkg in self._get_candidates(pkg_name).items()]
+        result = []
+        for ver, pkg in self._get_candidates(pkg_name).items():
+            try:
+                result.append(
+                Candidate(
+                    pkg_name,
+                    parse_ver(ver),
+                    ver,
+                    extras,
+                    provider_info=ProviderInfo(self, data=pkg)
+                ))
+            except packaging.version.InvalidVersion:
+                print(f"Error parsing (sdist) {pkg} version '{ver}")
+                continue
+        return result
 
 
 def conda_virtual_packages():
@@ -601,19 +617,23 @@ class CondaDependencyProvider(DependencyProviderBase):
                 else:
                     url = f"https://anaconda.org/{self.channel}/{p['name']}/" \
                           f"{p['version']}/download/{p['subdir']}/{p['fname']}"
-                candidates.append(Candidate(
-                    p['name'],
-                    parse_ver(p['version']),
-                        p['version'],
-                    selected_extras=tuple(),
-                    build=p['build'],
-                    provider_info=ProviderInfo(
-                        self,
-                        url=url,
-                        hash=p['sha256'],
-                        data=p,
-                    )
-                ))
+                try:
+                    candidates.append(Candidate(
+                        p['name'],
+                        parse_ver(p['version']),
+                            p['version'],
+                        selected_extras=tuple(),
+                        build=p['build'],
+                        provider_info=ProviderInfo(
+                            self,
+                            url=url,
+                            hash=p['sha256'],
+                            data=p,
+                        )
+                    ))
+                except packaging.version.InvalidVersion:
+                    print(f"Error parsing (conda) {p['name']} version '{p['version']}")
+                    continue
                 if 'collisions' in p:
                     print(
                         f"WARNING: Colliding conda package in channel '{self.channel}' "
