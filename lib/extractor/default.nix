@@ -161,13 +161,13 @@ with pkgs;
 rec {
   inherit machnix_source mkPy pythonInterpreters;
   example = extractor {pkg = "requests"; version = "2.22.0";};
-  extract_from_src = {py, src}:
+  extract_from_src = {py, src, name}:
     let
       py' = if isString py then pkgs."${py}" else py;
     in
     stdenv.mkDerivation ( (base_derivation []) // {
       inherit src;
-      name = "package-requirements";
+      name = "${name}-mach-nix-requirements";
       installPhase = script_single (mkPy py');
     });
   extractor = {pkg, version, ...}:

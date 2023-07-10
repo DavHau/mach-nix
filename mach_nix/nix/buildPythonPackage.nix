@@ -54,7 +54,7 @@ let
             in
               output_version
               );
-      meta_reqs = l.extract_requirements python_pkg src "${pname}:${version}" extras;
+      meta_reqs = l.extract_requirements python_pkg src "${pname}-${version}" extras;
       reqs =
         (if requirements == "" then
           if builtins.hasAttr "format" args && args.format != "setuptools" then

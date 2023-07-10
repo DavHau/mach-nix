@@ -195,11 +195,12 @@ rec {
     in
       condition { prov = provider; ver = oa.version; pyver = oa.passthru.pythonModule.version; };
 
-    extract = python: src: fail_msg:
+    extract = {python, src, fail_msg, name}:
     let
       file_path = "${(import ../../lib/extractor { inherit pkgs; }).extract_from_src {
           py = python;
           src = src;
+          name = name;
         }}/python.json";
     in
       if pathExists file_path then fromJSON (builtins.unsafeDiscardStringContext (readFile file_path)) else throw fail_msg;
@@ -207,9 +208,14 @@ rec {
   extract_requirements = python: src: name: extras:
     let
       ensureList = requires: if isString requires then [requires] else requires;
-      data = extract python src ''
+      data = extract {
+        python=python;
+        src = src; 
+        fail_msg = ''
         Automatic requirements extraction failed for ${name}.
-        Please manually specify 'requirements' '';
+            Please manually specify 'requirements' '';
+          name = name;
+      };
       setup_requires = if hasAttr "setup_requires" data then ensureList data.setup_requires else [];
       install_requires = if hasAttr "install_requires" data then ensureList data.install_requires else [];
       extras_require =
@@ -226,7 +232,7 @@ rec {
       error_msg = ''
         Automatic extraction of '${for_attr}' from python package source ${src} failed.
         Please manually specify '${for_attr}' '';
-      data = extract python src error_msg;
+      data = extract {python=python;  src =src; fail_msg= error_msg; name = for_attr; };
       result = if hasAttr attr data then data."${attr}" else throw error_msg;
       msg = "\n automatically detected ${for_attr}: '${result}'";
     in
@@ -262,7 +268,7 @@ rec {
           {
             "${pkg}" = pySuper."${pkg}".overrideAttrs (oa:
               mapAttrs (key: val:
-                trace "\napplying fix '${fix}' (${key}) for ${pkg}:${oa.version}\n" (
+                trace "\napplying fix '${fix}' (${key}) for ${pkg}-${oa.version}\n" (
                   if isAttrs val && hasAttr "add" val then
                     combine pkg key (oa."${key}" or null) val.add
                   else if isAttrs val && hasAttr "mod" val && isFunction val.mod then
