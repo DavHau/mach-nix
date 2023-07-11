@@ -11,7 +11,7 @@ with builtins;
 mach-nix.mkPython (baseArgsMkPython // {
   python = "python39";
   requirements = ''
-    librosa==0.8.0
+    librosa==0.9.0
   '';
   providers.soundfile = "sdist";
   providers._default = "wheel,sdist,nixpkgs";
