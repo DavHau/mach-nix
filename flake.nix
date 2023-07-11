@@ -74,6 +74,7 @@
                   in (import ./lib/extractor {}).extract_from_src {
                     py="python3";
                     src = srcTar;
+                    name = "mach-nix";
                   }'
                 cat reqs/*
                 rm reqs
