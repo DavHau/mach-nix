@@ -1,12 +1,14 @@
 {
   pkgs ? import <nixpkgs> { config = { allowUnfree = true; };},
   lib ? pkgs.lib,
-  pythonInterpreters ? pkgs.useInterpreters or (with pkgs; [
+  pythonInterpreters ?  (with pkgs; [ # pkgs.useInterpreters - useInterpreters is not defined
     python27
-    python35
-    python36
+    #python35 # does not exist in nixpkgs "rev": "554d2d8aa25b6e583575459c297ec23750adb6cb",
+    #python36
     python37
     python38
+    python39
+    # python310 # does not work 
   ]),
   ...
 }:
