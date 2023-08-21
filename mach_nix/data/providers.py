@@ -441,9 +441,14 @@ class SdistDependencyProvider(DependencyProviderBase):
                     pkg_data = pyvers[pkg_data]
                 if 'python_requires' in pkg_data:
                     specs = ",".join(pkg_data['python_requires'])
-                    parsed_py_requires = list(parse_reqs(f"python{specs}"))
+                    try:
+                        parsed_py_requires = list(parse_reqs(f"python{specs}"))
+                    except packaging.specifiers.InvalidSpecifier as e:
+                        print(f"WARNING: `python_requires` attribute of sdist {name}:{ver} could not be parsed. Ignoring package. Exception was {e}")
+                        continue
                     if not filter_versions([self.py_ver.version], parsed_py_requires[0]):
                         continue
+
                 candidates[ver] = pkg_data
         return candidates
 
@@ -499,7 +504,7 @@ class SdistDependencyProvider(DependencyProviderBase):
                     provider_info=ProviderInfo(self, data=pkg)
                 ))
             except packaging.version.InvalidVersion:
-                print(f"Error parsing (sdist) {pkg} version '{ver}")
+                print(f"Error parsing (sdist) {pkg_name} version '{ver}")
                 continue
         return result
 
