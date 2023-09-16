@@ -20,7 +20,7 @@ jobs:
         fetch-depth: 1
 
     - name: Install/Setup - NIX
-      uses: cachix/install-nix-action@v22
+      uses: cachix/install-nix-action@v23
       with:
         nix_path: nixpkgs=channel:nixos-unstable
         extra_nix_config: |
@@ -50,7 +50,7 @@ jobs:
         fetch-depth: 1
 
     - name: Install/Setup - NIX
-      uses: cachix/install-nix-action@v22
+      uses: cachix/install-nix-action@v23
       with:
         nix_path: nixpkgs=channel:nixos-unstable
         extra_nix_config: |
@@ -72,7 +72,7 @@ jobs:
         fetch-depth: 1
 
     - name: Install/Setup - NIX
-      uses: cachix/install-nix-action@v22
+      uses: cachix/install-nix-action@v23
       with:
         nix_path: nixpkgs=channel:nixos-unstable
         extra_nix_config: |
@@ -94,7 +94,7 @@ jobs:
   #       fetch-depth: 1
 
   #   - name: Install/Setup - NIX
-  #     uses: cachix/install-nix-action@v22
+  #     uses: cachix/install-nix-action@v23
   #     with:
   #       nix_path: nixpkgs=channel:nixos-unstable
   #       extra_nix_config: |
