@@ -18,7 +18,7 @@ rec {
   mergeOverrides = foldl composeExtensions (self: super: { });
 
   fromYAML = str:
-    fromJSON (readFile (pkgs.runCommand "yml" { buildInputs = [pkgs.yq pkgs.jq] ;} ''echo '${escape ["'"] str}' | ${pkgs.yq}/bin/yq . > $out''));
+    importJSON (pkgs.runCommand "yml" { nativeBuildInputs = [pkgs.yq] ;} ''echo '${escape ["'"] str}' | yq . > $out'');
 
   isCondaEnvironmentYml = str: hasInfix "\nchannels:\n" str && hasInfix "\ndependencies:\n" str;
 
