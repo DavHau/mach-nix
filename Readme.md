@@ -59,7 +59,7 @@ nix-env -if https://github.com/DavHau/mach-nix/tarball/3.5.0 -A mach-nix
 ```
 or, if you prefer `nix-shell`:
 
-+ if [Nix flakes is enabled](https://nixos.wiki/wiki/Flakes#:~:text=Installing%20flakes):
++ if [Nix flakes is enabled](https://wiki.nixos.org/wiki/Flakes#:~:text=Installing%20flakes):
 
   ```shell
   nix shell github:DavHau/mach-nix
@@ -92,7 +92,7 @@ mach-nix gen -r requirements.txt
 
 ---
 ### Build a derivation or enter a shell from a list of requirements
-+ if [Nix flakes is enabled](https://nixos.wiki/wiki/Flakes#:~:text=Installing%20flakes):
++ if [Nix flakes is enabled](https://wiki.nixos.org/wiki/Flakes#:~:text=Installing%20flakes):
 
   ```shell
   nix (build|shell) mach-nix#gen.(python|docker).package1.package2...
